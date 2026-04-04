@@ -1,0 +1,357 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+// ─── TENANCY ───
+
+model City {
+  id         String   @id @default(cuid())
+  name       String
+  slug       String   @unique
+  state      String?
+  country    String   @default("United States")
+  lat        Float?
+  lng        Float?
+  population Int?
+  areaSqkm   Float?
+  timezone   String?
+  boundary   String?
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  users              User[]
+  neighborhoods      Neighborhood[]
+  interventions      Intervention[]
+  scenarios          Scenario[]
+  reports            Report[]
+  weatherStations    WeatherStation[]
+  dataIngestionJobs  DataIngestionJob[]
+  onboardingState    OnboardingState?
+
+  @@map("cities")
+}
+
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  name         String?
+  passwordHash String?
+  image        String?
+  cityId       String?
+  role         String    @default("PUBLIC")
+  isLocked     Boolean   @default(false)
+  lockedUntil  DateTime?
+  failedLogins Int       @default(0)
+  lastLoginAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  city     City?     @relation(fields: [cityId], references: [id])
+  sessions Session[]
+  accounts Account[]
+
+  proposedInterventions   Intervention[] @relation("ProposedBy")
+  approvedInterventions   Intervention[] @relation("ApprovedBy")
+  createdScenarios        Scenario[]     @relation("CreatedBy")
+  approvedScenarios       Scenario[]     @relation("ApprovedBy")
+  generatedReports        Report[]
+  auditLogs               AuditLog[]
+
+  @@map("users")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  userId       String
+  tokenHash    String   @unique
+  expiresAt    DateTime
+  lastActiveAt DateTime @default(now())
+  revokedAt    DateTime?
+  createdAt    DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+// ─── ONBOARDING ───
+
+model OnboardingState {
+  id              String  @id @default(cuid())
+  cityId          String  @unique
+  step1City       Boolean @default(false)
+  step2Neighbors  Boolean @default(false)
+  step3Heat       Boolean @default(false)
+  step4Team       Boolean @default(false)
+  step5Alerts     Boolean @default(false)
+  step6Complete   Boolean @default(false)
+  isComplete      Boolean @default(false)
+
+  city City @relation(fields: [cityId], references: [id], onDelete: Cascade)
+
+  @@map("onboarding_states")
+}
+
+// ─── GIS DATA ───
+
+model Neighborhood {
+  id                 String  @id @default(cuid())
+  cityId             String
+  name               String
+  population         Int?
+  areaSqkm           Float?
+  medianIncome       Float?
+  pctElderly         Float?
+  pctChildren        Float?
+  vulnerabilityScore Float?
+  vulnerabilityLevel String?
+  boundary           String?
+
+  city              City               @relation(fields: [cityId], references: [id], onDelete: Cascade)
+  heatMeasurements  HeatMeasurement[]
+  interventions     Intervention[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([cityId, name])
+  @@map("neighborhoods")
+}
+
+model HeatMeasurement {
+  id                   String   @id @default(cuid())
+  neighborhoodId       String
+  measurementDate      DateTime
+  avgTempCelsius       Float
+  maxTempCelsius       Float?
+  minTempCelsius       Float?
+  surfaceAlbedo        Float?
+  treeCanopyPct        Float?
+  imperviousSurfacePct Float?
+  dataSource           String   @default("MANUAL")
+
+  neighborhood Neighborhood @relation(fields: [neighborhoodId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@map("heat_measurements")
+}
+
+model WeatherStation {
+  id          String  @id @default(cuid())
+  cityId      String
+  name        String
+  stationCode String  @unique
+  latitude    Float
+  longitude   Float
+  isActive    Boolean @default(true)
+
+  city     City              @relation(fields: [cityId], references: [id], onDelete: Cascade)
+  readings WeatherReading[]
+
+  @@map("weather_stations")
+}
+
+model WeatherReading {
+  id         String   @id @default(cuid())
+  stationId  String
+  recordedAt DateTime
+  tempCelsius Float
+  humidity    Float?
+  windSpeed   Float?
+
+  station WeatherStation @relation(fields: [stationId], references: [id], onDelete: Cascade)
+
+  @@map("weather_readings")
+}
+
+// ─── INTERVENTIONS ───
+
+model Intervention {
+  id                       String    @id @default(cuid())
+  cityId                   String
+  neighborhoodId           String?
+  type                     String
+  name                     String
+  description              String?
+  status                   String    @default("PROPOSED")
+  areaSqm                  Float?
+  estimatedCostUsd         Float?
+  actualCostUsd            Float?
+  estimatedTempReductionC  Float?
+  actualTempReductionC     Float?
+  parameters               String?
+  location                 String?
+  rejectionReason          String?
+  proposedById             String?
+  approvedById             String?
+  proposedAt               DateTime  @default(now())
+  approvedAt               DateTime?
+  completedAt              DateTime?
+
+  city          City           @relation(fields: [cityId], references: [id], onDelete: Cascade)
+  neighborhood  Neighborhood?  @relation(fields: [neighborhoodId], references: [id])
+  proposedBy    User?          @relation("ProposedBy", fields: [proposedById], references: [id])
+  approvedBy    User?          @relation("ApprovedBy", fields: [approvedById], references: [id])
+
+  scenarioInterventions ScenarioIntervention[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("interventions")
+}
+
+// ─── SCENARIOS ───
+
+model Scenario {
+  id                            String    @id @default(cuid())
+  cityId                        String
+  name                          String
+  description                   String?
+  status                        String    @default("DRAFT")
+  priority                      String?
+  totalEstimatedCostUsd         Float?
+  totalProjectedTempReductionC  Float?
+  totalProjectedLivesSaved      Int?
+  projectedCo2ReductionTons     Float?
+  revisionNotes                 String?
+  councilNotes                  String?
+  createdById                   String?
+  approvedById                  String?
+  submittedAt                   DateTime?
+  approvedAt                    DateTime?
+  createdAt                     DateTime  @default(now())
+  updatedAt                     DateTime  @updatedAt
+
+  city        City     @relation(fields: [cityId], references: [id], onDelete: Cascade)
+  createdBy   User?    @relation("CreatedBy", fields: [createdById], references: [id])
+  approvedBy  User?    @relation("ApprovedBy", fields: [approvedById], references: [id])
+
+  scenarioInterventions ScenarioIntervention[]
+  simulationResults     SimulationResult[]
+  reports               Report[]
+
+  @@map("scenarios")
+}
+
+model ScenarioIntervention {
+  id              String   @id @default(cuid())
+  scenarioId      String
+  interventionId  String
+  includedAt      DateTime @default(now())
+  notes           String?
+
+  scenario     Scenario     @relation(fields: [scenarioId], references: [id], onDelete: Cascade)
+  intervention Intervention @relation(fields: [interventionId], references: [id], onDelete: Cascade)
+
+  @@unique([scenarioId, interventionId])
+  @@map("scenario_interventions")
+}
+
+model SimulationResult {
+  id                  String   @id @default(cuid())
+  scenarioId          String
+  runAt               DateTime @default(now())
+  inputState          String?
+  outputSummary       String?
+  neighborhoodResults String?
+  confidenceInterval  Float?
+  modelVersion        String?
+
+  scenario Scenario @relation(fields: [scenarioId], references: [id], onDelete: Cascade)
+
+  @@map("simulation_results")
+}
+
+// ─── REPORTS ───
+
+model Report {
+  id           String    @id @default(cuid())
+  cityId       String
+  scenarioId   String?
+  title        String
+  type         String
+  status       String    @default("DRAFT")
+  content      String?
+  tone         String?
+  generatedById String?
+  generatedAt  DateTime  @default(now())
+  publishedAt  DateTime?
+
+  city      City      @relation(fields: [cityId], references: [id], onDelete: Cascade)
+  scenario  Scenario? @relation(fields: [scenarioId], references: [id])
+  generatedBy User?   @relation(fields: [generatedById], references: [id])
+
+  @@map("reports")
+}
+
+// ─── DATA INGESTION ───
+
+model DataIngestionJob {
+  id                String    @id @default(cuid())
+  cityId            String
+  dataType          String
+  status            String    @default("PENDING")
+  sourceUrl         String?
+  recordsProcessed  Int       @default(0)
+  errors            String?
+  startedAt         DateTime  @default(now())
+  completedAt       DateTime?
+
+  city City @relation(fields: [cityId], references: [id], onDelete: Cascade)
+
+  @@map("data_ingestion_jobs")
+}
+
+// ─── AUDIT ───
+
+model AuditLog {
+  id            String   @id @default(cuid())
+  userId        String?
+  action        String
+  resourceType  String?
+  resourceId    String?
+  beforeValue   String?
+  afterValue    String?
+  ipAddress     String?
+  createdAt     DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id])
+
+  @@map("audit_logs")
+}

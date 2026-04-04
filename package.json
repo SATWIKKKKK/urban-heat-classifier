@@ -1,0 +1,52 @@
+{
+  "name": "urban-heat-mitigator",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "seed": "npx tsx prisma/seed.ts"
+  },
+  "prisma": {
+    "seed": "npx tsx prisma/seed.ts"
+  },
+  "dependencies": {
+    "@auth/prisma-adapter": "^2.11.1",
+    "@hookform/resolvers": "^5.2.2",
+    "@prisma/adapter-better-sqlite3": "^7.6.0",
+    "@prisma/client": "^7.6.0",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/leaflet": "^1.9.21",
+    "@types/papaparse": "^5.5.2",
+    "bcryptjs": "^3.0.3",
+    "better-sqlite3": "^12.8.0",
+    "dotenv": "^17.4.0",
+    "gsap": "^3.14.2",
+    "leaflet": "^1.9.4",
+    "next": "16.2.1",
+    "next-auth": "^5.0.0-beta.25",
+    "papaparse": "^5.5.3",
+    "prisma": "^7.6.0",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
+    "react-hook-form": "^7.72.1",
+    "react-leaflet": "^5.0.0",
+    "recharts": "^3.8.1",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.59.1",
+    "@tailwindcss/postcss": "^4",
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "babel-plugin-react-compiler": "1.0.0",
+    "eslint": "^9",
+    "eslint-config-next": "16.2.1",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  }
+}
