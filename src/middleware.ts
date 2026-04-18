@@ -9,6 +9,8 @@ const ROLE_ROUTES: Record<string, string[]> = {
   '/dashboard/admin': ['SUPER_ADMIN'],
   '/dashboard/data': ['CITY_ADMIN', 'SUPER_ADMIN'],
   '/dashboard/reports/generate': ['URBAN_PLANNER', 'CITY_ADMIN', 'SUPER_ADMIN'],
+  '/dashboard/scenarios': ['CITY_COUNCIL', 'URBAN_PLANNER', 'CITY_ADMIN', 'SUPER_ADMIN'],
+  '/dashboard/reports': ['CITY_COUNCIL', 'URBAN_PLANNER', 'CITY_ADMIN', 'SUPER_ADMIN'],
 };
 
 const PUBLIC_ROUTES = [
@@ -22,9 +24,14 @@ const PUBLIC_ROUTES = [
 
 export default auth((req) => {
   const { pathname } = req.nextUrl;
+  const isPublicRoute =
+    pathname === '/' ||
+    PUBLIC_ROUTES
+      .filter((route) => route !== '/')
+      .some((route) => pathname.startsWith(route));
 
   // Allow public routes
-  if (PUBLIC_ROUTES.some((route) => pathname.startsWith(route))) {
+  if (isPublicRoute) {
     return NextResponse.next();
   }
 
@@ -48,6 +55,35 @@ export default auth((req) => {
     }
 
     const role = session.user.role;
+    const onboardingComplete = session.user.onboardingComplete;
+
+    if (role === 'CITY_ADMIN') {
+      const isOnboardingRoute = pathname.startsWith('/dashboard/onboarding');
+      if (!onboardingComplete && !isOnboardingRoute) {
+        return NextResponse.redirect(new URL('/dashboard/onboarding', req.url));
+      }
+      if (onboardingComplete && isOnboardingRoute) {
+        return NextResponse.redirect(new URL('/dashboard/map', req.url));
+      }
+    }
+
+    if (role === 'URBAN_PLANNER') {
+      const isWaitingRoute = pathname.startsWith('/dashboard/waiting');
+      if (!onboardingComplete && !isWaitingRoute) {
+        return NextResponse.redirect(new URL('/dashboard/waiting', req.url));
+      }
+      if (onboardingComplete && isWaitingRoute) {
+        return NextResponse.redirect(new URL('/dashboard/map', req.url));
+      }
+    }
+
+    if (role === 'CITY_COUNCIL' && pathname === '/dashboard') {
+      return NextResponse.redirect(new URL('/dashboard/scenarios', req.url));
+    }
+
+    if (['CITY_ADMIN', 'URBAN_PLANNER'].includes(role) && pathname === '/dashboard') {
+      return NextResponse.redirect(new URL('/dashboard/map', req.url));
+    }
 
     // Check role-based route access
     for (const [route, allowedRoles] of Object.entries(ROLE_ROUTES)) {

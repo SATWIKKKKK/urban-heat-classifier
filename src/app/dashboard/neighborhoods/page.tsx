@@ -23,27 +23,31 @@ export default async function NeighborhoodsPage() {
     <div className="flex flex-col gap-8">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
         <div>
-          <h1 className="font-[var(--font-headline)] text-3xl font-extrabold tracking-tight text-white">
+          <div className="inline-flex items-center gap-2 glass-card rounded-full px-3 py-1.5 mb-3">
+            <span className="material-symbols-outlined text-[#69f6b8] text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>location_city</span>
+            <span className="text-[10px] font-bold uppercase tracking-widest text-[#69f6b8]">Neighborhoods</span>
+          </div>
+          <h1 className="font-[family-name:var(--font-headline)] text-3xl font-extrabold tracking-tight text-white">
             Neighborhoods
           </h1>
-          <p className="text-[#a3aac4] mt-1">Manage neighborhoods, heat data, and vulnerability scores</p>
+          <p className="text-[#6d758c] mt-1">Manage neighborhoods, heat data, and vulnerability scores</p>
         </div>
       </div>
 
       <AddNeighborhoodForm cityId={session.user.cityId} />
 
       {neighborhoods.length === 0 ? (
-        <div className="glass-card p-12 rounded-xl text-center">
+        <div className="glass-card p-12 rounded-2xl text-center">
           <span className="material-symbols-outlined text-6xl text-[#a3aac4]/30 mb-4" style={{ fontVariationSettings: "'FILL' 1" }}>location_city</span>
           <h3 className="text-xl font-bold text-white mb-2">No neighborhoods yet</h3>
           <p className="text-[#a3aac4]">Add your first neighborhood above to get started.</p>
         </div>
       ) : (
-        <div className="glass-card rounded-xl overflow-hidden">
+        <div className="glass-card rounded-2xl overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead>
-                <tr className="bg-white/5 text-slate-500 uppercase text-[10px] tracking-widest font-bold">
+                <tr className="bg-white/5 text-[#6d758c] uppercase text-[10px] tracking-widest font-bold">
                   <th className="px-6 py-4">Name</th>
                   <th className="px-6 py-4">Population</th>
                   <th className="px-6 py-4">Area (km²)</th>

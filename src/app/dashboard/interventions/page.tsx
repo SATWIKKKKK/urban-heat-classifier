@@ -13,27 +13,31 @@ export default async function InterventionsPage() {
     <div className="flex flex-col gap-8">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
         <div>
-          <h1 className="font-[var(--font-headline)] text-3xl font-extrabold tracking-tight text-white">
+          <div className="inline-flex items-center gap-2 glass-card rounded-full px-3 py-1.5 mb-3">
+            <span className="material-symbols-outlined text-[#ff8439] text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>construction</span>
+            <span className="text-[10px] font-bold uppercase tracking-widest text-[#ff8439]">Interventions</span>
+          </div>
+          <h1 className="font-[family-name:var(--font-headline)] text-3xl font-extrabold tracking-tight text-white">
             Interventions
           </h1>
-          <p className="text-[#a3aac4] mt-1">Manage heat mitigation interventions across your city</p>
+          <p className="text-[#6d758c] mt-1">Manage heat mitigation interventions across your city</p>
         </div>
       </div>
 
       <AddInterventionForm cityId={session.user.cityId} userId={session.user.id!} />
 
       {interventions.length === 0 ? (
-        <div className="glass-card p-12 rounded-xl text-center">
+        <div className="glass-card p-12 rounded-2xl text-center">
           <span className="material-symbols-outlined text-6xl text-[#a3aac4]/30 mb-4" style={{ fontVariationSettings: "'FILL' 1" }}>construction</span>
           <h3 className="text-xl font-bold text-white mb-2">No interventions yet</h3>
           <p className="text-[#a3aac4]">Create your first intervention above to get started.</p>
         </div>
       ) : (
-        <div className="glass-card rounded-xl overflow-hidden">
+        <div className="glass-card rounded-2xl overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead>
-                <tr className="bg-white/5 text-slate-500 uppercase text-[10px] tracking-widest font-bold">
+                <tr className="bg-white/5 text-[#6d758c] uppercase text-[10px] tracking-widest font-bold">
                   <th className="px-6 py-4">Name</th>
                   <th className="px-6 py-4">Type</th>
                   <th className="px-6 py-4">Neighborhood</th>

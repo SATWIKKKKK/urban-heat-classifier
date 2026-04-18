@@ -39,7 +39,7 @@ export default function AddNeighborhoodForm({ cityId }: { cityId: string }) {
 
   if (!open) {
     return (
-      <button onClick={() => setOpen(true)} className="px-6 py-3 bg-gradient-to-br from-[#69f6b8] to-[#06b77f] text-[#002919] font-bold rounded-md self-start">
+      <button onClick={() => setOpen(true)} className="px-6 py-3 bg-gradient-to-br from-[#69f6b8] to-[#06b77f] text-[#002919] font-bold rounded-xl self-start shadow-lg shadow-[#69f6b8]/20 btn-shine">
         <span className="flex items-center gap-2">
           <span className="material-symbols-outlined text-lg">add</span>
           Add Neighborhood
@@ -82,10 +82,10 @@ export default function AddNeighborhoodForm({ cityId }: { cityId: string }) {
       </div>
 
       <div className="flex gap-3">
-        <button type="submit" disabled={loading} className="px-6 py-2 bg-gradient-to-br from-[#69f6b8] to-[#06b77f] text-[#002919] font-bold rounded-md disabled:opacity-50">
+        <button type="submit" disabled={loading} className="px-6 py-2 bg-gradient-to-br from-[#69f6b8] to-[#06b77f] text-[#002919] font-bold rounded-xl disabled:opacity-50 btn-shine">
           {loading ? 'Saving...' : 'Save'}
         </button>
-        <button type="button" onClick={() => setOpen(false)} className="px-6 py-2 border border-white/10 text-[#a3aac4] rounded-md hover:bg-white/5">
+        <button type="button" onClick={() => setOpen(false)} className="px-6 py-2 border border-white/10 text-[#a3aac4] rounded-xl hover:bg-white/5 transition-all">
           Cancel
         </button>
       </div>

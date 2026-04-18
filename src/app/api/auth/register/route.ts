@@ -2,11 +2,34 @@ import { NextResponse } from 'next/server';
 import { hash } from 'bcryptjs';
 import prisma from '@/lib/db';
 
+function slugifyCityName(value: string) {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .trim()
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-');
+}
+
+async function createUniqueCitySlug(cityName: string) {
+  const baseSlug = slugifyCityName(cityName) || 'city';
+  let slug = baseSlug;
+  let attempt = 1;
+
+  while (await prisma.city.findUnique({ where: { slug } })) {
+    attempt += 1;
+    slug = `${baseSlug}-${attempt}`;
+  }
+
+  return slug;
+}
+
 export async function POST(request: Request) {
   try {
     const { name, email, password, cityName } = await request.json();
+    const normalizedEmail = String(email || '').toLowerCase().trim();
 
-    if (!name || !email || !password || !cityName) {
+    if (!name || !normalizedEmail || !password || !cityName) {
       return NextResponse.json(
         { error: 'All fields are required' },
         { status: 400 }
@@ -22,7 +45,7 @@ export async function POST(request: Request) {
 
     // Check existing user
     const existingUser = await prisma.user.findUnique({
-      where: { email },
+      where: { email: normalizedEmail },
     });
 
     if (existingUser) {
@@ -33,14 +56,7 @@ export async function POST(request: Request) {
     }
 
     const passwordHash = await hash(password, 12);
-
-    // Generate slug from city name
-    const slug = cityName
-      .toLowerCase()
-      .replace(/[^a-z0-9\s-]/g, '')
-      .replace(/\s+/g, '-')
-      .replace(/-+/g, '-')
-      .trim();
+    const slug = await createUniqueCitySlug(cityName);
 
     // Create city and user in a transaction
     const result = await prisma.$transaction(async (tx) => {
@@ -54,7 +70,7 @@ export async function POST(request: Request) {
       const user = await tx.user.create({
         data: {
           name,
-          email,
+          email: normalizedEmail,
           passwordHash,
           cityId: city.id,
           role: 'CITY_ADMIN',
@@ -73,7 +89,7 @@ export async function POST(request: Request) {
           action: 'USER_REGISTERED',
           resourceType: 'User',
           resourceId: user.id,
-          afterValue: JSON.stringify({ email, role: 'CITY_ADMIN', cityName }),
+          afterValue: JSON.stringify({ email: normalizedEmail, role: 'CITY_ADMIN', cityName }),
         },
       });
 

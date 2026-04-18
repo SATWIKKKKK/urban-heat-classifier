@@ -5,6 +5,28 @@ import { compare } from 'bcryptjs';
 import prisma from '@/lib/db';
 import { authConfig } from '@/lib/auth.config';
 
+function slugifyCityName(value: string) {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .trim()
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-');
+}
+
+async function createUniqueCitySlug(baseName: string) {
+  const baseSlug = slugifyCityName(baseName) || 'city';
+  let slug = baseSlug;
+  let attempt = 1;
+
+  while (await prisma.city.findUnique({ where: { slug } })) {
+    attempt += 1;
+    slug = `${baseSlug}-${attempt}`;
+  }
+
+  return slug;
+}
+
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
   providers: [
@@ -28,7 +50,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
         const user = await prisma.user.findUnique({
           where: { email },
-          include: { city: true },
+          include: { city: { include: { onboardingState: true } } },
         });
 
         if (!user) {
@@ -89,6 +111,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           name: user.name,
           role: user.role,
           cityId: user.cityId,
+          onboardingComplete: user.city?.onboardingState?.isComplete ?? false,
           image: user.image,
         };
       },
@@ -97,25 +120,118 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   callbacks: {
     async signIn({ user, account }) {
       if (account?.provider === 'google') {
+        const email = user.email?.toLowerCase().trim();
+        if (!email) {
+          return false;
+        }
+
         const existingUser = await prisma.user.findUnique({
-          where: { email: user.email! },
-          include: { accounts: true },
+          where: { email },
+          include: { city: { include: { onboardingState: true } } },
         });
 
         if (existingUser) {
-          // Check if existing user uses password auth
-          if (existingUser.passwordHash && !existingUser.accounts?.length) {
-            return false;
+          if (existingUser.passwordHash) {
+            return `/login?error=${encodeURIComponent(
+              'This email uses password login. Please sign in with your email and password.'
+            )}`;
           }
-          // Update last login
+
           await prisma.user.update({
             where: { id: existingUser.id },
             data: { lastLoginAt: new Date() },
           });
+
+          return true;
         }
+
+        const displayName = user.name?.trim() || email.split('@')[0];
+        const firstName = displayName.split(' ')[0] || 'New';
+        const cityName = `${firstName}'s City`;
+        const slug = await createUniqueCitySlug(cityName);
+
+        await prisma.$transaction(async (tx) => {
+          const city = await tx.city.create({
+            data: {
+              name: cityName,
+              slug,
+            },
+          });
+
+          const createdUser = await tx.user.create({
+            data: {
+              email,
+              name: displayName,
+              image: user.image,
+              cityId: city.id,
+              role: 'CITY_ADMIN',
+              lastLoginAt: new Date(),
+            },
+          });
+
+          await tx.onboardingState.create({
+            data: {
+              cityId: city.id,
+            },
+          });
+
+          await tx.auditLog.create({
+            data: {
+              userId: createdUser.id,
+              action: 'USER_REGISTERED_GOOGLE',
+              resourceType: 'User',
+              resourceId: createdUser.id,
+              afterValue: JSON.stringify({ email, role: 'CITY_ADMIN', cityName }),
+            },
+          });
+        });
       }
+
       return true;
     },
-    ...authConfig.callbacks,
+    async jwt({ token, user, account, trigger, session }) {
+      if (user) {
+        token.role = (user as typeof user & { role?: string }).role;
+        token.cityId = (user as typeof user & { cityId?: string | null }).cityId ?? null;
+        token.userId = user.id;
+        token.onboardingComplete =
+          (user as typeof user & { onboardingComplete?: boolean }).onboardingComplete ?? false;
+      }
+
+      if (account?.provider === 'google' || (!token.userId && token.email)) {
+        const dbUser = await prisma.user.findUnique({
+          where: { email: token.email ?? undefined },
+          include: { city: { include: { onboardingState: true } } },
+        });
+
+        if (dbUser) {
+          token.userId = dbUser.id;
+          token.role = dbUser.role;
+          token.cityId = dbUser.cityId;
+          token.onboardingComplete = dbUser.city?.onboardingState?.isComplete ?? false;
+        }
+      }
+
+      if (trigger === 'update' && session) {
+        token.role = session.role || token.role;
+        token.cityId = session.cityId || token.cityId;
+        token.onboardingComplete =
+          session.onboardingComplete ?? token.onboardingComplete;
+      }
+
+      return token;
+    },
+    async session({ session, token }) {
+      if (session.user) {
+        session.user.id = token.userId as string;
+        session.user.role = token.role as string;
+        session.user.cityId = token.cityId as string | null;
+        session.user.onboardingComplete =
+          (token.onboardingComplete as boolean | undefined) ?? false;
+      }
+
+      return session;
+    },
+    authorized: authConfig.callbacks?.authorized,
   },
 });

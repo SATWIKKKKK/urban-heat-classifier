@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { updateOnboardingAction, addNeighborhoodAction } from '@/lib/actions';
+import { completeOnboardingAction, updateOnboardingAction, addNeighborhoodAction } from '@/lib/actions';
 
 const STEPS = [
   { title: 'City Profile', icon: 'location_city', description: 'Review your city information' },
@@ -15,12 +15,14 @@ const STEPS = [
 ];
 
 export default function OnboardingPage() {
-  const { data: session } = useSession();
+  const { data: session, update } = useSession();
   const router = useRouter();
   const [currentStep, setCurrentStep] = useState(0);
   const [neighborhoodName, setNeighborhoodName] = useState('');
   const [neighborhoods, setNeighborhoods] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
+  const [launching, setLaunching] = useState(false);
+  const [launchError, setLaunchError] = useState<string | null>(null);
 
   const STEP_KEYS = ['step1City', 'step2Neighbors', 'step3Heat', 'step4Team', 'step5Alerts', 'step6Complete'];
 
@@ -56,15 +58,26 @@ export default function OnboardingPage() {
   }
 
   async function finish() {
-    if (!session?.user?.cityId) return;
-    await updateOnboardingAction(session.user.cityId, { step6Complete: true, isComplete: true });
-    router.push('/dashboard');
+    if (!session?.user?.cityId || launching) return;
+
+    setLaunching(true);
+    setLaunchError(null);
+
+    try {
+      await completeOnboardingAction(session.user.cityId);
+      await update({ onboardingComplete: true });
+      router.replace('/dashboard/map');
+      router.refresh();
+    } catch {
+      setLaunchError('Unable to launch the dashboard right now. Please try again.');
+      setLaunching(false);
+    }
   }
 
   return (
     <div className="flex flex-col gap-8 max-w-3xl mx-auto">
       <div>
-        <h1 className="font-[var(--font-headline)] text-3xl font-extrabold tracking-tight text-white">
+        <h1 className="font-[family-name:var(--font-headline)] text-3xl font-extrabold tracking-tight text-white">
           Welcome to HeatPlan
         </h1>
         <p className="text-[#a3aac4] mt-1">Let&apos;s set up your city&apos;s heat mitigation program</p>
@@ -92,7 +105,7 @@ export default function OnboardingPage() {
       </div>
 
       {/* Step Content */}
-      <div className="glass-card p-8 rounded-xl">
+      <div className="glass-card p-8 rounded-2xl">
         <div className="flex items-center gap-3 mb-6">
           <span className="material-symbols-outlined text-3xl text-[#69f6b8]" style={{ fontVariationSettings: "'FILL' 1" }}>
             {STEPS[currentStep].icon}
@@ -108,7 +121,7 @@ export default function OnboardingPage() {
           <div className="space-y-4">
             <p className="text-[#a3aac4]">Your city has been created. You can update details later from the admin panel.</p>
             <div className="bg-white/5 p-4 rounded-lg">
-              <span className="text-[10px] uppercase tracking-widest text-slate-500">City Name</span>
+              <span className="text-[10px] uppercase tracking-widest text-[#6d758c]">City Name</span>
               <p className="text-white font-bold">{session?.user?.name ? `${session.user.name}'s City` : 'Your City'}</p>
             </div>
           </div>
@@ -126,7 +139,7 @@ export default function OnboardingPage() {
                 className="flex-1 px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:border-[#69f6b8]/50 focus:outline-none"
                 onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addNeighborhood())}
               />
-              <button onClick={addNeighborhood} disabled={saving} className="px-4 py-2 bg-[#69f6b8] text-[#002919] font-bold rounded-md disabled:opacity-50">
+              <button onClick={addNeighborhood} disabled={saving} className="px-4 py-2 bg-gradient-to-r from-[#69f6b8] to-[#06b77f] text-[#002919] font-bold rounded-xl disabled:opacity-50 btn-shine">
                 Add
               </button>
             </div>
@@ -186,14 +199,19 @@ export default function OnboardingPage() {
             <p className="text-[#a3aac4]">You&apos;re all set! Review the summary and launch your heat mitigation program.</p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="bg-white/5 p-4 rounded-lg">
-                <span className="text-[10px] uppercase tracking-widest text-slate-500">Neighborhoods Added</span>
+                <span className="text-[10px] uppercase tracking-widest text-[#6d758c]">Neighborhoods Added</span>
                 <p className="text-2xl font-bold text-[#69f6b8]">{neighborhoods.length}</p>
               </div>
               <div className="bg-white/5 p-4 rounded-lg">
-                <span className="text-[10px] uppercase tracking-widest text-slate-500">Status</span>
+                <span className="text-[10px] uppercase tracking-widest text-[#6d758c]">Status</span>
                 <p className="text-2xl font-bold text-[#69f6b8]">Ready</p>
               </div>
             </div>
+            {launchError && (
+              <div className="rounded-lg border border-[#ff716c]/20 bg-[#ff716c]/10 px-4 py-3 text-sm text-[#ffb4ad]">
+                {launchError}
+              </div>
+            )}
           </div>
         )}
 
@@ -202,17 +220,21 @@ export default function OnboardingPage() {
           <button
             onClick={prevStep}
             disabled={currentStep === 0}
-            className="px-6 py-2 border border-white/10 text-[#a3aac4] rounded-md hover:bg-white/5 disabled:opacity-30"
+            className="px-6 py-2 border border-white/10 text-[#a3aac4] rounded-xl hover:bg-white/5 disabled:opacity-30 transition-all"
           >
             Back
           </button>
           {currentStep < STEPS.length - 1 ? (
-            <button onClick={nextStep} className="px-6 py-2 bg-gradient-to-br from-[#69f6b8] to-[#06b77f] text-[#002919] font-bold rounded-md">
+            <button onClick={nextStep} className="px-6 py-2 bg-gradient-to-r from-[#69f6b8] to-[#06b77f] text-[#002919] font-bold rounded-xl btn-shine">
               Continue
             </button>
           ) : (
-            <button onClick={finish} className="px-6 py-2 bg-gradient-to-br from-[#69f6b8] to-[#06b77f] text-[#002919] font-bold rounded-md">
-              Launch Dashboard
+            <button
+              onClick={finish}
+              disabled={launching}
+              className="px-6 py-2 bg-gradient-to-r from-[#69f6b8] to-[#06b77f] text-[#002919] font-bold rounded-xl btn-shine disabled:opacity-50"
+            >
+              {launching ? 'Launching...' : 'Launch Dashboard'}
             </button>
           )}
         </div>

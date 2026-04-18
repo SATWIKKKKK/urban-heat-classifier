@@ -47,20 +47,24 @@ export default function DataManagementPage() {
   return (
     <div className="flex flex-col gap-8">
       <div>
-        <h1 className="font-[var(--font-headline)] text-3xl font-extrabold tracking-tight text-white">
+        <div className="inline-flex items-center gap-2 glass-card rounded-full px-3 py-1.5 mb-3">
+          <span className="material-symbols-outlined text-[#c084fc] text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>storage</span>
+          <span className="text-[10px] font-bold uppercase tracking-widest text-[#c084fc]">Data</span>
+        </div>
+        <h1 className="font-[family-name:var(--font-headline)] text-3xl font-extrabold tracking-tight text-white">
           Data Management
         </h1>
-        <p className="text-[#a3aac4] mt-1">Import and manage city heat data</p>
+        <p className="text-[#6d758c] mt-1">Import and manage city heat data</p>
       </div>
 
       {/* Tab Bar */}
-      <div className="flex gap-2 bg-white/5 p-1 rounded-lg w-fit">
+      <div className="flex gap-2 glass-card p-1.5 rounded-xl w-fit">
         {(['csv', 'geojson', 'weather'] as const).map((tab) => (
           <button
             key={tab}
             onClick={() => { setActiveTab(tab); setResult(null); }}
-            className={`px-4 py-2 rounded-md text-sm font-semibold transition-all ${
-              activeTab === tab ? 'bg-[#69f6b8] text-[#002919]' : 'text-[#a3aac4] hover:text-white hover:bg-white/5'
+            className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
+              activeTab === tab ? 'bg-gradient-to-r from-[#69f6b8] to-[#06b77f] text-[#002919] shadow-lg shadow-[#69f6b8]/20' : 'text-[#a3aac4] hover:text-white hover:bg-white/5'
             }`}
           >
             {tab === 'csv' ? 'CSV Import' : tab === 'geojson' ? 'GeoJSON Import' : 'Weather Data'}
@@ -69,7 +73,7 @@ export default function DataManagementPage() {
       </div>
 
       {/* Upload Form */}
-      <form onSubmit={handleUpload} className="glass-card p-6 rounded-xl space-y-4">
+      <form onSubmit={handleUpload} className="glass-card p-6 rounded-2xl space-y-4">
         <h3 className="font-bold text-white text-lg">
           {activeTab === 'csv' ? 'Import Neighborhood Data (CSV)' :
            activeTab === 'geojson' ? 'Import GeoJSON Boundaries' :
@@ -88,8 +92,9 @@ export default function DataManagementPage() {
           )}
         </div>
 
-        <div className="border-2 border-dashed border-white/10 rounded-xl p-8 text-center">
-          <input name="file" type="file" accept={activeTab === 'geojson' ? '.geojson,.json' : '.csv'} className="text-white" />
+        <div className="border-2 border-dashed border-white/8 rounded-2xl p-10 text-center bg-[#060e20]/40 hover:border-[#69f6b8]/20 transition-colors">
+          <span className="material-symbols-outlined text-4xl text-[#6d758c]/40 mb-3 block" style={{ fontVariationSettings: "'FILL' 1" }}>cloud_upload</span>
+          <input name="file" type="file" accept={activeTab === 'geojson' ? '.geojson,.json' : '.csv'} className="text-white text-sm" />
         </div>
 
         {result && (
@@ -98,7 +103,7 @@ export default function DataManagementPage() {
           </div>
         )}
 
-        <button type="submit" disabled={uploading} className="px-6 py-2 bg-gradient-to-br from-[#69f6b8] to-[#06b77f] text-[#002919] font-bold rounded-md disabled:opacity-50">
+        <button type="submit" disabled={uploading} className="px-6 py-3 bg-gradient-to-r from-[#69f6b8] to-[#06b77f] text-[#002919] font-bold rounded-xl shadow-lg shadow-[#69f6b8]/20 disabled:opacity-50 btn-shine">
           {uploading ? 'Importing...' : 'Import'}
         </button>
       </form>

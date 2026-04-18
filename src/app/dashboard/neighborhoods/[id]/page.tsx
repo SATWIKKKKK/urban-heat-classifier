@@ -50,7 +50,7 @@ export default async function NeighborhoodDetailPage({ params }: { params: Promi
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
         <div>
-          <h1 className="font-[var(--font-headline)] text-3xl font-extrabold tracking-tight text-white">
+          <h1 className="font-[family-name:var(--font-headline)] text-3xl font-extrabold tracking-tight text-white">
             {neighborhood.name}
           </h1>
           <div className="flex gap-4 mt-2 flex-wrap">
@@ -75,7 +75,7 @@ export default async function NeighborhoodDetailPage({ params }: { params: Promi
           <div key={item.label} className="glass-card p-4 rounded-xl">
             <div className="flex items-center gap-2 mb-2">
               <span className="material-symbols-outlined text-sm" style={{ color: item.color }}>{item.icon}</span>
-              <span className="text-[10px] uppercase tracking-widest text-slate-500">{item.label}</span>
+              <span className="text-[10px] uppercase tracking-widest text-[#6d758c]">{item.label}</span>
             </div>
             <div className="text-xl font-bold text-white">{item.value}</div>
           </div>
@@ -84,7 +84,7 @@ export default async function NeighborhoodDetailPage({ params }: { params: Promi
 
       {/* Vulnerability Breakdown */}
       <div className="glass-card p-6 rounded-xl">
-        <h3 className="font-[var(--font-headline)] font-bold text-lg text-white mb-4">Vulnerability Breakdown</h3>
+        <h3 className="font-[family-name:var(--font-headline)] font-bold text-lg text-white mb-4">Vulnerability Breakdown</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {vuln.factors.map((f) => (
             <div key={f.name} className="bg-white/5 p-4 rounded-lg">
@@ -124,12 +124,12 @@ export default async function NeighborhoodDetailPage({ params }: { params: Promi
       {neighborhood.heatMeasurements.length > 0 && (
         <div className="glass-card rounded-xl overflow-hidden">
           <div className="p-6 border-b border-white/5">
-            <h3 className="font-[var(--font-headline)] font-bold text-lg text-white">Temperature History</h3>
+            <h3 className="font-[family-name:var(--font-headline)] font-bold text-lg text-white">Temperature History</h3>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead>
-                <tr className="bg-white/5 text-slate-500 uppercase text-[10px] tracking-widest font-bold">
+                <tr className="bg-white/5 text-[#6d758c] uppercase text-[10px] tracking-widest font-bold">
                   <th className="px-6 py-3">Date</th>
                   <th className="px-6 py-3">Avg Temp</th>
                   <th className="px-6 py-3">Max Temp</th>
@@ -156,7 +156,7 @@ export default async function NeighborhoodDetailPage({ params }: { params: Promi
       {/* Active Interventions */}
       <div className="glass-card rounded-xl overflow-hidden">
         <div className="p-6 border-b border-white/5 flex justify-between items-center">
-          <h3 className="font-[var(--font-headline)] font-bold text-lg text-white">Active Interventions</h3>
+          <h3 className="font-[family-name:var(--font-headline)] font-bold text-lg text-white">Active Interventions</h3>
           <span className="text-xs text-[#a3aac4]">{neighborhood.interventions.length} total</span>
         </div>
         {neighborhood.interventions.length === 0 ? (
@@ -165,7 +165,7 @@ export default async function NeighborhoodDetailPage({ params }: { params: Promi
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead>
-                <tr className="bg-white/5 text-slate-500 uppercase text-[10px] tracking-widest font-bold">
+                <tr className="bg-white/5 text-[#6d758c] uppercase text-[10px] tracking-widest font-bold">
                   <th className="px-6 py-3">Name</th>
                   <th className="px-6 py-3">Type</th>
                   <th className="px-6 py-3">Status</th>

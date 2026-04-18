@@ -1,275 +1,470 @@
 'use client';
 
-import TopNav from '@/components/layout/TopNav';
-import MobileNav from '@/components/layout/MobileNav';
-import GSAPWrapper from '@/components/shared/GSAPWrapper';
 import Link from 'next/link';
 import { useState } from 'react';
 
 const treeSpecies = [
-  { name: 'Red Maple', scientific: 'Acer rubrum', cooling: 'High', growth: 'Medium', canopy: '40 ft', icon: '🍁' },
-  { name: 'Live Oak', scientific: 'Quercus virginiana', cooling: 'Very High', growth: 'Slow', canopy: '60 ft', icon: '🌳' },
-  { name: 'Bald Cypress', scientific: 'Taxodium distichum', cooling: 'High', growth: 'Medium', canopy: '35 ft', icon: '🌲' },
-  { name: 'Crape Myrtle', scientific: 'Lagerstroemia indica', cooling: 'Medium', growth: 'Fast', canopy: '25 ft', icon: '🌸' },
-  { name: 'Southern Magnolia', scientific: 'Magnolia grandiflora', cooling: 'High', growth: 'Slow', canopy: '50 ft', icon: '🌺' },
+  { name: 'Red Maple', scientific: 'Acer rubrum', cooling: 'High', growth: 'Medium', canopy: '40 ft', shade: 85, co2: '48 lbs/yr', icon: '🍁', color: '#ff716c', desc: 'Brilliant fall color, broad canopy. Thrives in varied soil conditions.' },
+  { name: 'Live Oak', scientific: 'Quercus virginiana', cooling: 'Very High', growth: 'Slow', canopy: '60 ft', shade: 95, co2: '65 lbs/yr', icon: '🌳', color: '#69f6b8', desc: 'Iconic spreading canopy. Excellent long-term shade, extremely resilient.' },
+  { name: 'Bald Cypress', scientific: 'Taxodium distichum', cooling: 'High', growth: 'Medium', canopy: '35 ft', shade: 70, co2: '42 lbs/yr', icon: '🌲', color: '#699cff', desc: 'Tolerates wet and dry conditions. Feathery foliage, low maintenance.' },
+  { name: 'Crape Myrtle', scientific: 'Lagerstroemia indica', cooling: 'Medium', growth: 'Fast', canopy: '25 ft', shade: 55, co2: '28 lbs/yr', icon: '🌸', color: '#ff8439', desc: 'Quick growth, beautiful blooms. Ideal for smaller spaces and streets.' },
+  { name: 'Southern Magnolia', scientific: 'Magnolia grandiflora', cooling: 'High', growth: 'Slow', canopy: '50 ft', shade: 90, co2: '55 lbs/yr', icon: '🌺', color: '#c084fc', desc: 'Evergreen with fragrant flowers. Year-round shade and beauty.' },
+  { name: 'Cedar Elm', scientific: 'Ulmus crassifolia', cooling: 'High', growth: 'Medium', canopy: '45 ft', shade: 82, co2: '50 lbs/yr', icon: '🌿', color: '#06b77f', desc: 'Native Texas tree. Drought resistant with dense canopy coverage.' },
 ];
 
-const residentSideLinks = [
-  { label: 'Portal Home', href: '/resident', icon: 'home' },
-  { label: 'Request a Tree', href: '/resident/request-tree', icon: 'park', active: true },
-  { label: 'My Requests', href: '/resident/my-requests', icon: 'assignment' },
-  { label: 'Report Heat Issue', href: '#', icon: 'report' },
-  { label: 'Cooling Centers', href: '#', icon: 'ac_unit' },
-  { label: 'Community Events', href: '#', icon: 'event' },
+const propertyTypes = [
+  { value: 'residential', label: 'Residential', icon: 'home' },
+  { value: 'commercial', label: 'Commercial', icon: 'business' },
+  { value: 'public', label: 'Public Space', icon: 'park' },
+  { value: 'school', label: 'School / Institution', icon: 'school' },
+];
+
+const placementOptions = [
+  { value: 'front_yard', label: 'Front Yard', icon: 'yard' },
+  { value: 'back_yard', label: 'Back Yard', icon: 'deck' },
+  { value: 'sidewalk', label: 'Sidewalk / Street', icon: 'streetview' },
+  { value: 'parking', label: 'Parking Area', icon: 'local_parking' },
+];
+
+const steps = [
+  { num: 1, label: 'Choose Species', icon: 'eco' },
+  { num: 2, label: 'Your Details', icon: 'person' },
+  { num: 3, label: 'Location', icon: 'location_on' },
+  { num: 4, label: 'Review', icon: 'check_circle' },
 ];
 
 export default function RequestTreePage() {
+  const [currentStep, setCurrentStep] = useState(1);
   const [selectedSpecies, setSelectedSpecies] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     fullName: '',
     email: '',
     phone: '',
     address: '',
-    propertyType: 'residential',
-    placementPref: 'front_yard',
+    propertyType: '',
+    placementPref: '',
     notes: '',
   });
   const [submitted, setSubmitted] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setSubmitted(true);
-    setTimeout(() => setSubmitted(false), 4000);
+  const selectedTree = treeSpecies.find(t => t.name === selectedSpecies);
+
+  const canProceed = () => {
+    if (currentStep === 1) return !!selectedSpecies;
+    if (currentStep === 2) return formData.fullName && formData.email;
+    if (currentStep === 3) return formData.address && formData.propertyType && formData.placementPref;
+    return true;
   };
 
-  return (
-    <div className="min-h-screen bg-[#060e20] bg-heat-image">
-      <TopNav variant="resident" />
-      <MobileNav />
+  const handleSubmit = () => {
+    setSubmitted(true);
+  };
 
-      <div className="flex mt-16">
-        {/* Sidebar */}
-        <aside className="hidden md:flex flex-col w-64 fixed top-16 left-0 bottom-0 bg-[#0a1628] border-r border-[#40485d]/10 p-4 overflow-y-auto z-30">
-          <div className="flex flex-col gap-1">
-            {residentSideLinks.map((link) => (
-              <Link
-                key={link.label}
-                href={link.href}
-                className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-semibold transition-all ${
-                  link.active
-                    ? 'bg-[#69f6b8]/10 text-[#69f6b8]'
-                    : 'text-[#a3aac4] hover:bg-[#192540] hover:text-white'
-                }`}
-              >
-                <span className="material-symbols-outlined text-lg" style={link.active ? { fontVariationSettings: "'FILL' 1" } : {}}>{link.icon}</span>
-                {link.label}
-              </Link>
-            ))}
-          </div>
-          <div className="mt-auto pt-6 border-t border-[#40485d]/10">
-            <div className="bg-[#141f38] rounded-xl p-4">
-              <span className="text-[10px] font-bold text-[#69f6b8] uppercase tracking-widest">Tip</span>
-              <p className="text-xs text-[#a3aac4] mt-2">Trees planted in strategic locations can reduce nearby home cooling costs by up to 25%.</p>
+  if (submitted) {
+    return (
+      <div className="min-h-screen bg-[#060e20] grid-pattern relative flex items-center justify-center p-4">
+        <div className="orb orb-primary w-[500px] h-[500px] top-[20%] left-[30%] absolute" />
+        <div className="relative z-10 text-center max-w-lg animate-reveal-up">
+          <div className="glass-card rounded-3xl p-12 glow-primary relative overflow-hidden">
+            <div className="shimmer-bg absolute inset-0 rounded-3xl" />
+            <div className="relative z-10">
+              <div className="h-20 w-20 rounded-full bg-[#69f6b8]/15 flex items-center justify-center mx-auto mb-6 pulse-ring">
+                <span className="material-symbols-outlined text-4xl text-[#69f6b8]" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+              </div>
+              <h1 className="text-3xl font-black text-white font-[family-name:var(--font-headline)]">Request Submitted!</h1>
+              <p className="text-[#a3aac4] mt-3 leading-relaxed">
+                Your {selectedSpecies} tree request has been received. Our team will review your address and schedule a site survey within 5-7 business days.
+              </p>
+              <div className="mt-6 glass-card rounded-xl p-4 text-left">
+                <div className="text-xs font-bold uppercase tracking-widest text-[#69f6b8] mb-3">Request Summary</div>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between"><span className="text-[#6d758c]">Species</span><span className="text-white font-semibold">{selectedSpecies}</span></div>
+                  <div className="flex justify-between"><span className="text-[#6d758c]">Address</span><span className="text-white font-semibold">{formData.address}</span></div>
+                  <div className="flex justify-between"><span className="text-[#6d758c]">Placement</span><span className="text-white font-semibold capitalize">{formData.placementPref.replace('_', ' ')}</span></div>
+                </div>
+              </div>
+              <div className="mt-8 flex gap-3 justify-center">
+                <Link href="/resident/my-requests" className="px-6 py-3 bg-gradient-to-r from-[#69f6b8] to-[#06b77f] text-[#002919] font-bold rounded-xl btn-shine">
+                  Track My Requests
+                </Link>
+                <Link href="/resident" className="px-6 py-3 glass-card rounded-xl font-semibold text-white hover:border-white/15 transition-all">
+                  Back to Portal
+                </Link>
+              </div>
             </div>
           </div>
-        </aside>
+        </div>
+      </div>
+    );
+  }
 
-        {/* Main Content */}
-        <main className="md:ml-64 flex-1 p-4 md:p-8 pb-20 md:pb-8">
-          <div className="max-w-5xl mx-auto">
-            {/* Header */}
-            <GSAPWrapper animation="slideUp">
-              <div className="mb-8">
-                <Link href="/resident" className="text-xs text-[#69f6b8] hover:underline flex items-center gap-1 mb-3">
-                  <span className="material-symbols-outlined text-sm">arrow_back</span> Back to Portal
-                </Link>
-                <h1 className="text-3xl md:text-4xl font-black text-white tracking-tighter font-[var(--font-headline)]">Request a Tree</h1>
-                <p className="text-[#a3aac4] mt-2">Select a species, mark your preferred location, and submit your request.</p>
-              </div>
-            </GSAPWrapper>
+  return (
+    <div className="min-h-screen bg-[#060e20] grid-pattern relative overflow-hidden">
+      {/* Decorative */}
+      <div className="orb orb-primary w-[500px] h-[500px] -top-[100px] -right-[100px] fixed" />
+      <div className="orb orb-secondary w-[400px] h-[400px] bottom-0 -left-[100px] fixed" />
 
-            {/* Success Message */}
-            {submitted && (
-              <GSAPWrapper animation="slideUp">
-                <div className="bg-[#69f6b8]/10 border border-[#69f6b8]/30 rounded-xl p-6 mb-8 flex items-center gap-4">
-                  <span className="material-symbols-outlined text-3xl text-[#69f6b8]" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
-                  <div>
-                    <h3 className="font-bold text-[#69f6b8] text-lg">Request Submitted Successfully!</h3>
-                    <p className="text-[#a3aac4] text-sm">Your tree planting request has been submitted. You&apos;ll receive a confirmation email shortly. Track status in &quot;My Requests&quot;.</p>
+      {/* Top Bar */}
+      <header className="fixed top-0 w-full z-50 glass-overlay border-b border-white/5">
+        <div className="max-w-7xl mx-auto px-4 md:px-8 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <Link href="/resident" className="flex items-center gap-2">
+              <span className="material-symbols-outlined text-[#69f6b8]" style={{ fontVariationSettings: "'FILL' 1" }}>eco</span>
+              <span className="font-bold text-white font-[family-name:var(--font-headline)] text-lg">HeatPlan</span>
+            </Link>
+            <span className="hidden sm:block h-5 w-px bg-white/10" />
+            <span className="hidden sm:block text-xs text-[#a3aac4]">Resident Portal</span>
+          </div>
+          <Link href="/resident" className="text-sm text-[#a3aac4] hover:text-white transition-colors flex items-center gap-1">
+            <span className="material-symbols-outlined text-sm">arrow_back</span>
+            Back to Portal
+          </Link>
+        </div>
+      </header>
+
+      {/* Main Content */}
+      <main className="pt-16 pb-8 relative z-10">
+        <div className="max-w-6xl mx-auto px-4 md:px-8 py-8">
+          {/* Page Header */}
+          <div className="text-center mb-10 animate-reveal-up">
+            <div className="inline-flex items-center gap-2 glass-card rounded-full px-4 py-2 mb-4">
+              <span className="material-symbols-outlined text-[#69f6b8] text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>park</span>
+              <span className="text-xs font-bold uppercase tracking-widest text-[#69f6b8]">Tree Request Program</span>
+            </div>
+            <h1 className="text-4xl md:text-5xl font-black text-white font-[family-name:var(--font-headline)] tracking-tight">
+              Plant a Tree in<br /><span className="text-gradient-primary">Your Neighborhood</span>
+            </h1>
+            <p className="text-[#a3aac4] mt-3 max-w-xl mx-auto">
+              Choose a species, tell us where, and we&apos;ll handle the rest. Free for all residents.
+            </p>
+          </div>
+
+          {/* Step Progress */}
+          <div className="mb-10 animate-reveal-up" style={{ animationDelay: '0.1s' }}>
+            <div className="flex items-center justify-center gap-2 md:gap-0 max-w-2xl mx-auto">
+              {steps.map((step, idx) => (
+                <div key={step.num} className="flex items-center">
+                  <div className="flex flex-col items-center">
+                    <div className={`h-11 w-11 rounded-xl flex items-center justify-center transition-all duration-300 ${
+                      currentStep === step.num ? 'bg-[#69f6b8] text-[#002919] glow-primary scale-110' :
+                      currentStep > step.num ? 'bg-[#69f6b8]/20 text-[#69f6b8]' :
+                      'bg-white/5 text-[#40485d]'
+                    }`}>
+                      {currentStep > step.num ? (
+                        <span className="material-symbols-outlined text-lg" style={{ fontVariationSettings: "'FILL' 1" }}>check</span>
+                      ) : (
+                        <span className="material-symbols-outlined text-lg" style={currentStep === step.num ? { fontVariationSettings: "'FILL' 1" } : {}}>{step.icon}</span>
+                      )}
+                    </div>
+                    <span className={`text-[10px] font-bold mt-2 uppercase tracking-wider hidden md:block ${
+                      currentStep >= step.num ? 'text-[#69f6b8]' : 'text-[#40485d]'
+                    }`}>{step.label}</span>
                   </div>
+                  {idx < steps.length - 1 && (
+                    <div className={`w-8 md:w-16 h-0.5 mx-1 md:mx-3 rounded-full transition-all duration-300 ${
+                      currentStep > step.num ? 'bg-[#69f6b8]/40' : 'bg-white/5'
+                    }`} />
+                  )}
                 </div>
-              </GSAPWrapper>
+              ))}
+            </div>
+          </div>
+
+          {/* Step Content */}
+          <div className="animate-reveal-up" style={{ animationDelay: '0.15s' }}>
+            {/* Step 1: Choose Species */}
+            {currentStep === 1 && (
+              <div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 stagger-children">
+                  {treeSpecies.map((species) => (
+                    <button
+                      key={species.name}
+                      onClick={() => setSelectedSpecies(species.name)}
+                      className={`text-left rounded-2xl p-5 transition-all duration-300 relative overflow-hidden group ${
+                        selectedSpecies === species.name
+                          ? 'glass-card border-[#69f6b8]/30 glow-primary scale-[1.02]'
+                          : 'glass-card-hover'
+                      }`}
+                    >
+                      {selectedSpecies === species.name && <div className="shimmer-bg absolute inset-0 rounded-2xl" />}
+                      <div className="relative z-10">
+                        <div className="flex items-start justify-between mb-3">
+                          <span className="text-4xl">{species.icon}</span>
+                          {selectedSpecies === species.name && (
+                            <span className="material-symbols-outlined text-[#69f6b8]" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+                          )}
+                        </div>
+                        <div className="font-bold text-white text-lg">{species.name}</div>
+                        <div className="text-[10px] text-[#6d758c] italic mt-0.5">{species.scientific}</div>
+                        <p className="text-xs text-[#a3aac4] mt-2 leading-relaxed">{species.desc}</p>
+
+                        <div className="mt-4 grid grid-cols-3 gap-2">
+                          <div className="bg-[#060e20]/40 rounded-lg p-2 text-center">
+                            <div className="text-[10px] text-[#6d758c] uppercase">Cooling</div>
+                            <div className="text-xs font-bold mt-0.5" style={{ color: species.color }}>{species.cooling}</div>
+                          </div>
+                          <div className="bg-[#060e20]/40 rounded-lg p-2 text-center">
+                            <div className="text-[10px] text-[#6d758c] uppercase">Canopy</div>
+                            <div className="text-xs font-bold text-white mt-0.5">{species.canopy}</div>
+                          </div>
+                          <div className="bg-[#060e20]/40 rounded-lg p-2 text-center">
+                            <div className="text-[10px] text-[#6d758c] uppercase">CO2</div>
+                            <div className="text-xs font-bold text-white mt-0.5">{species.co2}</div>
+                          </div>
+                        </div>
+
+                        {/* Shade meter */}
+                        <div className="mt-3">
+                          <div className="flex justify-between items-center mb-1">
+                            <span className="text-[10px] text-[#6d758c] uppercase">Shade Coverage</span>
+                            <span className="text-[10px] font-bold" style={{ color: species.color }}>{species.shade}%</span>
+                          </div>
+                          <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
+                            <div className="h-full rounded-full transition-all duration-500" style={{ width: `${species.shade}%`, backgroundColor: species.color }} />
+                          </div>
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
             )}
 
-            <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
-              {/* Map Area */}
-              <GSAPWrapper animation="slideUp" delay={0.1}>
-                <div className="lg:col-span-3">
-                  <div className="glass-card rounded-xl overflow-hidden">
-                    <div className="h-[350px] md:h-[450px] relative bg-gradient-to-br from-[#141f38] to-[#0a1628]">
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <div className="text-center">
-                          <span className="material-symbols-outlined text-6xl text-[#69f6b8]/30" style={{ fontVariationSettings: "'FILL' 1" }}>map</span>
-                          <p className="text-sm text-slate-500 mt-3">Click on the map to mark your preferred tree location</p>
-                          <p className="text-xs text-slate-600 mt-1">Or enter your address below</p>
-                        </div>
-                      </div>
-                      {/* Map controls */}
-                      <div className="absolute right-4 top-4 flex flex-col gap-2">
-                        <button className="h-10 w-10 bg-[#192540]/90 backdrop-blur-md border border-[#40485d]/20 rounded-lg flex items-center justify-center text-white hover:bg-[#192540] transition-all">
-                          <span className="material-symbols-outlined text-lg">add</span>
-                        </button>
-                        <button className="h-10 w-10 bg-[#192540]/90 backdrop-blur-md border border-[#40485d]/20 rounded-lg flex items-center justify-center text-white hover:bg-[#192540] transition-all">
-                          <span className="material-symbols-outlined text-lg">remove</span>
-                        </button>
-                        <button className="h-10 w-10 bg-[#192540]/90 backdrop-blur-md border border-[#40485d]/20 rounded-lg flex items-center justify-center text-white hover:bg-[#192540] transition-all">
-                          <span className="material-symbols-outlined text-lg">my_location</span>
-                        </button>
-                      </div>
-                      {/* Address overlay */}
-                      <div className="absolute bottom-0 left-0 right-0 bg-[#192540]/90 backdrop-blur-md border-t border-[#40485d]/20 p-4">
-                        <div className="flex gap-2">
-                          <span className="material-symbols-outlined text-slate-500 mt-2.5">location_on</span>
-                          <input
-                            type="text"
-                            placeholder="Enter your address to zoom to location..."
-                            value={formData.address}
-                            onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                            className="flex-1 px-4 py-2.5 bg-[#0f1930] border border-[#40485d]/30 rounded-lg text-sm text-[#dee5ff] placeholder:text-slate-500 focus:border-[#69f6b8]/50 focus:outline-none"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Species Selection */}
-                  <div className="mt-6">
-                    <h3 className="font-bold text-white text-lg mb-4 font-[var(--font-headline)]">Select Tree Species</h3>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      {treeSpecies.map((species) => (
-                        <button
-                          key={species.name}
-                          onClick={() => setSelectedSpecies(species.name)}
-                          className={`flex items-start gap-3 p-4 rounded-xl border transition-all text-left ${
-                            selectedSpecies === species.name
-                              ? 'bg-[#69f6b8]/10 border-[#69f6b8]/40'
-                              : 'bg-[#0f1930] border-[#40485d]/10 hover:border-[#40485d]/30'
-                          }`}
-                        >
-                          <span className="text-2xl">{species.icon}</span>
-                          <div className="flex-1">
-                            <div className="font-semibold text-white text-sm">{species.name}</div>
-                            <div className="text-[10px] text-slate-500 italic">{species.scientific}</div>
-                            <div className="flex gap-3 mt-2">
-                              <span className="text-[10px] text-[#69f6b8]">Cooling: {species.cooling}</span>
-                              <span className="text-[10px] text-slate-500">Growth: {species.growth}</span>
-                            </div>
-                          </div>
-                          {selectedSpecies === species.name && (
-                            <span className="material-symbols-outlined text-[#69f6b8] text-lg" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
-                          )}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </GSAPWrapper>
-
-              {/* Form */}
-              <GSAPWrapper animation="slideRight" delay={0.2}>
-                <div className="lg:col-span-2">
-                  <form onSubmit={handleSubmit} className="glass-card rounded-xl p-6 sticky top-24">
-                    <h3 className="font-bold text-white text-lg mb-6 font-[var(--font-headline)]">Your Information</h3>
-                    <div className="flex flex-col gap-4">
+            {/* Step 2: Your Details */}
+            {currentStep === 2 && (
+              <div className="max-w-2xl mx-auto">
+                <div className="glass-card rounded-2xl p-6 md:p-8">
+                  <h3 className="font-bold text-white text-xl mb-6 font-[family-name:var(--font-headline)]">Tell us about yourself</h3>
+                  <div className="space-y-5">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                       <div>
-                        <label className="text-[10px] uppercase tracking-widest text-slate-500 block mb-1">Full Name *</label>
+                        <label className="block text-xs font-bold uppercase tracking-widest text-[#6d758c] mb-2">Full Name *</label>
                         <input
                           type="text"
                           required
                           value={formData.fullName}
                           onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
-                          className="w-full px-4 py-2.5 bg-[#141f38] border border-[#40485d]/20 rounded-lg text-sm text-[#dee5ff] focus:border-[#69f6b8]/50 focus:outline-none transition-all"
-                          placeholder="John Doe"
+                          className="w-full px-4 py-3.5 bg-[#060e20]/60 border border-white/8 rounded-xl text-white placeholder:text-[#40485d] focus:outline-none focus:border-[#69f6b8]/40 input-glow transition-all"
+                          placeholder="Your full name"
                         />
                       </div>
                       <div>
-                        <label className="text-[10px] uppercase tracking-widest text-slate-500 block mb-1">Email *</label>
+                        <label className="block text-xs font-bold uppercase tracking-widest text-[#6d758c] mb-2">Email *</label>
                         <input
                           type="email"
                           required
                           value={formData.email}
                           onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                          className="w-full px-4 py-2.5 bg-[#141f38] border border-[#40485d]/20 rounded-lg text-sm text-[#dee5ff] focus:border-[#69f6b8]/50 focus:outline-none transition-all"
-                          placeholder="john@email.com"
+                          className="w-full px-4 py-3.5 bg-[#060e20]/60 border border-white/8 rounded-xl text-white placeholder:text-[#40485d] focus:outline-none focus:border-[#69f6b8]/40 input-glow transition-all"
+                          placeholder="you@email.com"
                         />
                       </div>
-                      <div>
-                        <label className="text-[10px] uppercase tracking-widest text-slate-500 block mb-1">Phone</label>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold uppercase tracking-widest text-[#6d758c] mb-2">Phone (optional)</label>
+                      <input
+                        type="tel"
+                        value={formData.phone}
+                        onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                        className="w-full px-4 py-3.5 bg-[#060e20]/60 border border-white/8 rounded-xl text-white placeholder:text-[#40485d] focus:outline-none focus:border-[#69f6b8]/40 input-glow transition-all"
+                        placeholder="(555) 123-4567"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold uppercase tracking-widest text-[#6d758c] mb-2">Additional Notes</label>
+                      <textarea
+                        rows={3}
+                        value={formData.notes}
+                        onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                        className="w-full px-4 py-3.5 bg-[#060e20]/60 border border-white/8 rounded-xl text-white placeholder:text-[#40485d] focus:outline-none focus:border-[#69f6b8]/40 input-glow transition-all resize-none"
+                        placeholder="Any specific needs, accessibility considerations, etc..."
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Step 3: Location */}
+            {currentStep === 3 && (
+              <div className="max-w-3xl mx-auto">
+                <div className="glass-card rounded-2xl p-6 md:p-8">
+                  <h3 className="font-bold text-white text-xl mb-6 font-[family-name:var(--font-headline)]">Where should we plant?</h3>
+
+                  <div className="space-y-6">
+                    <div>
+                      <label className="block text-xs font-bold uppercase tracking-widest text-[#6d758c] mb-2">Street Address *</label>
+                      <div className="relative">
+                        <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-[#6d758c]">location_on</span>
                         <input
-                          type="tel"
-                          value={formData.phone}
-                          onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                          className="w-full px-4 py-2.5 bg-[#141f38] border border-[#40485d]/20 rounded-lg text-sm text-[#dee5ff] focus:border-[#69f6b8]/50 focus:outline-none transition-all"
-                          placeholder="(555) 123-4567"
+                          type="text"
+                          required
+                          value={formData.address}
+                          onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                          className="w-full pl-12 pr-4 py-3.5 bg-[#060e20]/60 border border-white/8 rounded-xl text-white placeholder:text-[#40485d] focus:outline-none focus:border-[#69f6b8]/40 input-glow transition-all"
+                          placeholder="123 Main St, Austin, TX 78701"
                         />
                       </div>
-                      <div>
-                        <label className="text-[10px] uppercase tracking-widest text-slate-500 block mb-1">Property Type</label>
-                        <select
-                          value={formData.propertyType}
-                          onChange={(e) => setFormData({ ...formData, propertyType: e.target.value })}
-                          className="w-full px-4 py-2.5 bg-[#141f38] border border-[#40485d]/20 rounded-lg text-sm text-[#dee5ff] focus:border-[#69f6b8]/50 focus:outline-none transition-all"
-                        >
-                          <option value="residential">Residential</option>
-                          <option value="commercial">Commercial</option>
-                          <option value="public">Public Space</option>
-                          <option value="school">School / Institution</option>
-                        </select>
+                    </div>
+
+                    {/* Map Placeholder */}
+                    <div className="rounded-xl overflow-hidden border border-white/5">
+                      <div className="h-[200px] bg-gradient-to-br from-[#0f1930] to-[#060e20] relative flex items-center justify-center">
+                        <div className="text-center">
+                          <span className="material-symbols-outlined text-4xl text-[#699cff]/30" style={{ fontVariationSettings: "'FILL' 1" }}>map</span>
+                          <p className="text-xs text-[#40485d] mt-2">Map preview will show after address entry</p>
+                        </div>
                       </div>
-                      <div>
-                        <label className="text-[10px] uppercase tracking-widest text-slate-500 block mb-1">Placement Preference</label>
-                        <select
-                          value={formData.placementPref}
-                          onChange={(e) => setFormData({ ...formData, placementPref: e.target.value })}
-                          className="w-full px-4 py-2.5 bg-[#141f38] border border-[#40485d]/20 rounded-lg text-sm text-[#dee5ff] focus:border-[#69f6b8]/50 focus:outline-none transition-all"
-                        >
-                          <option value="front_yard">Front Yard</option>
-                          <option value="back_yard">Back Yard</option>
-                          <option value="sidewalk">Sidewalk / Street</option>
-                          <option value="parking">Parking Area</option>
-                        </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold uppercase tracking-widest text-[#6d758c] mb-3">Property Type *</label>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        {propertyTypes.map((type) => (
+                          <button
+                            key={type.value}
+                            onClick={() => setFormData({ ...formData, propertyType: type.value })}
+                            className={`flex flex-col items-center gap-2 p-4 rounded-xl transition-all ${
+                              formData.propertyType === type.value
+                                ? 'bg-[#69f6b8]/10 border border-[#69f6b8]/30 text-[#69f6b8]'
+                                : 'bg-[#060e20]/40 border border-white/5 text-[#6d758c] hover:text-white hover:border-white/10'
+                            }`}
+                          >
+                            <span className="material-symbols-outlined text-2xl" style={formData.propertyType === type.value ? { fontVariationSettings: "'FILL' 1" } : {}}>{type.icon}</span>
+                            <span className="text-xs font-bold">{type.label}</span>
+                          </button>
+                        ))}
                       </div>
-                      <div>
-                        <label className="text-[10px] uppercase tracking-widest text-slate-500 block mb-1">Additional Notes</label>
-                        <textarea
-                          rows={3}
-                          value={formData.notes}
-                          onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                          className="w-full px-4 py-2.5 bg-[#141f38] border border-[#40485d]/20 rounded-lg text-sm text-[#dee5ff] focus:border-[#69f6b8]/50 focus:outline-none transition-all resize-none"
-                          placeholder="Any special requirements or preferences..."
-                        ></textarea>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold uppercase tracking-widest text-[#6d758c] mb-3">Placement Preference *</label>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        {placementOptions.map((opt) => (
+                          <button
+                            key={opt.value}
+                            onClick={() => setFormData({ ...formData, placementPref: opt.value })}
+                            className={`flex flex-col items-center gap-2 p-4 rounded-xl transition-all ${
+                              formData.placementPref === opt.value
+                                ? 'bg-[#699cff]/10 border border-[#699cff]/30 text-[#699cff]'
+                                : 'bg-[#060e20]/40 border border-white/5 text-[#6d758c] hover:text-white hover:border-white/10'
+                            }`}
+                          >
+                            <span className="material-symbols-outlined text-2xl" style={formData.placementPref === opt.value ? { fontVariationSettings: "'FILL' 1" } : {}}>{opt.icon}</span>
+                            <span className="text-xs font-bold">{opt.label}</span>
+                          </button>
+                        ))}
                       </div>
-                      {selectedSpecies && (
-                        <div className="bg-[#69f6b8]/5 border border-[#69f6b8]/20 rounded-lg p-3 flex items-center gap-2">
-                          <span className="material-symbols-outlined text-[#69f6b8] text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>check</span>
-                          <span className="text-xs text-[#69f6b8]">Selected: <strong>{selectedSpecies}</strong></span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Step 4: Review */}
+            {currentStep === 4 && (
+              <div className="max-w-2xl mx-auto">
+                <div className="glass-card rounded-2xl p-6 md:p-8 glow-primary relative overflow-hidden">
+                  <div className="shimmer-bg absolute inset-0 rounded-2xl" />
+                  <div className="relative z-10">
+                    <h3 className="font-bold text-white text-xl mb-6 font-[family-name:var(--font-headline)]">Review Your Request</h3>
+
+                    {/* Selected Tree */}
+                    {selectedTree && (
+                      <div className="glass-card rounded-xl p-5 mb-6 flex items-center gap-5">
+                        <span className="text-5xl">{selectedTree.icon}</span>
+                        <div>
+                          <div className="text-lg font-bold text-white">{selectedTree.name}</div>
+                          <div className="text-xs text-[#6d758c] italic">{selectedTree.scientific}</div>
+                          <div className="flex items-center gap-4 mt-2">
+                            <span className="text-xs text-[#69f6b8]">Cooling: {selectedTree.cooling}</span>
+                            <span className="text-xs text-[#a3aac4]">Canopy: {selectedTree.canopy}</span>
+                            <span className="text-xs text-[#a3aac4]">CO2: {selectedTree.co2}</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="bg-[#060e20]/40 rounded-xl p-4">
+                          <div className="text-[10px] uppercase tracking-widest text-[#6d758c] mb-1">Name</div>
+                          <div className="text-sm font-semibold text-white">{formData.fullName}</div>
+                        </div>
+                        <div className="bg-[#060e20]/40 rounded-xl p-4">
+                          <div className="text-[10px] uppercase tracking-widest text-[#6d758c] mb-1">Email</div>
+                          <div className="text-sm font-semibold text-white">{formData.email}</div>
+                        </div>
+                      </div>
+                      <div className="bg-[#060e20]/40 rounded-xl p-4">
+                        <div className="text-[10px] uppercase tracking-widest text-[#6d758c] mb-1">Address</div>
+                        <div className="text-sm font-semibold text-white">{formData.address}</div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="bg-[#060e20]/40 rounded-xl p-4">
+                          <div className="text-[10px] uppercase tracking-widest text-[#6d758c] mb-1">Property</div>
+                          <div className="text-sm font-semibold text-white capitalize">{formData.propertyType}</div>
+                        </div>
+                        <div className="bg-[#060e20]/40 rounded-xl p-4">
+                          <div className="text-[10px] uppercase tracking-widest text-[#6d758c] mb-1">Placement</div>
+                          <div className="text-sm font-semibold text-white capitalize">{formData.placementPref.replace('_', ' ')}</div>
+                        </div>
+                      </div>
+                      {formData.notes && (
+                        <div className="bg-[#060e20]/40 rounded-xl p-4">
+                          <div className="text-[10px] uppercase tracking-widest text-[#6d758c] mb-1">Notes</div>
+                          <div className="text-sm text-[#a3aac4]">{formData.notes}</div>
                         </div>
                       )}
-                      <button
-                        type="submit"
-                        className="w-full py-3.5 bg-gradient-to-br from-[#69f6b8] to-[#06b77f] text-[#002919] font-bold rounded-lg shadow-xl hover:shadow-2xl active:scale-95 transition-all mt-2"
-                      >
-                        Submit Tree Request
-                      </button>
-                      <p className="text-[10px] text-slate-500 text-center">By submitting, you agree to allow a site survey before planting.</p>
                     </div>
-                  </form>
+
+                    <div className="mt-6 p-4 rounded-xl border border-[#69f6b8]/10 bg-[#69f6b8]/5">
+                      <div className="flex items-start gap-3">
+                        <span className="material-symbols-outlined text-[#69f6b8] text-lg mt-0.5" style={{ fontVariationSettings: "'FILL' 1" }}>info</span>
+                        <div className="text-xs text-[#a3aac4] leading-relaxed">
+                          By submitting, you agree to allow a site survey before planting. A city arborist will assess viability within 5-7 business days. Tree planting is free for residents.
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-              </GSAPWrapper>
-            </div>
+              </div>
+            )}
           </div>
-        </main>
-      </div>
+
+          {/* Navigation Buttons */}
+          <div className="flex items-center justify-between max-w-2xl mx-auto mt-8 animate-reveal-up" style={{ animationDelay: '0.2s' }}>
+            <button
+              onClick={() => setCurrentStep(Math.max(1, currentStep - 1))}
+              className={`flex items-center gap-2 px-6 py-3 glass-card rounded-xl font-semibold text-white hover:border-white/15 transition-all ${
+                currentStep === 1 ? 'opacity-0 pointer-events-none' : ''
+              }`}
+            >
+              <span className="material-symbols-outlined text-sm">arrow_back</span>
+              Back
+            </button>
+
+            {currentStep < 4 ? (
+              <button
+                onClick={() => canProceed() && setCurrentStep(currentStep + 1)}
+                disabled={!canProceed()}
+                className="flex items-center gap-2 px-8 py-3.5 bg-gradient-to-r from-[#69f6b8] to-[#06b77f] text-[#002919] font-bold rounded-xl shadow-lg shadow-[#69f6b8]/20 hover:shadow-xl hover:shadow-[#69f6b8]/30 transition-all disabled:opacity-30 disabled:cursor-not-allowed btn-shine"
+              >
+                Continue
+                <span className="material-symbols-outlined text-sm">arrow_forward</span>
+              </button>
+            ) : (
+              <button
+                onClick={handleSubmit}
+                className="flex items-center gap-2 px-8 py-3.5 bg-gradient-to-r from-[#69f6b8] to-[#06b77f] text-[#002919] font-bold rounded-xl shadow-lg shadow-[#69f6b8]/20 hover:shadow-xl hover:shadow-[#69f6b8]/30 transition-all btn-shine"
+              >
+                <span className="material-symbols-outlined text-lg" style={{ fontVariationSettings: "'FILL' 1" }}>send</span>
+                Submit Request
+              </button>
+            )}
+          </div>
+        </div>
+      </main>
     </div>
   );
 }
