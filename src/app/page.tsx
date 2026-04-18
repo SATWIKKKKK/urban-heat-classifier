@@ -1,9 +1,11 @@
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
+import { auth } from '@/lib/auth';
 
 const demoCities = [
-  { name: 'Austin, TX', status: 'Live heat map', neighborhoods: 10, interventions: 8, accent: '#69f6b8', icon: 'location_city' },
-  { name: 'Phoenix, AZ', status: 'Scenario planning', neighborhoods: 8, interventions: 12, accent: '#699cff', icon: 'wb_sunny' },
-  { name: 'Houston, TX', status: 'Council review', neighborhoods: 9, interventions: 6, accent: '#ff8439', icon: 'thermostat' },
+  { name: 'Delhi NCR', status: 'Live heat map', neighborhoods: 12, interventions: 10, accent: '#69f6b8', icon: 'location_city' },
+  { name: 'Mumbai', status: 'Scenario planning', neighborhoods: 9, interventions: 14, accent: '#699cff', icon: 'wb_sunny' },
+  { name: 'Chennai', status: 'Council review', neighborhoods: 11, interventions: 8, accent: '#ff8439', icon: 'thermostat' },
 ];
 
 const features = [
@@ -20,7 +22,26 @@ const stats = [
   { label: 'Lives Protected/Year', value: '890+', icon: 'favorite' },
 ];
 
-export default function HomePage() {
+const timelineSteps = [
+  { step: '01', title: 'Sign Up & Onboard', desc: 'Create your city account, set up wards, and invite your team members.', icon: 'person_add', color: '#69f6b8' },
+  { step: '02', title: 'Map Heat Zones', desc: 'Import temperature data and map vulnerable neighborhoods using satellite imagery.', icon: 'satellite_alt', color: '#699cff' },
+  { step: '03', title: 'Plan Interventions', desc: 'Place cooling interventions — trees, green roofs, cool pavements — with cost estimates.', icon: 'forest', color: '#ff8439' },
+  { step: '04', title: 'Simulate & Approve', desc: 'Run simulations to see projected impact, then route for multi-level approval.', icon: 'rocket_launch', color: '#ff716c' },
+];
+
+const indiaCrisisStats = [
+  { label: 'Heat Wave Deaths (2010–2023)', value: '11,000+', icon: 'local_hospital' },
+  { label: 'Cities Above 45°C Regularly', value: '30+', icon: 'device_thermostat' },
+  { label: 'Urban Population Exposed', value: '500M+', icon: 'groups' },
+  { label: 'Economic Loss / Year', value: '₹32,000 Cr', icon: 'trending_down' },
+];
+
+export default async function HomePage() {
+  const session = await auth();
+  if (session?.user) {
+    redirect('/dashboard');
+  }
+
   return (
     <main className="min-h-screen bg-[#060e20] text-white overflow-hidden relative">
       {/* Decorative orbs */}
@@ -61,15 +82,6 @@ export default function HomePage() {
                   <span className="flex items-center gap-2">
                     Get Started — Free
                     <span className="material-symbols-outlined text-lg group-hover:translate-x-1 transition-transform">arrow_forward</span>
-                  </span>
-                </Link>
-                <Link
-                  href="/map"
-                  className="px-8 py-4 glass-card rounded-2xl font-bold text-white hover:border-[#69f6b8]/20 transition-all hover:-translate-y-0.5"
-                >
-                  <span className="flex items-center gap-2">
-                    <span className="material-symbols-outlined text-lg text-[#699cff]">public</span>
-                    View Public Map
                   </span>
                 </Link>
               </div>
@@ -114,10 +126,14 @@ export default function HomePage() {
                   </div>
 
                   <div className="mt-6 rounded-2xl bg-[#060e20]/50 border border-white/5 p-5">
-                    <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#699cff] mb-2">How it works</div>
-                    <div className="text-sm leading-7 text-[#a3aac4]">
-                      Create your city account, complete onboarding, invite your planner and council members,
-                      then start mapping heat vulnerability and planning cooling interventions.
+                    <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#699cff] mb-3">How it works</div>
+                    <div className="space-y-2">
+                      {['Sign up & onboard', 'Map heat zones', 'Plan interventions', 'Simulate & approve'].map((step, i) => (
+                        <div key={step} className="flex items-center gap-3 text-sm text-[#a3aac4]">
+                          <span className="w-5 h-5 rounded-full bg-[#69f6b8]/15 text-[#69f6b8] flex items-center justify-center text-[10px] font-bold shrink-0">{i + 1}</span>
+                          {step}
+                        </div>
+                      ))}
                     </div>
                   </div>
                 </div>
@@ -138,6 +154,88 @@ export default function HomePage() {
                 <div className="text-xs uppercase tracking-widest text-[#6d758c] mt-1">{stat.label}</div>
               </div>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* India Urban Heat Crisis Section */}
+      <section className="relative z-10 py-24 border-b border-white/5">
+        <div className="mx-auto max-w-7xl px-6 lg:px-10">
+          <div className="text-center mb-12">
+            <span className="text-xs font-bold uppercase tracking-[0.2em] text-[#ff716c]">The Crisis</span>
+            <h2 className="text-4xl md:text-5xl font-black text-white mt-3 font-[family-name:var(--font-headline)] tracking-tight">
+              India&apos;s Urban Heat Emergency
+            </h2>
+            <p className="text-[#a3aac4] mt-4 max-w-2xl mx-auto">
+              India faces some of the world&apos;s deadliest heat waves. Rapid urbanization, shrinking green cover, and the concrete heat-island effect put hundreds of millions at risk every summer.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-12">
+            {indiaCrisisStats.map((stat) => (
+              <div key={stat.label} className="glass-card rounded-2xl p-5 text-center">
+                <span className="material-symbols-outlined text-2xl text-[#ff716c] mb-2" style={{ fontVariationSettings: "'FILL' 1" }}>{stat.icon}</span>
+                <div className="text-2xl md:text-3xl font-black text-white font-[family-name:var(--font-headline)]">{stat.value}</div>
+                <div className="text-[10px] uppercase tracking-widest text-[#6d758c] mt-1">{stat.label}</div>
+              </div>
+            ))}
+          </div>
+
+          <div className="glass-card rounded-2xl p-6 md:p-8 max-w-3xl mx-auto">
+            <div className="flex items-start gap-4">
+              <div className="h-12 w-12 rounded-xl bg-[#ff716c]/10 flex items-center justify-center shrink-0">
+                <span className="material-symbols-outlined text-[#ff716c] text-2xl" style={{ fontVariationSettings: "'FILL' 1" }}>warning</span>
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-white mb-2">Why India Needs HeatPlan</h3>
+                <p className="text-sm text-[#a3aac4] leading-relaxed">
+                  Indian cities like Delhi, Nagpur, and Ahmedabad regularly cross 47°C. Traditional planning lacks data-driven heat mapping. HeatPlan bridges this gap — enabling municipal commissioners, ward officers, and SDMA observers to collaboratively plan and approve cooling interventions using real-time heat vulnerability data tailored for Indian urban contexts.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Timeline: How it Works */}
+      <section className="relative z-10 py-24 border-b border-white/5">
+        <div className="mx-auto max-w-7xl px-6 lg:px-10">
+          <div className="text-center mb-16">
+            <span className="text-xs font-bold uppercase tracking-[0.2em] text-[#69f6b8]">How It Works</span>
+            <h2 className="text-4xl md:text-5xl font-black text-white mt-3 font-[family-name:var(--font-headline)] tracking-tight">
+              Four steps to a cooler city
+            </h2>
+          </div>
+
+          <div className="relative">
+            {/* Timeline line */}
+            <div className="hidden md:block absolute left-1/2 top-0 bottom-0 w-px bg-gradient-to-b from-[#69f6b8]/40 via-[#699cff]/40 to-[#ff716c]/40" />
+
+            <div className="space-y-12 md:space-y-0">
+              {timelineSteps.map((item, idx) => (
+                <div key={item.step} className={`md:flex items-center gap-8 ${idx % 2 === 0 ? 'md:flex-row' : 'md:flex-row-reverse'} mb-12`}>
+                  <div className={`flex-1 ${idx % 2 === 0 ? 'md:text-right' : 'md:text-left'}`}>
+                    <div className={`glass-card-hover rounded-2xl p-6 inline-block max-w-md ${idx % 2 === 0 ? 'md:ml-auto' : 'md:mr-auto'}`}>
+                      <div className="flex items-center gap-3 mb-3" style={{ flexDirection: idx % 2 === 0 ? 'row-reverse' : 'row' }}>
+                        <div className="h-10 w-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: `${item.color}15` }}>
+                          <span className="material-symbols-outlined" style={{ color: item.color, fontVariationSettings: "'FILL' 1" }}>{item.icon}</span>
+                        </div>
+                        <span className="text-xs font-bold uppercase tracking-[0.2em]" style={{ color: item.color }}>Step {item.step}</span>
+                      </div>
+                      <h3 className="text-lg font-bold text-white mb-1">{item.title}</h3>
+                      <p className="text-sm text-[#a3aac4]">{item.desc}</p>
+                    </div>
+                  </div>
+
+                  {/* Center dot */}
+                  <div className="hidden md:flex w-10 h-10 rounded-full border-2 items-center justify-center shrink-0 z-10 bg-[#060e20]" style={{ borderColor: item.color }}>
+                    <span className="text-xs font-black" style={{ color: item.color }}>{item.step}</span>
+                  </div>
+
+                  <div className="flex-1" />
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </section>
@@ -183,7 +281,7 @@ export default function HomePage() {
                 Ready to cool your city?
               </h2>
               <p className="text-[#a3aac4] mt-4 text-lg max-w-xl mx-auto">
-                Join cities across America using data-driven heat mitigation planning. Get started in under 15 minutes.
+                Join cities across India using data-driven heat mitigation planning. Get started in under 15 minutes.
               </p>
               <div className="mt-8 flex flex-wrap justify-center gap-4">
                 <Link
@@ -191,12 +289,6 @@ export default function HomePage() {
                   className="px-10 py-4 bg-gradient-to-r from-[#69f6b8] to-[#06b77f] text-[#002919] font-bold rounded-2xl shadow-lg shadow-[#69f6b8]/20 hover:shadow-xl hover:shadow-[#69f6b8]/30 hover:-translate-y-0.5 transition-all btn-shine"
                 >
                   Create Free Account
-                </Link>
-                <Link
-                  href="/map"
-                  className="px-10 py-4 glass-card rounded-2xl font-bold text-white hover:border-[#69f6b8]/20 transition-all"
-                >
-                  Explore Demo Map
                 </Link>
               </div>
             </div>

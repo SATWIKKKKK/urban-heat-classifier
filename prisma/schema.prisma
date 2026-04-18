@@ -13,7 +13,8 @@ model City {
   name       String
   slug       String   @unique
   state      String?
-  country    String   @default("United States")
+  country    String   @default("India")
+  currency   String   @default("INR")
   lat        Float?
   lng        Float?
   population Int?
@@ -32,6 +33,10 @@ model City {
   weatherStations    WeatherStation[]
   dataIngestionJobs  DataIngestionJob[]
   onboardingState    OnboardingState?
+  wards              Ward[]
+  citizenReports     CitizenReport[]
+  stateObserverNotes StateObserverNote[]
+  ngoSurveys         NGOSurvey[]
 
   @@map("cities")
 }
@@ -44,6 +49,11 @@ model User {
   image        String?
   cityId       String?
   role         String    @default("PUBLIC")
+  stateId      String?
+  wardId       String?
+  phoneNumber  String?   @unique
+  otpHash      String?
+  otpExpiresAt DateTime?
   isLocked     Boolean   @default(false)
   lockedUntil  DateTime?
   failedLogins Int       @default(0)
@@ -61,6 +71,13 @@ model User {
   approvedScenarios       Scenario[]     @relation("ApprovedBy")
   generatedReports        Report[]
   auditLogs               AuditLog[]
+  assignedWard            Ward?          @relation("WardOfficer")
+  wardOfficerReports      WardOfficerReport[]
+  citizenReports          CitizenReport[] @relation("ReportedBy")
+  acknowledgedReports     CitizenReport[] @relation("AcknowledgedBy")
+  stateObserverNotes      StateObserverNote[]
+  ngoSurveys              NGOSurvey[]
+  commissionerApprovals   CommissionerApproval[]
 
   @@map("users")
 }
@@ -265,6 +282,7 @@ model Scenario {
   scenarioInterventions ScenarioIntervention[]
   simulationResults     SimulationResult[]
   reports               Report[]
+  commissionerApprovals CommissionerApproval[]
 
   @@map("scenarios")
 }
@@ -354,4 +372,132 @@ model AuditLog {
   user User? @relation(fields: [userId], references: [id])
 
   @@map("audit_logs")
+}
+
+// ─── WARDS ───
+
+model Ward {
+  id         String   @id @default(cuid())
+  cityId     String
+  wardNumber String
+  wardName   String
+  officerId  String?  @unique
+  population Int?
+  areaSqkm   Float?
+  boundary   String?
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+
+  city    City  @relation(fields: [cityId], references: [id], onDelete: Cascade)
+  officer User? @relation("WardOfficer", fields: [officerId], references: [id])
+
+  wardOfficerReports WardOfficerReport[]
+  citizenReports     CitizenReport[]
+  ngoSurveys         NGOSurvey[]
+
+  @@map("wards")
+}
+
+// ─── WARD OFFICER REPORTS ───
+
+model WardOfficerReport {
+  id                String    @id @default(cuid())
+  wardId            String
+  officerId         String
+  reportDate        DateTime  @default(now())
+  interventionId    String?
+  status            String    @default("IN_PROGRESS")
+  notes             String?
+  photoUrls         String?
+  actualTempReading Float?
+  measuredAt        DateTime?
+  createdAt         DateTime  @default(now())
+
+  ward    Ward @relation(fields: [wardId], references: [id], onDelete: Cascade)
+  officer User @relation(fields: [officerId], references: [id])
+
+  @@map("ward_officer_reports")
+}
+
+// ─── CITIZEN REPORTS ───
+
+model CitizenReport {
+  id             String    @id @default(cuid())
+  cityId         String
+  wardId         String?
+  reportedById   String
+  latitude       Float?
+  longitude      Float?
+  description    String
+  photoUrl       String?
+  heatSeverity   String    @default("MODERATE")
+  status         String    @default("SUBMITTED")
+  acknowledgedById String?
+  acknowledgedAt DateTime?
+  createdAt      DateTime  @default(now())
+
+  city           City  @relation(fields: [cityId], references: [id], onDelete: Cascade)
+  ward           Ward? @relation(fields: [wardId], references: [id])
+  reportedBy     User  @relation("ReportedBy", fields: [reportedById], references: [id])
+  acknowledgedBy User? @relation("AcknowledgedBy", fields: [acknowledgedById], references: [id])
+
+  @@map("citizen_reports")
+}
+
+// ─── STATE OBSERVER NOTES ───
+
+model StateObserverNote {
+  id         String   @id @default(cuid())
+  observerId String
+  cityId     String
+  note       String
+  createdAt  DateTime @default(now())
+
+  observer User @relation(fields: [observerId], references: [id])
+  city     City @relation(fields: [cityId], references: [id], onDelete: Cascade)
+
+  @@map("state_observer_notes")
+}
+
+// ─── NGO SURVEYS ───
+
+model NGOSurvey {
+  id               String    @id @default(cuid())
+  workerId         String
+  cityId           String
+  wardId           String?
+  neighborhoodId   String?
+  surveyDate       DateTime  @default(now())
+  observations     String?
+  photoUrls        String?
+  flaggedIssues    String?
+  latitude         Float?
+  longitude        Float?
+  syncedAt         DateTime?
+  createdOffline   Boolean   @default(false)
+  createdAt        DateTime  @default(now())
+
+  worker       User  @relation(fields: [workerId], references: [id])
+  city         City  @relation(fields: [cityId], references: [id], onDelete: Cascade)
+  ward         Ward? @relation(fields: [wardId], references: [id])
+
+  @@map("ngo_surveys")
+}
+
+// ─── COMMISSIONER APPROVALS ───
+
+model CommissionerApproval {
+  id                   String   @id @default(cuid())
+  scenarioId           String
+  commissionerId       String
+  decision             String   @default("APPROVED")
+  digitalSignature     String?
+  remarks              String?
+  approvedAt           DateTime @default(now())
+  budgetSanctionNumber String?
+
+  scenario     Scenario @relation(fields: [scenarioId], references: [id], onDelete: Cascade)
+  commissioner User     @relation(fields: [commissionerId], references: [id])
+
+  @@map("commissioner_approvals")
 }

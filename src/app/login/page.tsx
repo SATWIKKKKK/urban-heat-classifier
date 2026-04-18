@@ -14,6 +14,7 @@ function LoginPageContent() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [loginToast, setLoginToast] = useState<{ role: string; name: string } | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,28 +36,26 @@ function LoginPageContent() {
         const session = await res.json();
         const role = session?.user?.role;
         const onboardingComplete = !!session?.user?.onboardingComplete;
+        const userName = session?.user?.name || session?.user?.email;
 
-        if (role === 'SUPER_ADMIN') {
-          router.push('/dashboard/admin');
-          return;
-        }
+        // Show login toast
+        setLoginToast({ role: role || 'USER', name: userName });
+        await new Promise(resolve => setTimeout(resolve, 2000));
 
-        if (role === 'CITY_ADMIN') {
-          router.push(onboardingComplete ? '/dashboard/map' : '/dashboard/onboarding');
-          return;
-        }
+        const roleRedirects: Record<string, string> = {
+          SUPER_ADMIN: '/dashboard/admin',
+          CITY_ADMIN: onboardingComplete ? '/dashboard/map' : '/dashboard/onboarding',
+          URBAN_PLANNER: onboardingComplete ? '/dashboard/map' : '/dashboard/waiting',
+          CITY_COUNCIL: '/dashboard/scenarios',
+          MUNICIPAL_COMMISSIONER: '/dashboard/commissioner',
+          WARD_OFFICER: '/dashboard/ward',
+          SDMA_OBSERVER: '/dashboard/state',
+          NGO_FIELD_WORKER: '/dashboard/field',
+          DATA_ANALYST: '/dashboard/analyst',
+          CITIZEN_REPORTER: '/dashboard/citizen',
+        };
 
-        if (role === 'URBAN_PLANNER') {
-          router.push(onboardingComplete ? '/dashboard/map' : '/dashboard/waiting');
-          return;
-        }
-
-        if (role === 'CITY_COUNCIL') {
-          router.push('/dashboard/scenarios');
-          return;
-        }
-
-        router.push(callbackUrl);
+        router.push(roleRedirects[role] || callbackUrl);
       }
     } catch {
       setError('An unexpected error occurred');
@@ -67,6 +66,18 @@ function LoginPageContent() {
 
   return (
     <div className="min-h-screen flex items-center justify-center relative overflow-hidden">
+      {/* Login Toast */}
+      {loginToast && (
+        <div className="fixed top-6 right-6 z-[100] animate-reveal-up">
+          <div className="glass-card rounded-2xl px-6 py-4 glow-primary flex items-center gap-3">
+            <span className="material-symbols-outlined text-[#69f6b8] text-2xl" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+            <div>
+              <p className="text-white font-bold text-sm">Signed in as {loginToast.role.replace(/_/g, ' ')}</p>
+              <p className="text-[#a3aac4] text-xs">{loginToast.name}</p>
+            </div>
+          </div>
+        </div>
+      )}
       {/* Animated background */}
       <div className="fixed inset-0 bg-[#060e20] grid-pattern" />
       <div className="orb orb-primary w-[500px] h-[500px] -top-[100px] -right-[100px] fixed" />

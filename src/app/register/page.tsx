@@ -13,10 +13,21 @@ export default function RegisterPage() {
     password: '',
     confirmPassword: '',
     cityName: '',
+    role: 'CITY_ADMIN',
   });
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [signupToast, setSignupToast] = useState<{ role: string; name: string } | null>(null);
+
+  const roleOptions = [
+    { value: 'MUNICIPAL_COMMISSIONER', label: 'Municipal Commissioner' },
+    { value: 'WARD_OFFICER', label: 'Ward Officer' },
+    { value: 'SDMA_OBSERVER', label: 'SDMA Observer' },
+    { value: 'DATA_ANALYST', label: 'Data Analyst' },
+    { value: 'CITIZEN_REPORTER', label: 'Resident / Citizen Reporter' },
+    { value: 'CITY_ADMIN', label: 'Other (City Admin)' },
+  ];
 
   const passwordStrength = (() => {
     const p = form.password;
@@ -57,6 +68,7 @@ export default function RegisterPage() {
           email: form.email,
           password: form.password,
           cityName: form.cityName,
+          role: form.role,
         }),
       });
 
@@ -77,6 +89,9 @@ export default function RegisterPage() {
       if (signInResult?.error) {
         setError(signInResult.error);
       } else {
+        // Show signup toast
+        setSignupToast({ role: form.role, name: form.name });
+        await new Promise(resolve => setTimeout(resolve, 2000));
         router.push('/dashboard/onboarding');
       }
     } catch {
@@ -88,6 +103,18 @@ export default function RegisterPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center relative overflow-hidden py-8">
+      {/* Signup Toast */}
+      {signupToast && (
+        <div className="fixed top-6 right-6 z-[100] animate-reveal-up">
+          <div className="glass-card rounded-2xl px-6 py-4 glow-primary flex items-center gap-3">
+            <span className="material-symbols-outlined text-[#69f6b8] text-2xl" style={{ fontVariationSettings: "'FILL' 1" }}>celebration</span>
+            <div>
+              <p className="text-white font-bold text-sm">Signed up as {signupToast.role.replace(/_/g, ' ')}</p>
+              <p className="text-[#a3aac4] text-xs">{signupToast.name}</p>
+            </div>
+          </div>
+        </div>
+      )}
       {/* Animated background */}
       <div className="fixed inset-0 bg-[#060e20] grid-pattern" />
       <div className="orb orb-primary w-[500px] h-[500px] -top-[150px] left-[20%] fixed" />
@@ -208,10 +235,27 @@ export default function RegisterPage() {
                   type="password"
                   value={form.confirmPassword}
                   onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })}
+                  onPaste={(e) => e.preventDefault()}
                   className="w-full px-4 py-3.5 bg-[#060e20]/60 border border-white/8 rounded-xl text-white placeholder:text-[#40485d] focus:outline-none focus:border-[#69f6b8]/40 input-glow transition-all"
                   placeholder="••••••••"
                   required
                 />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-widest text-[#6d758c] mb-2">Your Role</label>
+                <select
+                  value={form.role}
+                  onChange={(e) => setForm({ ...form, role: e.target.value })}
+                  className="w-full px-4 py-3.5 bg-[#060e20]/60 border border-white/8 rounded-xl text-white focus:outline-none focus:border-[#69f6b8]/40 input-glow transition-all appearance-none cursor-pointer"
+                  required
+                >
+                  {roleOptions.map((opt) => (
+                    <option key={opt.value} value={opt.value} className="bg-[#0a1628] text-white">
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div>

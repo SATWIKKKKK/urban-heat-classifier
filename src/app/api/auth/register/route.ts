@@ -26,8 +26,14 @@ async function createUniqueCitySlug(cityName: string) {
 
 export async function POST(request: Request) {
   try {
-    const { name, email, password, cityName } = await request.json();
+    const { name, email, password, cityName, role: requestedRole } = await request.json();
     const normalizedEmail = String(email || '').toLowerCase().trim();
+
+    const VALID_ROLES = [
+      'CITY_ADMIN', 'MUNICIPAL_COMMISSIONER', 'WARD_OFFICER',
+      'SDMA_OBSERVER', 'DATA_ANALYST', 'CITIZEN_REPORTER', 'NGO_FIELD_WORKER',
+    ];
+    const role = VALID_ROLES.includes(requestedRole) ? requestedRole : 'CITY_ADMIN';
 
     if (!name || !normalizedEmail || !password || !cityName) {
       return NextResponse.json(
@@ -73,7 +79,7 @@ export async function POST(request: Request) {
           email: normalizedEmail,
           passwordHash,
           cityId: city.id,
-          role: 'CITY_ADMIN',
+          role,
         },
       });
 
@@ -89,7 +95,7 @@ export async function POST(request: Request) {
           action: 'USER_REGISTERED',
           resourceType: 'User',
           resourceId: user.id,
-          afterValue: JSON.stringify({ email: normalizedEmail, role: 'CITY_ADMIN', cityName }),
+          afterValue: JSON.stringify({ email: normalizedEmail, role, cityName }),
         },
       });
 

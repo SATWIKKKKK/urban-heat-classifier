@@ -23,11 +23,33 @@ export default function OnboardingPage() {
   const [saving, setSaving] = useState(false);
   const [launching, setLaunching] = useState(false);
   const [launchError, setLaunchError] = useState<string | null>(null);
+  const [stepError, setStepError] = useState<string | null>(null);
+  const [warningThreshold, setWarningThreshold] = useState(35);
+  const [criticalThreshold, setCriticalThreshold] = useState(40);
 
   const STEP_KEYS = ['step1City', 'step2Neighbors', 'step3Heat', 'step4Team', 'step5Alerts', 'step6Complete'];
 
+  function validateCurrentStep(): string | null {
+    switch (currentStep) {
+      case 1:
+        if (neighborhoods.length === 0) return 'Add at least one neighborhood before continuing.';
+        break;
+      case 4:
+        if (!warningThreshold || !criticalThreshold) return 'Set both alert thresholds.';
+        if (warningThreshold >= criticalThreshold) return 'Warning threshold must be less than critical threshold.';
+        break;
+    }
+    return null;
+  }
+
   async function nextStep() {
     if (!session?.user?.cityId) return;
+    const error = validateCurrentStep();
+    if (error) {
+      setStepError(error);
+      return;
+    }
+    setStepError(null);
     const next = currentStep + 1;
     setCurrentStep(next);
     const stepData: Record<string, boolean> = {};
@@ -183,11 +205,11 @@ export default function OnboardingPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs text-[#a3aac4] mb-1">Warning Threshold (°C)</label>
-                <input type="number" defaultValue={35} className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:border-[#ff8439]/50 focus:outline-none" />
+                <input type="number" value={warningThreshold} onChange={(e) => setWarningThreshold(Number(e.target.value))} className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:border-[#ff8439]/50 focus:outline-none" />
               </div>
               <div>
                 <label className="block text-xs text-[#a3aac4] mb-1">Critical Threshold (°C)</label>
-                <input type="number" defaultValue={40} className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:border-[#ff716c]/50 focus:outline-none" />
+                <input type="number" value={criticalThreshold} onChange={(e) => setCriticalThreshold(Number(e.target.value))} className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:border-[#ff716c]/50 focus:outline-none" />
               </div>
             </div>
           </div>
@@ -212,6 +234,14 @@ export default function OnboardingPage() {
                 {launchError}
               </div>
             )}
+          </div>
+        )}
+
+        {/* Step Error */}
+        {stepError && (
+          <div className="mt-4 rounded-lg border border-[#ff716c]/20 bg-[#ff716c]/10 px-4 py-3 text-sm text-[#ffb4ad] flex items-center gap-2">
+            <span className="material-symbols-outlined text-lg">error</span>
+            {stepError}
           </div>
         )}
 

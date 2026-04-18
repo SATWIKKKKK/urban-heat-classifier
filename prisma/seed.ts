@@ -184,6 +184,12 @@ const cities: SeedCity[] = [
 ];
 
 async function resetDatabase() {
+  await prisma.commissionerApproval.deleteMany();
+  await prisma.nGOSurvey.deleteMany();
+  await prisma.stateObserverNote.deleteMany();
+  await prisma.citizenReport.deleteMany();
+  await prisma.wardOfficerReport.deleteMany();
+  await prisma.ward.deleteMany();
   await prisma.auditLog.deleteMany();
   await prisma.weatherReading.deleteMany();
   await prisma.weatherStation.deleteMany();
@@ -244,6 +250,90 @@ async function seedCity(cityConfig: SeedCity, userPasswordHash: string) {
       cityId: city.id,
     },
   });
+
+  // New role users
+  const commissioner = await prisma.user.create({
+    data: {
+      email: `commissioner@${cityConfig.slug.replace(/[^a-z]/g, '')}.gov`,
+      name: `Commissioner ${cityConfig.name.split(',')[0]}`,
+      passwordHash: userPasswordHash,
+      role: 'MUNICIPAL_COMMISSIONER',
+      cityId: city.id,
+    },
+  });
+
+  const wardOfficer = await prisma.user.create({
+    data: {
+      email: `ward@${cityConfig.slug.replace(/[^a-z]/g, '')}.gov`,
+      name: `Ward Officer ${cityConfig.name.split(',')[0]}`,
+      passwordHash: userPasswordHash,
+      role: 'WARD_OFFICER',
+      cityId: city.id,
+    },
+  });
+
+  await prisma.user.create({
+    data: {
+      email: `sdma@${cityConfig.slug.replace(/[^a-z]/g, '')}.gov`,
+      name: `SDMA Observer ${cityConfig.name.split(',')[0]}`,
+      passwordHash: userPasswordHash,
+      role: 'SDMA_OBSERVER',
+      cityId: city.id,
+    },
+  });
+
+  await prisma.user.create({
+    data: {
+      email: `analyst@${cityConfig.slug.replace(/[^a-z]/g, '')}.gov`,
+      name: `Data Analyst ${cityConfig.name.split(',')[0]}`,
+      passwordHash: userPasswordHash,
+      role: 'DATA_ANALYST',
+      cityId: city.id,
+    },
+  });
+
+  await prisma.user.create({
+    data: {
+      email: `citizen@${cityConfig.slug.replace(/[^a-z]/g, '')}.gov`,
+      name: `Citizen Reporter ${cityConfig.name.split(',')[0]}`,
+      passwordHash: userPasswordHash,
+      role: 'CITIZEN_REPORTER',
+      cityId: city.id,
+    },
+  });
+
+  await prisma.user.create({
+    data: {
+      email: `ngo@${cityConfig.slug.replace(/[^a-z]/g, '')}.org`,
+      name: `NGO Worker ${cityConfig.name.split(',')[0]}`,
+      passwordHash: userPasswordHash,
+      role: 'NGO_FIELD_WORKER',
+      cityId: city.id,
+    },
+  });
+
+  // Create a ward
+  const ward = await prisma.ward.create({
+    data: {
+      wardNumber: '1',
+      wardName: `Ward 1 - ${cityConfig.neighborhoods[0]?.name || 'Central'}`,
+      cityId: city.id,
+      officerId: wardOfficer.id,
+    },
+  });
+
+  // Sample ward officer report
+  await prisma.wardOfficerReport.create({
+    data: {
+      wardId: ward.id,
+      officerId: wardOfficer.id,
+      status: 'IN_PROGRESS',
+      actualTempReading: cityConfig.neighborhoods[0]?.avgTempCelsius || 40,
+      notes: 'Weekly routine heat assessment completed.',
+    },
+  });
+
+  // Sample commissioner approval is created after scenarios (skipped for simplicity in seed)
 
   await prisma.onboardingState.create({
     data: {
@@ -439,8 +529,9 @@ async function main() {
 
   console.log('✅ Seed complete!');
   console.log(`   Cities: ${cities.length}`);
-  console.log(`   Users: ${1 + cities.length * 3} (admin@heatplan.io / Admin@HeatPlan2024!)`);
-  console.log(`   Planner/Council password: User@HeatPlan2024!`);
+  console.log(`   Users: ${1 + cities.length * 9} (admin@heatplan.io / Admin@HeatPlan2024!)`);
+  console.log(`   All role passwords: User@HeatPlan2024!`);
+  console.log(`   Roles seeded: CITY_ADMIN, URBAN_PLANNER, CITY_COUNCIL, MUNICIPAL_COMMISSIONER, WARD_OFFICER, SDMA_OBSERVER, DATA_ANALYST, CITIZEN_REPORTER, NGO_FIELD_WORKER`);
 }
 
 main()
