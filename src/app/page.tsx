@@ -44,7 +44,7 @@ export default async function HomePage() {
   }
 
   return (
-    <main className="min-h-screen bg-[var(--bg-base)] text-white overflow-hidden relative">
+    <main data-landing className="min-h-screen bg-[var(--bg-base)] text-white overflow-hidden relative">
       {/* Decorative orbs */}
       <div className="orb orb-primary w-[600px] h-[600px] -top-[200px] -left-[200px] fixed" />
       <div className="orb orb-secondary w-[500px] h-[500px] top-[40%] -right-[150px] fixed" />
@@ -146,11 +146,11 @@ export default async function HomePage() {
       </section>
 
       {/* Stats Bar */}
-      <section className="relative z-10 border-y border-[var(--border)]">
+      <section className="relative z-10 border-y border-[var(--border)] stats-section">
         <div className="mx-auto max-w-7xl px-6 py-12 lg:px-10">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 stagger-children">
             {stats.map((stat) => (
-              <div key={stat.label} className="text-center">
+              <div key={stat.label} className="text-center stats-item">
                 <span className="material-symbols-outlined text-2xl text-[var(--green-400)] mb-2" style={{ fontVariationSettings: "'FILL' 1" }}>{stat.icon}</span>
                 <div className="text-3xl md:text-4xl font-black text-white font-[family-name:var(--font-headline)]">{stat.value}</div>
                 <div className="text-xs uppercase tracking-widest text-[var(--text-tertiary)] mt-1">{stat.label}</div>
@@ -161,7 +161,7 @@ export default async function HomePage() {
       </section>
 
       {/* India Urban Heat Crisis Section */}
-      <section className="relative z-10 py-24 border-b border-[var(--border)]">
+      <section className="relative z-10 py-24 border-b border-[var(--border)] crisis-section">
         <div className="mx-auto max-w-7xl px-6 lg:px-10">
           <div className="text-center mb-12">
             <span className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--critical)]">The Crisis</span>
@@ -200,7 +200,7 @@ export default async function HomePage() {
       </section>
 
       {/* Timeline: How it Works */}
-      <section className="relative z-10 py-24 border-b border-[var(--border)]">
+      <section className="relative z-10 py-24 border-b border-[var(--border)] timeline-section">
         <div className="mx-auto max-w-7xl px-6 lg:px-10">
           <div className="text-center mb-16">
             <span className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--green-400)]">How It Works</span>
@@ -215,7 +215,7 @@ export default async function HomePage() {
 
             <div className="space-y-12 md:space-y-0">
               {timelineSteps.map((item, idx) => (
-                <div key={item.step} className={`md:flex items-center gap-8 ${idx % 2 === 0 ? 'md:flex-row' : 'md:flex-row-reverse'} mb-12`}>
+                <div key={item.step} className={`md:flex items-center gap-8 timeline-step ${idx % 2 === 0 ? 'md:flex-row' : 'md:flex-row-reverse'} mb-12`}>
                   <div className={`flex-1 ${idx % 2 === 0 ? 'md:text-right' : 'md:text-left'}`}>
                     <div className={`glass-card-hover rounded-2xl p-6 inline-block max-w-md ${idx % 2 === 0 ? 'md:ml-auto' : 'md:mr-auto'}`}>
                       <div className="flex items-center gap-3 mb-3" style={{ flexDirection: idx % 2 === 0 ? 'row-reverse' : 'row' }}>
@@ -243,7 +243,7 @@ export default async function HomePage() {
       </section>
 
       {/* Features Section */}
-      <section className="relative z-10 py-24">
+      <section className="relative z-10 py-24 features-section">
         <div className="mx-auto max-w-7xl px-6 lg:px-10">
           <div className="text-center mb-16">
             <span className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--info)]">Platform Features</span>
@@ -255,9 +255,9 @@ export default async function HomePage() {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 stagger-children">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 stagger-children">
             {features.map((feature) => (
-              <div key={feature.title} className="glass-card-hover rounded-2xl p-6 group relative overflow-hidden">
+              <div key={feature.title} className="glass-card-hover feature-item rounded-2xl p-6 group relative overflow-hidden">
                 <div className="shimmer-bg absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity" />
                 <div className="relative z-10">
                   <div className="h-14 w-14 rounded-2xl flex items-center justify-center mb-5 transition-transform group-hover:scale-110" style={{ backgroundColor: `${feature.color}12` }}>
@@ -273,7 +273,7 @@ export default async function HomePage() {
       </section>
 
       {/* CTA Section */}
-      <section className="relative z-10 py-24">
+      <section className="relative z-10 py-24 cta-section">
         <div className="mx-auto max-w-4xl px-6 text-center">
           <div className="glass-card rounded-3xl p-12 md:p-16 relative overflow-hidden glow-primary">
             <div className="shimmer-bg absolute inset-0 rounded-3xl" />
