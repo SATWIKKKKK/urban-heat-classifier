@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { auth } from '@/lib/auth';
+import HeroGSAP from '@/components/animations/HeroGSAP';
 
 const demoCities = [
   { name: 'Delhi NCR', status: 'Live heat map', neighborhoods: 12, interventions: 10, accent: 'var(--green-400)', icon: 'location_city' },
@@ -52,24 +53,24 @@ export default async function HomePage() {
       {/* Hero Section */}
       <section className="relative min-h-screen flex items-center grid-pattern">
         <div className="noise-bg absolute inset-0" />
-        <div className="mx-auto max-w-7xl px-6 py-20 lg:px-10 relative z-10">
+        <div data-hero className="mx-auto max-w-7xl px-6 py-20 lg:px-10 relative z-10">
           <div className="grid items-center gap-16 lg:gap-24 lg:grid-cols-[1.1fr_0.9fr]">
             {/* Left Hero Content */}
             <div className="animate-reveal-up">
-              <div className="inline-flex items-center gap-2 rounded-full glass-card px-5 py-2.5 mb-12">
+              <div className="inline-flex items-center gap-3 rounded-full glass-card px-5 py-2.5 mb-11 hero-pill">
                 <span className="material-symbols-outlined text-[var(--green-400)] text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>eco</span>
                 <span className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--green-400)]">HeatPlan</span>
                 <span className="h-1 w-1 rounded-full bg-[var(--green-400)]/40" />
                 <span className="text-xs text-[var(--text-secondary)]">Urban Climate Action</span>
               </div>
 
-              <h1 className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-black leading-[0.9] tracking-[-0.04em] font-[family-name:var(--font-headline)]">
-                <span className="text-white">Fight</span><br />
-                <span className="text-gradient-primary">Urban Heat</span><br />
-                <span className="text-[var(--text-secondary)]">Together</span>
+              <h1 className="hero-headline text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-black leading-[1.0] tracking-[-0.04em] font-[family-name:var(--font-headline)] ">
+                <span className="line text-white">Fight</span><br />
+                <span className="line text-gradient-primary">Urban Heat</span><br />
+                <span className="line text-[var(--text-secondary)]">Together</span>
               </h1>
 
-              <p className="mt-8 max-w-lg text-lg leading-relaxed text-[var(--text-secondary)]">
+              <p className="mt-8 max-w-lg text-lg leading-relaxed text-[var(--text-secondary)] hero-desc">
                 Map vulnerable neighborhoods, plan interventions, simulate impact,
                 and get city council approval — all in one platform.
               </p>
@@ -77,10 +78,10 @@ export default async function HomePage() {
               <div className="mt-10 flex flex-wrap gap-4">
                 <Link
                   href="/register"
-                  className="group relative px-8 py-4 bg-gradient-to-r from-[var(--green-400)] to-[var(--green-500)] text-[var(--bg-base)] font-bold rounded-2xl shadow-lg shadow-[var(--green-400)]/20 transition-all hover:shadow-xl hover:shadow-[var(--green-400)]/30 hover:-translate-y-0.5 active:scale-[0.98] "
+                  className="group relative px-8 py-4 bg-gradient-to-r from-[var(--green-400)] to-[var(--green-500)] text-[var(--bg-base)] font-bold rounded-2xl shadow-lg shadow-[var(--green-400)]/20 transition-all hover:shadow-xl hover:shadow-[var(--green-400)]/30 hover:-translate-y-0.5 active:scale-[0.98] hero-cta"
                 >
                   <span className="flex items-center gap-2">
-                    Get Started — Free
+                    Get Started 
                     <span className="material-symbols-outlined text-lg group-hover:translate-x-1 transition-transform">arrow_forward</span>
                   </span>
                 </Link>
@@ -96,7 +97,7 @@ export default async function HomePage() {
 
             {/* Right - Cities Card */}
             <div className="animate-reveal-up" style={{ animationDelay: '0.15s' }}>
-              <div className="glass-card rounded-3xl p-8 glow-primary relative overflow-hidden w-full max-w-[520px] ml-auto">
+              <div className="glass-card cities-card rounded-3xl p-8 glow-primary relative overflow-hidden w-full max-w-[520px] ml-auto">
                 <div className="shimmer-bg absolute inset-0 rounded-3xl" />
                 <div className="relative z-10">
                   <div className="flex items-center gap-2 mb-8">
@@ -106,7 +107,7 @@ export default async function HomePage() {
 
                   <div className="space-y-3 stagger-children">
                     {demoCities.map((city) => (
-                      <div key={city.name} className="flex items-center justify-between rounded-2xl glass-card px-5 py-4 hover:border-[var(--border-strong)] transition-all group cursor-pointer">
+                      <div key={city.name} className="flex items-center justify-between rounded-2xl glass-card px-5 py-4 hover:border-[var(--border-strong)] transition-all group cursor-pointer city-item">
                         <div className="flex items-center gap-4">
                           <div className="h-10 w-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: `${city.accent}15` }}>
                             <span className="material-symbols-outlined" style={{ color: city.accent, fontVariationSettings: "'FILL' 1" }}>{city.icon}</span>
@@ -127,7 +128,7 @@ export default async function HomePage() {
 
                   <div className="mt-6 rounded-2xl bg-[var(--bg-surface)]/50 border border-[var(--border)] p-5">
                     <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--info)] mb-3">How it works</div>
-                    <div className="space-y-2">
+                    <div className="space-y-2 how-steps">
                       {['Sign up & onboard', 'Map heat zones', 'Plan interventions', 'Simulate & approve'].map((step, i) => (
                         <div key={step} className="flex items-center gap-3 text-sm text-[var(--text-secondary)]">
                           <span className="w-5 h-5 rounded-full bg-[var(--green-400)]/15 text-[var(--green-400)] flex items-center justify-center text-[10px] font-bold shrink-0">{i + 1}</span>
@@ -139,7 +140,8 @@ export default async function HomePage() {
                 </div>
               </div>
             </div>
-          </div>
+            </div>
+            <HeroGSAP />
         </div>
       </section>
 
