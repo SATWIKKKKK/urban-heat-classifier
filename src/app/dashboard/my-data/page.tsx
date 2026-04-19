@@ -13,7 +13,7 @@ export default async function MyDataPage() {
   const role = session.user.role;
 
   // Fetch all user-specific data in parallel
-  const [myScenarios, myInterventions, myReports, cityNeighborhoods, cityStats] =
+  const [myScenarios, myInterventions, myReports, cityPlaces, cityStats] =
     await Promise.all([
       // Scenarios created by this user
       cityId
@@ -32,7 +32,7 @@ export default async function MyDataPage() {
       cityId
         ? prisma.intervention.findMany({
             where: { cityId, proposedById: userId },
-            include: { neighborhood: { select: { name: true } } },
+            include: { place: { select: { name: true } } },
             orderBy: { createdAt: 'desc' },
             take: 10,
           })
@@ -47,9 +47,9 @@ export default async function MyDataPage() {
           })
         : Promise.resolve([]),
 
-      // All neighborhoods for city-level overview
+      // All places for city-level overview
       cityId
-        ? prisma.neighborhood.findMany({
+        ? prisma.place.findMany({
             where: { cityId },
             include: {
               heatMeasurements: { orderBy: { measurementDate: 'desc' }, take: 1 },
@@ -63,27 +63,27 @@ export default async function MyDataPage() {
         ? Promise.all([
             prisma.scenario.count({ where: { cityId } }),
             prisma.intervention.count({ where: { cityId } }),
-            prisma.neighborhood.count({ where: { cityId } }),
+            prisma.place.count({ where: { cityId } }),
           ])
         : Promise.resolve([0, 0, 0] as [number, number, number]),
     ]);
 
-  const [totalScenarios, totalInterventions, totalNeighborhoods] = cityStats as [
+  const [totalScenarios, totalInterventions, totalPlaces] = cityStats as [
     number,
     number,
     number,
   ];
 
-  const criticalNeighborhoods = cityNeighborhoods.filter(
+  const criticalPlaces = cityPlaces.filter(
     (n) => n.vulnerabilityLevel === 'CRITICAL',
   );
-  const highNeighborhoods = cityNeighborhoods.filter((n) => n.vulnerabilityLevel === 'HIGH');
+  const highPlaces = cityPlaces.filter((n) => n.vulnerabilityLevel === 'HIGH');
 
   const avgTemp =
-    cityNeighborhoods.length > 0
-      ? cityNeighborhoods.reduce((sum, n) => {
+    cityPlaces.length > 0
+      ? cityPlaces.reduce((sum, n) => {
           return sum + (n.heatMeasurements[0]?.avgTempCelsius ?? 0);
-        }, 0) / cityNeighborhoods.filter((n) => n.heatMeasurements.length > 0).length || 0
+        }, 0) / cityPlaces.filter((n) => n.heatMeasurements.length > 0).length || 0
       : 0;
 
   function statusColor(status: string) {
@@ -187,9 +187,9 @@ export default async function MyDataPage() {
             color: 'var(--high)',
           },
           {
-            label: 'City Neighborhoods',
-            value: cityNeighborhoods.length,
-            total: totalNeighborhoods,
+            label: 'City Places',
+            value: cityPlaces.length,
+            total: totalPlaces,
             icon: 'location_city',
             color: 'var(--green-400)',
           },
@@ -221,7 +221,7 @@ export default async function MyDataPage() {
       </GSAPWrapper>
 
       {/* City heat overview */}
-      {cityNeighborhoods.length > 0 && (
+      {cityPlaces.length > 0 && (
         <GSAPWrapper animation="slideUp" delay={0.2} duration={0.5}>
         <div>
           <div className="flex items-center gap-1.5 mb-3">
@@ -245,34 +245,34 @@ export default async function MyDataPage() {
             <div className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-lg p-4">
               <div className="text-[10px] uppercase tracking-[0.06em] text-[var(--text-tertiary)]">Critical Zones</div>
               <div className="mt-1 text-2xl font-bold text-[var(--critical)]">
-                {criticalNeighborhoods.length}
+                {criticalPlaces.length}
               </div>
             </div>
             <div className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-lg p-4">
               <div className="text-[10px] uppercase tracking-[0.06em] text-[var(--text-tertiary)]">High-Risk Zones</div>
               <div className="mt-1 text-2xl font-bold text-[var(--high)]">
-                {highNeighborhoods.length}
+                {highPlaces.length}
               </div>
             </div>
             <div className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-lg p-4">
               <div className="text-[10px] uppercase tracking-[0.06em] text-[var(--text-tertiary)]">Total Areas</div>
               <div className="mt-1 text-2xl font-bold text-[var(--text-primary)]">
-                {cityNeighborhoods.length}
+                {cityPlaces.length}
               </div>
             </div>
           </div>
 
-          {/* Neighborhood heat table */}
-          {cityNeighborhoods.length > 0 && (
+          {/* Place heat table */}
+          {cityPlaces.length > 0 && (
             <div className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-lg overflow-hidden">
               <div className="px-4 py-3 border-b border-[var(--border)] flex items-center justify-between">
-                <span className="text-xs font-semibold text-[var(--text-primary)]">Neighborhood Heat Status</span>
-                <Link href="/dashboard/neighborhoods" className="text-[11px] text-[var(--text-tertiary)] hover:text-[var(--text-primary)] transition-colors">
+                <span className="text-xs font-semibold text-[var(--text-primary)]">Place Heat Status</span>
+                <Link href="/dashboard/places" className="text-[11px] text-[var(--text-tertiary)] hover:text-[var(--text-primary)] transition-colors">
                   View all →
                 </Link>
               </div>
               <div className="divide-y divide-[var(--border)]">
-                {cityNeighborhoods.slice(0, 8).map((n) => {
+                {cityPlaces.slice(0, 8).map((n) => {
                   const temp = n.heatMeasurements[0]?.avgTempCelsius;
                   const level = n.vulnerabilityLevel || 'UNKNOWN';
                   const colors: Record<string, string> = {
@@ -432,7 +432,7 @@ export default async function MyDataPage() {
                       <div className="min-w-0 flex-1">
                         <div className="text-xs font-medium text-[var(--text-primary)] truncate">{inv.name}</div>
                         <div className="text-[10px] text-[var(--text-tertiary)] mt-0.5">
-                          {inv.neighborhood?.name ?? 'City-wide'} ·{' '}
+                          {inv.place?.name ?? 'City-wide'} ·{' '}
                           {inv.estimatedTempReductionC != null
                             ? `-${inv.estimatedTempReductionC.toFixed(1)}°C`
                             : 'Pending'}{' '}
@@ -512,7 +512,7 @@ export default async function MyDataPage() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {[
             { label: 'Open Map', href: '/map', icon: 'map', desc: 'Explore city heat zones' },
-            { label: 'Neighborhoods', href: '/dashboard/neighborhoods', icon: 'location_city', desc: 'View & manage areas' },
+            { label: 'Places', href: '/dashboard/places', icon: 'location_city', desc: 'View & manage areas' },
             { label: 'New Scenario', href: '/dashboard/scenarios/new', icon: 'add_circle', desc: 'Plan interventions' },
             { label: 'Reports', href: '/dashboard/reports', icon: 'assessment', desc: 'Download council briefs' },
           ].map((action) => (

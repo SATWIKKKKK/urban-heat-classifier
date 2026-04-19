@@ -59,7 +59,7 @@ async function handleCSVImport(csvContent: string, cityId: string, fileName: str
       return idx >= 0 && values[idx] ? parseFloat(values[idx]) : undefined;
     };
 
-    await prisma.neighborhood.upsert({
+    await prisma.place.upsert({
       where: { cityId_name: { cityId, name } },
       create: {
         cityId,
@@ -85,14 +85,14 @@ async function handleCSVImport(csvContent: string, cityId: string, fileName: str
   await prisma.dataIngestionJob.create({
     data: {
       cityId,
-      dataType: 'CSV_NEIGHBORHOOD',
+      dataType: 'CSV_PLACE',
       status: 'COMPLETED',
       recordsProcessed: imported,
       completedAt: new Date(),
     },
   });
 
-  return NextResponse.json({ message: `Successfully imported ${imported} neighborhoods` });
+  return NextResponse.json({ message: `Successfully imported ${imported} places` });
 }
 
 async function handleGeoJSONImport(content: string, cityId: string) {
@@ -108,9 +108,9 @@ async function handleGeoJSONImport(content: string, cityId: string) {
 
     const geoStr = JSON.stringify(feature.geometry);
 
-    const existing = await prisma.neighborhood.findFirst({ where: { cityId, name } });
+    const existing = await prisma.place.findFirst({ where: { cityId, name } });
     if (existing) {
-      await prisma.neighborhood.update({
+      await prisma.place.update({
         where: { id: existing.id },
         data: { boundary: geoStr },
       });
@@ -118,7 +118,7 @@ async function handleGeoJSONImport(content: string, cityId: string) {
     }
   }
 
-  return NextResponse.json({ message: `Updated GeoJSON boundaries for ${updated} neighborhoods` });
+  return NextResponse.json({ message: `Updated GeoJSON boundaries for ${updated} places` });
 }
 
 async function handleWeatherImport(csvContent: string, cityId: string) {

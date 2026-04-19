@@ -13,7 +13,7 @@ export default async function AdminPage() {
         onboardingState: true,
         users: { select: { id: true, role: true } },
         interventions: { select: { id: true, status: true } },
-        neighborhoods: {
+        places: {
           include: {
             heatMeasurements: { orderBy: { measurementDate: 'desc' }, take: 1 },
           },
@@ -35,27 +35,27 @@ export default async function AdminPage() {
   ]);
 
   const citySummaries = cities.map((city) => {
-    const neighborhoodsWithMeasurements = city.neighborhoods.filter(
-      (neighborhood) => neighborhood.heatMeasurements[0]?.avgTempCelsius != null
+    const placesWithMeasurements = city.places.filter(
+      (place) => place.heatMeasurements[0]?.avgTempCelsius != null
     );
-    const cityAvgTemp = neighborhoodsWithMeasurements.length
-      ? neighborhoodsWithMeasurements.reduce(
-          (sum, neighborhood) => sum + (neighborhood.heatMeasurements[0]?.avgTempCelsius ?? 0),
+    const cityAvgTemp = placesWithMeasurements.length
+      ? placesWithMeasurements.reduce(
+          (sum, place) => sum + (place.heatMeasurements[0]?.avgTempCelsius ?? 0),
           0
-        ) / neighborhoodsWithMeasurements.length
+        ) / placesWithMeasurements.length
       : 30;
 
-    const criticalCount = city.neighborhoods.filter((neighborhood) => {
-      const latest = neighborhood.heatMeasurements[0];
+    const criticalCount = city.places.filter((place) => {
+      const latest = place.heatMeasurements[0];
       const vulnerability = computeVulnerabilityScore(
         {
-          id: neighborhood.id,
-          name: neighborhood.name,
-          population: neighborhood.population,
-          areaSqkm: neighborhood.areaSqkm,
-          medianIncome: neighborhood.medianIncome,
-          pctElderly: neighborhood.pctElderly,
-          pctChildren: neighborhood.pctChildren,
+          id: place.id,
+          name: place.name,
+          population: place.population,
+          areaSqkm: place.areaSqkm,
+          medianIncome: place.medianIncome,
+          pctElderly: place.pctElderly,
+          pctChildren: place.pctChildren,
           avgTempCelsius: latest?.avgTempCelsius,
           treeCanopyPct: latest?.treeCanopyPct ?? undefined,
           imperviousSurfacePct: latest?.imperviousSurfacePct ?? undefined,
@@ -66,8 +66,8 @@ export default async function AdminPage() {
       return vulnerability.level === 'CRITICAL';
     }).length;
 
-    const dataCoverage = city.neighborhoods.length
-      ? Math.round((neighborhoodsWithMeasurements.length / city.neighborhoods.length) * 100)
+    const dataCoverage = city.places.length
+      ? Math.round((placesWithMeasurements.length / city.places.length) * 100)
       : 0;
 
     const issues: string[] = [];
@@ -78,7 +78,7 @@ export default async function AdminPage() {
       issues.push('Low heat-data coverage');
     }
     if (criticalCount > 0) {
-      issues.push(`${criticalCount} critical neighborhoods`);
+      issues.push(`${criticalCount} critical places`);
     }
     if (city.interventions.length === 0) {
       issues.push('No interventions planned');
@@ -89,7 +89,7 @@ export default async function AdminPage() {
       name: city.name,
       slug: city.slug,
       userCount: city.users.length,
-      neighborhoodCount: city.neighborhoods.length,
+      placeCount: city.places.length,
       interventionCount: city.interventions.length,
       criticalCount,
       dataCoverage,
@@ -98,7 +98,7 @@ export default async function AdminPage() {
     };
   });
 
-  const totalNeighborhoods = citySummaries.reduce((sum, city) => sum + city.neighborhoodCount, 0);
+  const totalPlaces = citySummaries.reduce((sum, city) => sum + city.placeCount, 0);
   const totalInterventions = citySummaries.reduce((sum, city) => sum + city.interventionCount, 0);
   const totalCritical = citySummaries.reduce((sum, city) => sum + city.criticalCount, 0);
   const alerts = citySummaries.flatMap((city) => city.issues.map((issue) => ({ city: city.name, issue }))).slice(0, 8);
@@ -118,7 +118,7 @@ export default async function AdminPage() {
         {[
           { label: 'Cities', value: citySummaries.length, color: 'var(--green-400)' },
           { label: 'Users', value: users.length, color: 'var(--info)' },
-          { label: 'Neighborhoods', value: totalNeighborhoods, color: 'var(--high)' },
+          { label: 'Places', value: totalPlaces, color: 'var(--high)' },
           { label: 'Interventions', value: totalInterventions, color: 'var(--text-primary)' },
           { label: 'Critical', value: totalCritical, color: 'var(--critical)' },
         ].map((s) => (
@@ -139,7 +139,7 @@ export default async function AdminPage() {
               <thead>
                 <tr className="border-b border-[var(--border)] text-[var(--text-tertiary)] text-[11px] uppercase tracking-[0.06em] font-medium">
                   <th className="px-4 py-3">City</th>
-                  <th className="px-4 py-3">Neighborhoods</th>
+                  <th className="px-4 py-3">Places</th>
                   <th className="px-4 py-3">Users</th>
                   <th className="px-4 py-3">Data Health</th>
                   <th className="px-4 py-3">Issues</th>
@@ -149,7 +149,7 @@ export default async function AdminPage() {
                 {citySummaries.map((city) => (
                   <tr key={city.id} className="hover:bg-[var(--bg-elevated)] transition-colors">
                     <td className="px-4 py-3 font-medium text-[var(--text-primary)]">{city.name}</td>
-                    <td className="px-4 py-3 text-[var(--text-secondary)]">{city.neighborhoodCount}</td>
+                    <td className="px-4 py-3 text-[var(--text-secondary)]">{city.placeCount}</td>
                     <td className="px-4 py-3 text-[var(--text-secondary)]">{city.userCount}</td>
                     <td className="px-4 py-3">
                       <div className="font-medium text-[var(--text-primary)]">{city.dataCoverage}%</div>

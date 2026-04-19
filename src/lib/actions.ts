@@ -8,13 +8,13 @@ import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { generateReportNarrative } from '@/lib/gemini';
 
-async function recomputeNeighborhoodVulnerability(neighborhoodId: string) {
-  const neighborhood = await prisma.neighborhood.findUnique({
-    where: { id: neighborhoodId },
+async function recomputePlaceVulnerability(placeId: string) {
+  const place = await prisma.place.findUnique({
+    where: { id: placeId },
     include: {
       city: {
         include: {
-          neighborhoods: {
+          places: {
             include: {
               heatMeasurements: { orderBy: { measurementDate: 'desc' }, take: 1 },
             },
@@ -25,19 +25,19 @@ async function recomputeNeighborhoodVulnerability(neighborhoodId: string) {
     },
   });
 
-  if (!neighborhood) {
+  if (!place) {
     return null;
   }
 
-  const latestMeasurement = neighborhood.heatMeasurements[0];
-  const neighborhoodsWithLatest = neighborhood.city.neighborhoods.map((candidate) => candidate.heatMeasurements[0]);
-  const measuredNeighborhoods = neighborhoodsWithLatest.filter((measurement) => measurement?.avgTempCelsius != null);
-  const cityAvgTemp = measuredNeighborhoods.length
-    ? measuredNeighborhoods.reduce((sum, measurement) => sum + (measurement?.avgTempCelsius ?? 0), 0) /
-      measuredNeighborhoods.length
+  const latestMeasurement = place.heatMeasurements[0];
+  const placesWithLatest = place.city.places.map((candidate) => candidate.heatMeasurements[0]);
+  const measuredPlaces = placesWithLatest.filter((measurement) => measurement?.avgTempCelsius != null);
+  const cityAvgTemp = measuredPlaces.length
+    ? measuredPlaces.reduce((sum, measurement) => sum + (measurement?.avgTempCelsius ?? 0), 0) /
+      measuredPlaces.length
     : latestMeasurement?.avgTempCelsius ?? 30;
 
-  const incomes = neighborhood.city.neighborhoods
+  const incomes = place.city.places
     .map((candidate) => candidate.medianIncome)
     .filter((income): income is number => typeof income === 'number' && Number.isFinite(income));
   const cityMedianIncome = incomes.length
@@ -46,13 +46,13 @@ async function recomputeNeighborhoodVulnerability(neighborhoodId: string) {
 
   const vulnerability = computeVulnerabilityScore(
     {
-      id: neighborhood.id,
-      name: neighborhood.name,
-      population: neighborhood.population,
-      areaSqkm: neighborhood.areaSqkm,
-      medianIncome: neighborhood.medianIncome,
-      pctElderly: neighborhood.pctElderly,
-      pctChildren: neighborhood.pctChildren,
+      id: place.id,
+      name: place.name,
+      population: place.population,
+      areaSqkm: place.areaSqkm,
+      medianIncome: place.medianIncome,
+      pctElderly: place.pctElderly,
+      pctChildren: place.pctChildren,
       avgTempCelsius: latestMeasurement?.avgTempCelsius,
       treeCanopyPct: latestMeasurement?.treeCanopyPct ?? undefined,
       imperviousSurfacePct: latestMeasurement?.imperviousSurfacePct ?? undefined,
@@ -61,8 +61,8 @@ async function recomputeNeighborhoodVulnerability(neighborhoodId: string) {
     cityMedianIncome
   );
 
-  return prisma.neighborhood.update({
-    where: { id: neighborhood.id },
+  return prisma.place.update({
+    where: { id: place.id },
     data: {
       vulnerabilityScore: vulnerability.score,
       vulnerabilityLevel: vulnerability.level,
@@ -70,9 +70,9 @@ async function recomputeNeighborhoodVulnerability(neighborhoodId: string) {
   });
 }
 
-// ── Neighborhood Actions ──
+// ── Place Actions ──
 
-const addNeighborhoodSchema = z.object({
+const addPlaceSchema = z.object({
   cityId: z.string().min(1),
   name: z.string().min(1).max(200),
   population: z.number().int().positive().optional(),
@@ -83,34 +83,34 @@ const addNeighborhoodSchema = z.object({
   boundary: z.string().optional(),
 });
 
-export async function addNeighborhoodAction(data: z.infer<typeof addNeighborhoodSchema>) {
-  const parsed = addNeighborhoodSchema.parse(data);
-  const neighborhood = await prisma.neighborhood.create({ data: parsed });
-  await recomputeNeighborhoodVulnerability(neighborhood.id);
-  revalidatePath('/dashboard/neighborhoods');
+export async function addPlaceAction(data: z.infer<typeof addPlaceSchema>) {
+  const parsed = addPlaceSchema.parse(data);
+  const place = await prisma.place.create({ data: parsed });
+  await recomputePlaceVulnerability(place.id);
+  revalidatePath('/dashboard/places');
   revalidatePath('/dashboard/onboarding');
   revalidatePath('/map');
-  return neighborhood;
+  return place;
 }
 
-export async function updateNeighborhoodAction(id: string, data: Partial<z.infer<typeof addNeighborhoodSchema>>) {
-  const neighborhood = await prisma.neighborhood.update({ where: { id }, data });
-  await recomputeNeighborhoodVulnerability(id);
-  revalidatePath(`/dashboard/neighborhoods/${id}`);
-  revalidatePath('/dashboard/neighborhoods');
+export async function updatePlaceAction(id: string, data: Partial<z.infer<typeof addPlaceSchema>>) {
+  const place = await prisma.place.update({ where: { id }, data });
+  await recomputePlaceVulnerability(id);
+  revalidatePath(`/dashboard/places/${id}`);
+  revalidatePath('/dashboard/places');
   revalidatePath('/map');
-  return neighborhood;
+  return place;
 }
 
-export async function deleteNeighborhoodAction(id: string) {
-  await prisma.neighborhood.delete({ where: { id } });
-  revalidatePath('/dashboard/neighborhoods');
+export async function deletePlaceAction(id: string) {
+  await prisma.place.delete({ where: { id } });
+  revalidatePath('/dashboard/places');
 }
 
 // ── Heat Measurement Actions ──
 
 const addHeatMeasurementSchema = z.object({
-  neighborhoodId: z.string().min(1),
+  placeId: z.string().min(1),
   measurementDate: z.string().datetime(),
   avgTempCelsius: z.number(),
   maxTempCelsius: z.number(),
@@ -128,8 +128,8 @@ export async function addHeatMeasurementAction(data: z.infer<typeof addHeatMeasu
       measurementDate: new Date(parsed.measurementDate),
     },
   });
-  await recomputeNeighborhoodVulnerability(parsed.neighborhoodId);
-  revalidatePath(`/dashboard/neighborhoods/${parsed.neighborhoodId}`);
+  await recomputePlaceVulnerability(parsed.placeId);
+  revalidatePath(`/dashboard/places/${parsed.placeId}`);
   revalidatePath('/dashboard/onboarding');
   revalidatePath('/map');
   revalidatePath('/dashboard/admin');
@@ -139,7 +139,7 @@ export async function addHeatMeasurementAction(data: z.infer<typeof addHeatMeasu
 // ── Intervention Actions ──
 
 const addInterventionSchema = z.object({
-  neighborhoodId: z.string().optional(),
+  placeId: z.string().optional(),
   type: z.string().min(1),
   name: z.string().min(1).max(200),
   description: z.string().optional(),
@@ -326,7 +326,7 @@ export async function generateReportAction(data: z.input<typeof addReportSchema>
         include: {
           city: true,
           scenarioInterventions: {
-            include: { intervention: { include: { neighborhood: { select: { name: true } } } } },
+            include: { intervention: { include: { place: { select: { name: true } } } } },
           },
           simulationResults: { orderBy: { runAt: 'desc' }, take: 1 },
         },
@@ -340,14 +340,14 @@ export async function generateReportAction(data: z.input<typeof addReportSchema>
           energySavingsKwhPerYear?: number;
           costBenefitRatio?: number;
         };
-        type NeighResult = { neighborhood: string; reductionCelsius: number; livesSaved: number };
+        type NeighResult = { place: string; reductionCelsius: number; livesSaved: number };
 
         const latestResult = scenario.simulationResults[0];
         let simSummary: SimSummary | null = null;
-        let neighborhoodResults: NeighResult[] = [];
+        let placeResults: NeighResult[] = [];
         try {
           if (latestResult?.outputSummary) simSummary = JSON.parse(latestResult.outputSummary) as SimSummary;
-          if (latestResult?.neighborhoodResults) neighborhoodResults = JSON.parse(latestResult.neighborhoodResults) as NeighResult[];
+          if (latestResult?.placeResults) placeResults = JSON.parse(latestResult.placeResults) as NeighResult[];
         } catch { /* ignore */ }
 
         const tone = (parsed.tone ?? 'ACCESSIBLE') as 'ACCESSIBLE' | 'TECHNICAL' | 'EXECUTIVE';
@@ -369,12 +369,12 @@ export async function generateReportAction(data: z.input<typeof addReportSchema>
           interventions: scenario.scenarioInterventions.map(({ intervention: inv }) => ({
             name: inv.name,
             type: inv.type,
-            neighborhood: inv.neighborhood?.name ?? 'City-wide',
+            place: inv.place?.name ?? 'City-wide',
             cost: inv.estimatedCostUsd,
             coolingC: inv.estimatedTempReductionC,
             status: inv.status,
           })),
-          neighborhoodResults: neighborhoodResults.length > 0 ? neighborhoodResults : undefined,
+          placeResults: placeResults.length > 0 ? placeResults : undefined,
         });
 
         finalContent = [
@@ -611,8 +611,8 @@ export async function updateOnboardingAction(cityId: string, stepData: Record<st
 
 // ── Fetch helpers ──
 
-export async function getNeighborhoods(cityId: string) {
-  return prisma.neighborhood.findMany({
+export async function getPlaces(cityId: string) {
+  return prisma.place.findMany({
     where: { cityId },
     include: {
       heatMeasurements: { orderBy: { measurementDate: 'desc' }, take: 1 },
@@ -622,8 +622,8 @@ export async function getNeighborhoods(cityId: string) {
   });
 }
 
-export async function getNeighborhoodById(id: string) {
-  return prisma.neighborhood.findUnique({
+export async function getPlaceById(id: string) {
+  return prisma.place.findUnique({
     where: { id },
     include: {
       heatMeasurements: { orderBy: { measurementDate: 'desc' }, take: 20 },
@@ -648,7 +648,7 @@ export async function getInterventions(cityId: string) {
   return prisma.intervention.findMany({
     where: { cityId },
     include: {
-      neighborhood: { select: { name: true } },
+      place: { select: { name: true } },
       proposedBy: { select: { name: true } },
     },
     orderBy: { createdAt: 'desc' },
@@ -671,15 +671,15 @@ export async function getDataIngestionJobs(cityId: string) {
 }
 
 export async function getDashboardStats(cityId: string) {
-  const [neighborhoods, interventions, scenarios, reports] = await Promise.all([
-    prisma.neighborhood.count({ where: { cityId } }),
+  const [places, interventions, scenarios, reports] = await Promise.all([
+    prisma.place.count({ where: { cityId } }),
     prisma.intervention.count({ where: { cityId } }),
     prisma.scenario.count({ where: { cityId } }),
     prisma.report.count({ where: { cityId } }),
   ]);
   
   const latestMeasurements = await prisma.heatMeasurement.findMany({
-    where: { neighborhood: { cityId } },
+    where: { place: { cityId } },
     orderBy: { measurementDate: 'desc' },
     take: 10,
   });
@@ -688,5 +688,5 @@ export async function getDashboardStats(cityId: string) {
     ? latestMeasurements.reduce((sum, m) => sum + m.avgTempCelsius, 0) / latestMeasurements.length
     : 0;
 
-  return { neighborhoods, interventions, scenarios, reports, avgTemp };
+  return { places, interventions, scenarios, reports, avgTemp };
 }

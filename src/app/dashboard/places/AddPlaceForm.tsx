@@ -1,10 +1,10 @@
 'use client';
 
 import { useState } from 'react';
-import { addNeighborhoodAction } from '@/lib/actions';
+import { addPlaceAction } from '@/lib/actions';
 import { useRouter } from 'next/navigation';
 
-export default function AddNeighborhoodForm({ cityId }: { cityId: string }) {
+export default function AddPlaceForm({ cityId }: { cityId: string }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -19,7 +19,7 @@ export default function AddNeighborhoodForm({ cityId }: { cityId: string }) {
     const name = fd.get('name') as string;
 
     try {
-      await addNeighborhoodAction({
+      await addPlaceAction({
         cityId,
         name,
         population: fd.get('population') ? Number(fd.get('population')) : undefined,
@@ -31,7 +31,7 @@ export default function AddNeighborhoodForm({ cityId }: { cityId: string }) {
       setOpen(false);
       router.refresh();
     } catch {
-      setError('Failed to add neighborhood');
+      setError('Failed to add place');
     } finally {
       setLoading(false);
     }
@@ -42,7 +42,7 @@ export default function AddNeighborhoodForm({ cityId }: { cityId: string }) {
       <button onClick={() => setOpen(true)} className="px-6 py-3 bg-gradient-to-br from-[var(--green-400)] to-[var(--green-500)] text-[var(--bg-base)] font-bold rounded-xl self-start shadow-lg shadow-[var(--green-400)]/20 ">
         <span className="flex items-center gap-2">
           <span className="material-symbols-outlined text-lg">add</span>
-          Add Neighborhood
+          Add Place
         </span>
       </button>
     );
@@ -50,7 +50,7 @@ export default function AddNeighborhoodForm({ cityId }: { cityId: string }) {
 
   return (
     <form onSubmit={handleSubmit} className="glass-card p-6 rounded-xl space-y-4">
-      <h3 className="font-bold text-white text-lg">Add Neighborhood</h3>
+      <h3 className="font-bold text-white text-lg">Add Place</h3>
       {error && <div className="text-sm text-red-400 bg-red-400/10 px-4 py-2 rounded">{error}</div>}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

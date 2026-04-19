@@ -5,7 +5,7 @@ import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import 'leaflet/dist/leaflet.css';
 import { getInterventionStatusColor, type SupportedMapGeometry } from '@/lib/map-utils';
-import type { CityMapPayload, CityMapNeighborhood, CityMapIntervention } from '@/lib/map-data';
+import type { CityMapPayload, CityMapPlace, CityMapIntervention } from '@/lib/map-data';
 import GlobalNavbar from '@/components/layout/GlobalNavbar';
 
 function geometryToLeafletLatLngs(geometry: SupportedMapGeometry) {
@@ -53,13 +53,13 @@ export default function MapPage() {
   const isAuthenticated = !!session?.user;
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
-  const neighborhoodsLayerRef = useRef<L.LayerGroup | null>(null);
+  const placesLayerRef = useRef<L.LayerGroup | null>(null);
   const interventionsLayerRef = useRef<L.LayerGroup | null>(null);
   // Ref keeps event-handler closures from going stale
-  const selectedNeighborhoodRef = useRef<CityMapNeighborhood | null>(null);
+  const selectedPlaceRef = useRef<CityMapPlace | null>(null);
   const [mapReady, setMapReady] = useState(false);
   const [payload, setPayload] = useState<CityMapPayload | null>(null);
-  const [selectedNeighborhood, setSelectedNeighborhood] = useState<CityMapNeighborhood | null>(null);
+  const [selectedPlace, setSelectedPlace] = useState<CityMapPlace | null>(null);
   const [selectedIntervention, setSelectedIntervention] = useState<CityMapIntervention | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -70,12 +70,12 @@ export default function MapPage() {
   const tileLayerRef = useRef<L.TileLayer | null>(null);
 
   // Keep ref in sync so Leaflet event handlers always see the current selection
-  useEffect(() => { selectedNeighborhoodRef.current = selectedNeighborhood; }, [selectedNeighborhood]);
+  useEffect(() => { selectedPlaceRef.current = selectedPlace; }, [selectedPlace]);
 
   const searchResults = useMemo(() => {
     if (!searchQuery.trim() || !payload) return [];
     const q = searchQuery.toLowerCase();
-    return payload.neighborhoods.filter((n) => n.name.toLowerCase().includes(q)).slice(0, 6);
+    return payload.places.filter((n) => n.name.toLowerCase().includes(q)).slice(0, 6);
   }, [searchQuery, payload]);
 
   const cityQuery = useMemo(() => {
@@ -101,11 +101,11 @@ export default function MapPage() {
       try {
         const response = await fetch(requestUrl);
         const json = (await response.json()) as CityMapPayload | { error?: string };
-        if (!response.ok || 'error' in json || !('neighborhoods' in json)) {
+        if (!response.ok || 'error' in json || !('places' in json)) {
           throw new Error(('error' in json && json.error) || 'Failed to load map data');
         }
         setPayload(json);
-        setSelectedNeighborhood(json.neighborhoods[0] ?? null);
+        setSelectedPlace(json.places[0] ?? null);
         setSelectedIntervention(null);
       } catch (caughtError) {
         const message = caughtError instanceof Error ? caughtError.message : 'Failed to load map data';
@@ -174,29 +174,29 @@ export default function MapPage() {
     mapInstanceRef.current.setView([payload.city.lat, payload.city.lng], 13);
   }, [mapReady, payload?.city.lat, payload?.city.lng]);
 
-  // Render neighborhoods and interventions
+  // Render places and interventions
   // Depends on BOTH mapReady AND payload — this sequencing is what was broken before
   useEffect(() => {
     if (!mapReady || !payload || !mapInstanceRef.current) return;
 
     void import('leaflet').then((leaflet) => {
       const map = mapInstanceRef.current!;
-      neighborhoodsLayerRef.current?.removeFrom(map);
+      placesLayerRef.current?.removeFrom(map);
       interventionsLayerRef.current?.removeFrom(map);
 
-      const neighborhoodsLayer = leaflet.layerGroup();
+      const placesLayer = leaflet.layerGroup();
       const interventionsLayer = leaflet.layerGroup();
 
-      payload.neighborhoods.forEach((neighborhood) => {
-        const color = VULN_COLORS[neighborhood.vulnerabilityLevel] || '#22c55e';
-        const polygon = leaflet.polygon(geometryToLeafletLatLngs(neighborhood.geometry) as never, {
+      payload.places.forEach((place) => {
+        const color = VULN_COLORS[place.vulnerabilityLevel] || '#22c55e';
+        const polygon = leaflet.polygon(geometryToLeafletLatLngs(place.geometry) as never, {
           color: 'transparent',
           fillColor: color,
           fillOpacity: 0.35,
           weight: 0,
         });
 
-        polygon.bindTooltip(`${neighborhood.name} · ${neighborhood.vulnerabilityLevel}`, {
+        polygon.bindTooltip(`${place.name} · ${place.vulnerabilityLevel}`, {
           className: 'map-tooltip',
         });
 
@@ -205,17 +205,17 @@ export default function MapPage() {
         });
         polygon.on('mouseout', () => {
           // Use ref to read current selection without stale closure
-          if (selectedNeighborhoodRef.current?.id !== neighborhood.id) {
+          if (selectedPlaceRef.current?.id !== place.id) {
             polygon.setStyle({ fillOpacity: 0.35, color: 'transparent', weight: 0 });
           }
         });
         polygon.on('click', () => {
           setInspectorLoading(true);
-          setSelectedNeighborhood(neighborhood);
+          setSelectedPlace(place);
           setSelectedIntervention(null);
           setTimeout(() => setInspectorLoading(false), 50);
         });
-        polygon.addTo(neighborhoodsLayer);
+        polygon.addTo(placesLayer);
       });
 
       payload.interventions.forEach((intervention) => {
@@ -229,20 +229,20 @@ export default function MapPage() {
         marker.bindTooltip(intervention.name, { className: 'map-tooltip' });
         marker.on('click', () => {
           setSelectedIntervention(intervention);
-          setSelectedNeighborhood(
-            payload.neighborhoods.find((n) => n.id === intervention.neighborhoodId) || null
+          setSelectedPlace(
+            payload.places.find((n) => n.id === intervention.placeId) || null
           );
         });
         marker.addTo(interventionsLayer);
       });
 
-      neighborhoodsLayer.addTo(map);
+      placesLayer.addTo(map);
       interventionsLayer.addTo(map);
-      neighborhoodsLayerRef.current = neighborhoodsLayer;
+      placesLayerRef.current = placesLayer;
       interventionsLayerRef.current = interventionsLayer;
 
-      if (payload.neighborhoods.length > 0) {
-        const bounds = leaflet.featureGroup([...payload.neighborhoods.map((n) =>
+      if (payload.places.length > 0) {
+        const bounds = leaflet.featureGroup([...payload.places.map((n) =>
           leaflet.polygon(geometryToLeafletLatLngs(n.geometry) as never)
         )]);
         map.fitBounds(bounds.getBounds(), { padding: [30, 30] });
@@ -250,14 +250,14 @@ export default function MapPage() {
     });
   }, [mapReady, payload]);
 
-  // Fly to a neighborhood and select it (used by search + sidebar list)
-  const flyToNeighborhood = useCallback((neighborhood: CityMapNeighborhood) => {
+  // Fly to a place and select it (used by search + sidebar list)
+  const flyToPlace = useCallback((place: CityMapPlace) => {
     if (!mapInstanceRef.current) return;
     void import('leaflet').then((L) => {
-      const poly = L.polygon(geometryToLeafletLatLngs(neighborhood.geometry) as never);
+      const poly = L.polygon(geometryToLeafletLatLngs(place.geometry) as never);
       mapInstanceRef.current?.fitBounds(poly.getBounds(), { padding: [40, 40], maxZoom: 15 });
     });
-    setSelectedNeighborhood(neighborhood);
+    setSelectedPlace(place);
     setSelectedIntervention(null);
     setSearchQuery('');
     setShowSearch(false);
@@ -266,8 +266,8 @@ export default function MapPage() {
   const zoomIn = useCallback(() => mapInstanceRef.current?.zoomIn(), []);
   const zoomOut = useCallback(() => mapInstanceRef.current?.zoomOut(), []);
 
-  const inspectorNeighborhood = selectedNeighborhood || payload?.neighborhoods[0] || null;
-  const hasHeatData = inspectorNeighborhood && inspectorNeighborhood.avgTemp != null;
+  const inspectorPlace = selectedPlace || payload?.places[0] || null;
+  const hasHeatData = inspectorPlace && inspectorPlace.avgTemp != null;
 
   return (
     <div className="bg-[var(--bg-base)] flex flex-col" style={{ height: '100dvh' }}>
@@ -293,7 +293,7 @@ export default function MapPage() {
                 <button
                   key={n.id}
                   type="button"
-                  onMouseDown={() => flyToNeighborhood(n)}
+                  onMouseDown={() => flyToPlace(n)}
                   className="w-full flex items-center justify-between px-3 py-2 text-xs hover:bg-white/5 transition-colors text-left"
                 >
                   <span className="font-medium text-[var(--text-primary)]">{n.name}</span>
@@ -362,19 +362,19 @@ export default function MapPage() {
             </div>
           </div>
 
-          {/* Clickable neighborhood list */}
-          {payload && payload.neighborhoods.length > 0 && (
+          {/* Clickable place list */}
+          {payload && payload.places.length > 0 && (
             <div className="border-t border-[var(--border)] pt-3 flex-1 flex flex-col min-h-0">
               <h3 className="text-[10px] font-medium uppercase tracking-[0.06em] text-[var(--text-tertiary)] mb-2 shrink-0">
-                Areas ({payload.neighborhoods.length})
+                Areas ({payload.places.length})
               </h3>
               <div className="flex-1 overflow-y-auto space-y-0.5">
-                {payload.neighborhoods.map((n) => (
+                {payload.places.map((n) => (
                   <button
                     key={n.id}
                     type="button"
-                    onClick={() => flyToNeighborhood(n)}
-                    className={`w-full flex items-center justify-between px-2 py-1.5 rounded hover:bg-[var(--bg-elevated)] transition-colors text-left ${selectedNeighborhood?.id === n.id ? 'bg-[var(--bg-elevated)]' : ''}`}
+                    onClick={() => flyToPlace(n)}
+                    className={`w-full flex items-center justify-between px-2 py-1.5 rounded hover:bg-[var(--bg-elevated)] transition-colors text-left ${selectedPlace?.id === n.id ? 'bg-[var(--bg-elevated)]' : ''}`}
                   >
                     <span className="text-[11px] text-[var(--text-secondary)] truncate">{n.name}</span>
                     <span className="w-1.5 h-1.5 rounded-full shrink-0 ml-1" style={{ backgroundColor: VULN_COLORS[n.vulnerabilityLevel] || '#22c55e' }} />
@@ -477,7 +477,7 @@ export default function MapPage() {
                 </div>
                 <div className="flex justify-between items-center px-3 py-2">
                   <span className="text-[var(--text-tertiary)]">Place</span>
-                  <span className="font-medium text-[var(--text-primary)]">{selectedIntervention.neighborhoodName || 'City-wide'}</span>
+                  <span className="font-medium text-[var(--text-primary)]">{selectedIntervention.placeName || 'City-wide'}</span>
                 </div>
                 <div className="flex justify-between items-center px-3 py-2">
                   <span className="text-[var(--text-tertiary)]">Cooling</span>
@@ -489,21 +489,21 @@ export default function MapPage() {
                 </div>
               </div>
             </>
-          ) : inspectorNeighborhood ? (
+          ) : inspectorPlace ? (
             <>
               <div>
-                <h2 className="text-sm font-semibold text-[var(--text-primary)]">{inspectorNeighborhood.name}</h2>
+                <h2 className="text-sm font-semibold text-[var(--text-primary)]">{inspectorPlace.name}</h2>
                 <div className="mt-1.5">
                   <span
                     className="inline-flex items-center text-[10px] font-semibold uppercase tracking-[0.05em] rounded px-2 py-0.5"
                     style={{
-                      backgroundColor: `${VULN_COLORS[inspectorNeighborhood.vulnerabilityLevel] || '#22c55e'}1a`,
-                      borderColor: `${VULN_COLORS[inspectorNeighborhood.vulnerabilityLevel] || '#22c55e'}4d`,
+                      backgroundColor: `${VULN_COLORS[inspectorPlace.vulnerabilityLevel] || '#22c55e'}1a`,
+                      borderColor: `${VULN_COLORS[inspectorPlace.vulnerabilityLevel] || '#22c55e'}4d`,
                       borderWidth: '1px',
-                      color: VULN_COLORS[inspectorNeighborhood.vulnerabilityLevel] || '#22c55e',
+                      color: VULN_COLORS[inspectorPlace.vulnerabilityLevel] || '#22c55e',
                     }}
                   >
-                  {inspectorNeighborhood.vulnerabilityLevel} &middot; Score {inspectorNeighborhood.vulnerabilityScore}
+                  {inspectorPlace.vulnerabilityLevel} &middot; Score {inspectorPlace.vulnerabilityScore}
                   </span>
                 </div>
               </div>
@@ -520,24 +520,24 @@ export default function MapPage() {
                   <div className="mt-3 border border-[var(--border)] rounded-md divide-y divide-[var(--border)] text-xs">
                     <div className="flex justify-between items-center px-3 py-2">
                       <span className="text-[var(--text-tertiary)]">Population</span>
-                      <span className="font-medium text-[var(--text-primary)]">{inspectorNeighborhood.population?.toLocaleString() || '—'}</span>
+                      <span className="font-medium text-[var(--text-primary)]">{inspectorPlace.population?.toLocaleString() || '—'}</span>
                     </div>
                     <div className="flex justify-between items-center px-3 py-2">
                       <span className="text-[var(--text-tertiary)]">Avg temp</span>
-                      <span className="font-medium text-[var(--text-primary)]">{inspectorNeighborhood.avgTemp!.toFixed(1)}°C</span>
+                      <span className="font-medium text-[var(--text-primary)]">{inspectorPlace.avgTemp!.toFixed(1)}°C</span>
                     </div>
                     <div className="flex justify-between items-center px-3 py-2">
                       <span className="text-[var(--text-tertiary)]">Max temp</span>
-                      <span className="font-semibold text-[var(--high)]">{inspectorNeighborhood.maxTemp != null ? `${inspectorNeighborhood.maxTemp.toFixed(1)}°C` : '—'}</span>
+                      <span className="font-semibold text-[var(--high)]">{inspectorPlace.maxTemp != null ? `${inspectorPlace.maxTemp.toFixed(1)}°C` : '—'}</span>
                     </div>
                     <div className="flex justify-between items-center px-3 py-2">
                       <span className="text-[var(--text-tertiary)]">Tree canopy</span>
-                      <span className="font-medium text-[var(--green-400)]">{inspectorNeighborhood.treeCanopyPct != null ? `${inspectorNeighborhood.treeCanopyPct.toFixed(0)}%` : '—'}</span>
+                      <span className="font-medium text-[var(--green-400)]">{inspectorPlace.treeCanopyPct != null ? `${inspectorPlace.treeCanopyPct.toFixed(0)}%` : '—'}</span>
                     </div>
-                    {inspectorNeighborhood.imperviousSurfacePct != null && (
+                    {inspectorPlace.imperviousSurfacePct != null && (
                       <div className="flex justify-between items-center px-3 py-2">
                         <span className="text-[var(--text-tertiary)]">Impervious surface</span>
-                        <span className="font-medium text-[var(--text-primary)]">{inspectorNeighborhood.imperviousSurfacePct.toFixed(0)}%</span>
+                        <span className="font-medium text-[var(--text-primary)]">{inspectorPlace.imperviousSurfacePct.toFixed(0)}%</span>
                       </div>
                     )}
                   </div>
@@ -545,14 +545,14 @@ export default function MapPage() {
                   <div className="mt-3 p-3 bg-[var(--bg-elevated)] border border-[var(--border)] rounded-md">
                     <div className="flex justify-between text-[10px] text-[var(--text-tertiary)] mb-1.5">
                       <span>Heat Intensity</span>
-                      <span>{inspectorNeighborhood.avgTemp!.toFixed(1)}°C avg</span>
+                      <span>{inspectorPlace.avgTemp!.toFixed(1)}°C avg</span>
                     </div>
                     <div className="h-1.5 bg-[var(--bg-base)] rounded-full overflow-hidden">
                       <div
                         className="h-full rounded-full transition-all"
                         style={{
-                          width: `${Math.min(100, Math.max(8, ((inspectorNeighborhood.avgTemp! - 20) / 25) * 100))}%`,
-                          backgroundColor: VULN_COLORS[inspectorNeighborhood.vulnerabilityLevel] || '#22c55e',
+                          width: `${Math.min(100, Math.max(8, ((inspectorPlace.avgTemp! - 20) / 25) * 100))}%`,
+                          backgroundColor: VULN_COLORS[inspectorPlace.vulnerabilityLevel] || '#22c55e',
                         }}
                       />
                     </div>
@@ -562,7 +562,7 @@ export default function MapPage() {
                 /* A2: Empty state when no heat data */
                 <div className="mt-4 border border-[var(--border)] rounded-lg p-4">
                   <p className="text-xs font-medium text-[var(--text-primary)]">
-                    No heat data for {inspectorNeighborhood.name} yet.
+                    No heat data for {inspectorPlace.name} yet.
                   </p>
                   <p className="mt-2 text-[11px] text-[var(--text-tertiary)] leading-relaxed">
                     Add measurements to see temperature trends, vulnerability score, and intervention impact.
@@ -581,11 +581,11 @@ export default function MapPage() {
                 <h3 className="text-[10px] font-medium uppercase tracking-[0.06em] text-[var(--text-tertiary)] pb-2 border-b border-[var(--border)]">
                   Interventions in this area
                 </h3>
-                {inspectorNeighborhood.interventions.length === 0 ? (
+                {inspectorPlace.interventions.length === 0 ? (
                   <p className="mt-2 text-[11px] text-[var(--text-tertiary)]">No interventions yet.</p>
                 ) : (
                   <div className="mt-2 space-y-1.5">
-                    {inspectorNeighborhood.interventions.map((intervention) => (
+                    {inspectorPlace.interventions.map((intervention) => (
                       <button
                         key={intervention.id}
                         type="button"
@@ -611,7 +611,7 @@ export default function MapPage() {
           ) : (
             <div className="flex flex-col items-center justify-center h-full text-center py-8">
               <span className="material-symbols-outlined text-2xl text-[var(--text-tertiary)] mb-2">touch_app</span>
-              <p className="text-xs text-[var(--text-tertiary)]">Select a neighborhood on the map.</p>
+              <p className="text-xs text-[var(--text-tertiary)]">Select a place on the map.</p>
             </div>
           )}
         </section>

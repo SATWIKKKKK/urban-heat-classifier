@@ -7,11 +7,11 @@ export async function GET(req: NextRequest) {
     return NextResponse.json([], { status: 200 });
   }
 
-  const neighborhoods = await prisma.neighborhood.findMany({
+  const places = await prisma.place.findMany({
     where: { cityId },
     select: { id: true, name: true },
     orderBy: { name: 'asc' },
   });
 
-  return NextResponse.json(neighborhoods);
+  return NextResponse.json(places);
 }

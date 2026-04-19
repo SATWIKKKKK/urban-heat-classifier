@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -11,7 +11,7 @@ type ScenarioIntervention = {
   status: string;
   estimatedCostUsd: number | null;
   estimatedTempReductionC: number | null;
-  neighborhood?: { name: string | null } | null;
+  place?: { name: string | null } | null;
 };
 
 function estimateLivesSaved(totalProjectedTempReductionC: number) {
@@ -30,7 +30,7 @@ export default function NewScenarioPage() {
 
   const [name, setName] = useState('Summer 2025 Emergency Cooling Plan');
   const [description, setDescription] = useState(
-    'Addresses the most critical neighborhoods with highest ROI interventions first.'
+    'Addresses the most critical places with highest ROI interventions first.'
   );
   const [priority, setPriority] = useState('IMMEDIATE');
   const [interventions, setInterventions] = useState<ScenarioIntervention[]>([]);
@@ -75,8 +75,8 @@ export default function NewScenarioPage() {
   const totalProjectedLivesSaved = estimateLivesSaved(totalProjectedTempReductionC);
   const projectedCo2ReductionTons = estimateCo2Reduction(totalProjectedTempReductionC);
 
-  const neighborhoodResults = selectedInterventions.map((intervention, index) => ({
-    neighborhood: intervention.neighborhood?.name || `Priority Area ${index + 1}`,
+  const placeResults = selectedInterventions.map((intervention, index) => ({
+    place: intervention.place?.name || `Priority Area ${index + 1}`,
     reductionCelsius: intervention.estimatedTempReductionC || 0,
     livesSaved: Math.max(1, Math.round((intervention.estimatedTempReductionC || 0) * 7.5)),
   }));
@@ -124,7 +124,7 @@ export default function NewScenarioPage() {
                 ? Math.round(totalEstimatedCostUsd / totalProjectedLivesSaved)
                 : null,
           },
-          neighborhoodResults,
+          placeResults,
         }),
       });
 
@@ -220,14 +220,14 @@ export default function NewScenarioPage() {
                         <div>
                           <div className="font-semibold text-white">{intervention.name}</div>
                           <div className="text-sm text-[var(--text-secondary)]">
-                            {intervention.neighborhood?.name || 'City-wide'} Â· {intervention.type.replace(/_/g, ' ')}
+                            {intervention.place?.name || 'City-wide'} · {intervention.type.replace(/_/g, ' ')}
                           </div>
                         </div>
                         <div className="text-right text-sm">
                           <div className="font-semibold text-[var(--green-400)]">
                             {intervention.estimatedTempReductionC != null
-                              ? `-${intervention.estimatedTempReductionC.toFixed(1)}Â°C`
-                              : 'â€”'}
+                              ? `-${intervention.estimatedTempReductionC.toFixed(1)}°C`
+                              : '—'}
                           </div>
                           <div className="text-[var(--text-secondary)]">
                             {intervention.estimatedCostUsd != null
@@ -265,7 +265,7 @@ export default function NewScenarioPage() {
             <div className="rounded-xl bg-[var(--bg-elevated)] border border-[var(--border)] p-4">
               <div className="text-[11px] uppercase tracking-wider text-[var(--text-tertiary)]">Cooling</div>
               <div className="mt-2 text-2xl font-bold text-[var(--green-400)]">
-                -{totalProjectedTempReductionC.toFixed(1)}Â°C
+                -{totalProjectedTempReductionC.toFixed(1)}°C
               </div>
             </div>
             <div className="rounded-xl bg-[var(--bg-elevated)] border border-[var(--border)] p-4">

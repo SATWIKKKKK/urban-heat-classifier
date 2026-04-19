@@ -1,37 +1,37 @@
 import { auth } from '@/lib/auth';
 import { redirect, notFound } from 'next/navigation';
-import { getNeighborhoodById, getNeighborhoods } from '@/lib/actions';
+import { getPlaceById, getPlaces } from '@/lib/actions';
 import { computeVulnerabilityScore, getVulnerabilityBgColor } from '@/lib/compute/vulnerability';
 import Link from 'next/link';
 import AddHeatMeasurementForm from './AddHeatMeasurementForm';
 
-export default async function NeighborhoodDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function PlaceDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
   if (!session?.user?.cityId) redirect('/login');
 
   const { id } = await params;
-  const neighborhood = await getNeighborhoodById(id);
-  if (!neighborhood) notFound();
+  const place = await getPlaceById(id);
+  if (!place) notFound();
 
-  const allNeighborhoods = await getNeighborhoods(session.user.cityId);
+  const allPlaces = await getPlaces(session.user.cityId);
   const cityAvgTemp =
-    allNeighborhoods.length > 0
-      ? allNeighborhoods.reduce((sum, n) => {
+    allPlaces.length > 0
+      ? allPlaces.reduce((sum, n) => {
           const latest = n.heatMeasurements[0];
           return sum + (latest?.avgTempCelsius ?? 0);
-        }, 0) / allNeighborhoods.length
+        }, 0) / allPlaces.length
       : 30;
 
-  const latest = neighborhood.heatMeasurements[0];
+  const latest = place.heatMeasurements[0];
   const vuln = computeVulnerabilityScore(
     {
-      id: neighborhood.id,
-      name: neighborhood.name,
-      population: neighborhood.population,
-      areaSqkm: neighborhood.areaSqkm,
-      medianIncome: neighborhood.medianIncome,
-      pctElderly: neighborhood.pctElderly,
-      pctChildren: neighborhood.pctChildren,
+      id: place.id,
+      name: place.name,
+      population: place.population,
+      areaSqkm: place.areaSqkm,
+      medianIncome: place.medianIncome,
+      pctElderly: place.pctElderly,
+      pctChildren: place.pctChildren,
       avgTempCelsius: latest?.avgTempCelsius,
 
     },
@@ -42,16 +42,16 @@ export default async function NeighborhoodDetailPage({ params }: { params: Promi
     <div className="flex flex-col gap-8">
       {/* Breadcrumb */}
       <div className="flex items-center gap-2 text-sm text-[var(--text-secondary)]">
-        <Link href="/dashboard/neighborhoods" className="hover:text-[var(--green-400)]">Neighborhoods</Link>
+        <Link href="/dashboard/places" className="hover:text-[var(--green-400)]">Places</Link>
         <span>/</span>
-        <span className="text-white font-semibold">{neighborhood.name}</span>
+        <span className="text-white font-semibold">{place.name}</span>
       </div>
 
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
         <div>
           <h1 className="font-[family-name:var(--font-headline)] text-3xl font-extrabold tracking-tight text-white">
-            {neighborhood.name}
+            {place.name}
           </h1>
           <div className="flex gap-4 mt-2 flex-wrap">
             <span className={`text-xs font-bold px-3 py-1 rounded border ${getVulnerabilityBgColor(vuln.level)}`}>
@@ -64,13 +64,13 @@ export default async function NeighborhoodDetailPage({ params }: { params: Promi
       {/* Profile Grid */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { label: 'Population', value: neighborhood.population?.toLocaleString() ?? '—', icon: 'groups', color: 'var(--green-400)' },
-          { label: 'Area', value: neighborhood.areaSqkm ? `${neighborhood.areaSqkm} km²` : '—', icon: 'square_foot', color: 'var(--info)' },
-          { label: 'Median Income', value: neighborhood.medianIncome ? `$${(neighborhood.medianIncome / 1000).toFixed(0)}k` : '—', icon: 'payments', color: 'var(--high)' },
+          { label: 'Population', value: place.population?.toLocaleString() ?? '—', icon: 'groups', color: 'var(--green-400)' },
+          { label: 'Area', value: place.areaSqkm ? `${place.areaSqkm} km²` : '—', icon: 'square_foot', color: 'var(--info)' },
+          { label: 'Median Income', value: place.medianIncome ? `$${(place.medianIncome / 1000).toFixed(0)}k` : '—', icon: 'payments', color: 'var(--high)' },
           { label: 'Latest Temp', value: latest ? `${latest.avgTempCelsius.toFixed(1)}°C` : '—', icon: 'thermostat', color: 'var(--critical)' },
 
-          { label: '% Elderly', value: neighborhood.pctElderly != null ? `${neighborhood.pctElderly}%` : '—', icon: 'elderly', color: 'var(--high)' },
-          { label: '% Children', value: neighborhood.pctChildren != null ? `${neighborhood.pctChildren}%` : '—', icon: 'child_care', color: 'var(--text-primary)' },
+          { label: '% Elderly', value: place.pctElderly != null ? `${place.pctElderly}%` : '—', icon: 'elderly', color: 'var(--high)' },
+          { label: '% Children', value: place.pctChildren != null ? `${place.pctChildren}%` : '—', icon: 'child_care', color: 'var(--text-primary)' },
         ].map((item) => (
           <div key={item.label} className="glass-card p-4 rounded-xl">
             <div className="flex items-center gap-2 mb-2">
@@ -118,10 +118,10 @@ export default async function NeighborhoodDetailPage({ params }: { params: Promi
       </div>
 
       {/* Heat Data Entry */}
-      <AddHeatMeasurementForm neighborhoodId={neighborhood.id} />
+      <AddHeatMeasurementForm placeId={place.id} />
 
       {/* Temperature History */}
-      {neighborhood.heatMeasurements.length > 0 && (
+      {place.heatMeasurements.length > 0 && (
         <div className="glass-card rounded-xl overflow-hidden">
           <div className="p-6 border-b border-[var(--border)]">
             <h3 className="font-[family-name:var(--font-headline)] font-bold text-lg text-white">Temperature History</h3>
@@ -138,7 +138,7 @@ export default async function NeighborhoodDetailPage({ params }: { params: Promi
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--border)]">
-                {neighborhood.heatMeasurements.map((m) => (
+                {place.heatMeasurements.map((m) => (
                   <tr key={m.id} className="hover:bg-[var(--bg-elevated)]">
                     <td className="px-6 py-3 text-[var(--text-primary)]">{new Date(m.measurementDate).toLocaleDateString()}</td>
                     <td className="px-6 py-3 font-bold text-[var(--high)]">{m.avgTempCelsius.toFixed(1)}°C</td>
@@ -157,10 +157,10 @@ export default async function NeighborhoodDetailPage({ params }: { params: Promi
       <div className="glass-card rounded-xl overflow-hidden">
         <div className="p-6 border-b border-[var(--border)] flex justify-between items-center">
           <h3 className="font-[family-name:var(--font-headline)] font-bold text-lg text-white">Active Interventions</h3>
-          <span className="text-xs text-[var(--text-secondary)]">{neighborhood.interventions.length} total</span>
+          <span className="text-xs text-[var(--text-secondary)]">{place.interventions.length} total</span>
         </div>
-        {neighborhood.interventions.length === 0 ? (
-          <div className="p-8 text-center text-[var(--text-secondary)] text-sm">No interventions in this neighborhood yet.</div>
+        {place.interventions.length === 0 ? (
+          <div className="p-8 text-center text-[var(--text-secondary)] text-sm">No interventions in this place yet.</div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
@@ -175,7 +175,7 @@ export default async function NeighborhoodDetailPage({ params }: { params: Promi
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--border)]">
-                {neighborhood.interventions.map((i) => (
+                {place.interventions.map((i) => (
                   <tr key={i.id} className="hover:bg-[var(--bg-elevated)]">
                     <td className="px-6 py-3 font-semibold text-[var(--text-primary)]">{i.name}</td>
                     <td className="px-6 py-3 text-[var(--text-secondary)] capitalize">{i.type.replace(/_/g, ' ').toLowerCase()}</td>

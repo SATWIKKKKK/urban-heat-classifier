@@ -39,7 +39,7 @@ export async function POST(request: Request) {
       totalProjectedLivesSaved,
       projectedCo2ReductionTons,
       simulationSummary,
-      neighborhoodResults,
+      placeResults,
     } = body;
     if (!cityId || !name || !createdById) {
       return NextResponse.json({ error: 'cityId, name and createdById required' }, { status: 400 });
@@ -65,12 +65,12 @@ export async function POST(request: Request) {
       await prisma.scenarioIntervention.createMany({ data: links });
     }
 
-    if (simulationSummary || neighborhoodResults) {
+    if (simulationSummary || placeResults) {
       await prisma.simulationResult.create({
         data: {
           scenarioId: scenario.id,
           outputSummary: simulationSummary ? JSON.stringify(simulationSummary) : null,
-          neighborhoodResults: neighborhoodResults ? JSON.stringify(neighborhoodResults) : null,
+          placeResults: placeResults ? JSON.stringify(placeResults) : null,
           modelVersion: 'workflow-v1',
         },
       });

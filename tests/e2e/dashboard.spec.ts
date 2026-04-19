@@ -16,13 +16,13 @@ test.describe('Dashboard (authenticated)', () => {
   test('dashboard overview loads with KPI cards', async ({ page }) => {
     await page.goto('/dashboard');
     await expect(page.locator('body')).toBeVisible();
-    // Should display neighborhood count, intervention count, etc.
+    // Should display place count, intervention count, etc.
   });
 
-  test('neighborhoods page lists seeded neighborhoods', async ({ page }) => {
-    await page.goto('/dashboard/neighborhoods');
-    await expect(page.locator('h1')).toContainText('Neighborhood');
-    // Should show 10 seeded neighborhoods
+  test('places page lists seeded places', async ({ page }) => {
+    await page.goto('/dashboard/places');
+    await expect(page.locator('h1')).toContainText('Place');
+    // Should show 10 seeded places
     await expect(page.locator('text=Downtown')).toBeVisible({ timeout: 10000 });
     await expect(page.locator('text=East Riverside')).toBeVisible();
   });

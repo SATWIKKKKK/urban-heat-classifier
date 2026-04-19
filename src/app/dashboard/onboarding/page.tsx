@@ -3,11 +3,11 @@
 import { useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { completeOnboardingAction, updateOnboardingAction, addNeighborhoodAction } from '@/lib/actions';
+import { completeOnboardingAction, updateOnboardingAction, addPlaceAction } from '@/lib/actions';
 
 const STEPS = [
   { title: 'City Profile', icon: 'location_city', description: 'Review your city information' },
-  { title: 'Add Neighborhoods', icon: 'map', description: 'Define your city neighborhoods' },
+  { title: 'Add Places', icon: 'map', description: 'Define your city places' },
   { title: 'Heat Data', icon: 'thermostat', description: 'Set baseline temperature data' },
   { title: 'Team', icon: 'groups', description: 'Invite team members' },
   { title: 'Alerts', icon: 'notifications', description: 'Configure heat alert thresholds' },
@@ -18,8 +18,8 @@ export default function OnboardingPage() {
   const { data: session, update } = useSession();
   const router = useRouter();
   const [currentStep, setCurrentStep] = useState(0);
-  const [neighborhoodName, setNeighborhoodName] = useState('');
-  const [neighborhoods, setNeighborhoods] = useState<string[]>([]);
+  const [placeName, setPlaceName] = useState('');
+  const [places, setPlaces] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [launching, setLaunching] = useState(false);
   const [launchError, setLaunchError] = useState<string | null>(null);
@@ -32,7 +32,7 @@ export default function OnboardingPage() {
   function validateCurrentStep(): string | null {
     switch (currentStep) {
       case 1:
-        if (neighborhoods.length === 0) return 'Add at least one neighborhood before continuing.';
+        if (places.length === 0) return 'Add at least one place before continuing.';
         break;
       case 4:
         if (!warningThreshold || !criticalThreshold) return 'Set both alert thresholds.';
@@ -69,8 +69,8 @@ export default function OnboardingPage() {
     setCurrentStep(currentStep - 1);
   }
 
-  async function addNeighborhood() {
-    if (!neighborhoodName.trim()) return;
+  async function addPlace() {
+    if (!placeName.trim()) return;
     if (!session?.user?.cityId) {
       setStepError('Your session is missing city data. Please sign out and sign back in.');
       return;
@@ -78,14 +78,14 @@ export default function OnboardingPage() {
     setSaving(true);
     setStepError(null);
     try {
-      await addNeighborhoodAction({
+      await addPlaceAction({
         cityId: session.user.cityId,
-        name: neighborhoodName,
+        name: placeName,
       });
-      setNeighborhoods([...neighborhoods, neighborhoodName]);
-      setNeighborhoodName('');
+      setPlaces([...places, placeName]);
+      setPlaceName('');
     } catch (e) {
-      setStepError(`Failed to add neighborhood: ${e instanceof Error ? e.message : 'Unknown error'}`);
+      setStepError(`Failed to add place: ${e instanceof Error ? e.message : 'Unknown error'}`);
     } finally {
       setSaving(false);
     }
@@ -161,25 +161,25 @@ export default function OnboardingPage() {
           </div>
         )}
 
-        {/* Step 1: Neighborhoods */}
+        {/* Step 1: Places */}
         {currentStep === 1 && (
           <div className="space-y-4">
-            <p className="text-[var(--text-secondary)]">Add the neighborhoods you want to track. You can add more later.</p>
+            <p className="text-[var(--text-secondary)]">Add the places you want to track. You can add more later.</p>
             <div className="flex gap-2">
               <input
-                value={neighborhoodName}
-                onChange={(e) => setNeighborhoodName(e.target.value)}
-                placeholder="Neighborhood name"
+                value={placeName}
+                onChange={(e) => setPlaceName(e.target.value)}
+                placeholder="Place name"
                 className="flex-1 px-4 py-2 bg-[var(--bg-elevated)] border border-[var(--border-strong)] rounded-lg text-white focus:border-[var(--green-400)]/50 focus:outline-none"
-                onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addNeighborhood())}
+                onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addPlace())}
               />
-              <button onClick={addNeighborhood} disabled={saving} className="px-4 py-2 bg-gradient-to-r from-[var(--green-400)] to-[var(--green-500)] text-[var(--bg-base)] font-bold rounded-xl disabled:opacity-50 ">
+              <button onClick={addPlace} disabled={saving} className="px-4 py-2 bg-gradient-to-r from-[var(--green-400)] to-[var(--green-500)] text-[var(--bg-base)] font-bold rounded-xl disabled:opacity-50 ">
                 Add
               </button>
             </div>
-            {neighborhoods.length > 0 && (
+            {places.length > 0 && (
               <div className="space-y-2">
-                {neighborhoods.map((n, i) => (
+                {places.map((n, i) => (
                   <div key={i} className="flex items-center gap-2 bg-[var(--bg-elevated)] px-4 py-2 rounded-lg">
                     <span className="material-symbols-outlined text-[var(--green-400)] text-sm">check_circle</span>
                     <span className="text-white text-sm">{n}</span>
@@ -193,7 +193,7 @@ export default function OnboardingPage() {
         {/* Step 2: Heat Data */}
         {currentStep === 2 && (
           <div className="space-y-4">
-            <p className="text-[var(--text-secondary)]">You can import heat data later from the Data Management page, or record measurements manually for each neighborhood.</p>
+            <p className="text-[var(--text-secondary)]">You can import heat data later from the Data Management page, or record measurements manually for each place.</p>
             <div className="bg-[var(--high)]/10 border border-[var(--high)]/20 p-4 rounded-lg">
               <span className="text-sm text-[var(--high)] font-semibold">Tip: For best results, import CSV data with temperature measurements from NOAA or local weather stations.</span>
             </div>
@@ -233,8 +233,8 @@ export default function OnboardingPage() {
             <p className="text-[var(--text-secondary)]">You&apos;re all set! Review the summary and launch your heat mitigation program.</p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="bg-[var(--bg-elevated)] p-4 rounded-lg">
-                <span className="text-[10px] uppercase tracking-widest text-[var(--text-tertiary)]">Neighborhoods Added</span>
-                <p className="text-2xl font-bold text-[var(--green-400)]">{neighborhoods.length}</p>
+                <span className="text-[10px] uppercase tracking-widest text-[var(--text-tertiary)]">Places Added</span>
+                <p className="text-2xl font-bold text-[var(--green-400)]">{places.length}</p>
               </div>
               <div className="bg-[var(--bg-elevated)] p-4 rounded-lg">
                 <span className="text-[10px] uppercase tracking-widest text-[var(--text-tertiary)]">Status</span>

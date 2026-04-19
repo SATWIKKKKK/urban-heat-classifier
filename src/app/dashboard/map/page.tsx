@@ -1,8 +1,7 @@
-import { redirect } from 'next/navigation';
+import dynamic from 'next/dynamic';
 
-// The old redirect to /map caused a loop:
-// /dashboard → /dashboard/map → /map → /dashboard → ...
-// Now we go directly to the neighborhoods page.
+const DashboardMapClient = dynamic(() => import('./DashboardMapClient'), { ssr: false });
+
 export default function DashboardMapPage() {
-  redirect('/dashboard/my-data');
+  return <DashboardMapClient />;
 }

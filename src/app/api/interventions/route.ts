@@ -18,7 +18,7 @@ export async function GET(request: Request) {
     const interventions = await prisma.intervention.findMany({
       where,
       include: {
-        neighborhood: { select: { name: true } },
+        place: { select: { name: true } },
         proposedBy: { select: { name: true } },
         approvedBy: { select: { name: true } },
       },

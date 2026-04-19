@@ -29,7 +29,7 @@ export async function GET(
           priority: true,
           status: true,
           scenarioInterventions: {
-            include: { intervention: { include: { neighborhood: { select: { name: true } } } } },
+            include: { intervention: { include: { place: { select: { name: true } } } } },
           },
         },
       },
@@ -91,11 +91,11 @@ export async function GET(
   // ── Interventions table (if scenario linked) ─────────────────────────────
   if (report.scenario?.scenarioInterventions?.length) {
     builder.addH1('Interventions Plan');
-    const headers = ['Intervention', 'Type', 'Neighborhood', 'Est. Cost', 'Cooling'];
+    const headers = ['Intervention', 'Type', 'Place', 'Est. Cost', 'Cooling'];
     const rows = report.scenario.scenarioInterventions.map(({ intervention: inv }) => [
       inv.name,
       inv.type.replace(/_/g, ' '),
-      inv.neighborhood?.name ?? 'City-wide',
+      inv.place?.name ?? 'City-wide',
       inv.estimatedCostUsd != null ? `$${(inv.estimatedCostUsd / 1000).toFixed(0)}k` : '—',
       inv.estimatedTempReductionC != null ? `-${inv.estimatedTempReductionC.toFixed(2)}\u00b0C` : '—',
     ]);

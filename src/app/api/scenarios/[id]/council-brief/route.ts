@@ -34,7 +34,7 @@ export async function GET(
       scenarioInterventions: {
         include: {
           intervention: {
-            include: { neighborhood: { select: { name: true, vulnerabilityLevel: true } } },
+            include: { place: { select: { name: true, vulnerabilityLevel: true } } },
           },
         },
       },
@@ -60,15 +60,15 @@ export async function GET(
     costBenefitRatio?: number;
     costPerLifeProtected?: number;
   };
-  type NeighResult = { neighborhood: string; reductionCelsius: number; livesSaved: number };
+  type NeighResult = { place: string; reductionCelsius: number; livesSaved: number };
 
   const latestResult = scenario.simulationResults[0];
   let simSummary: SimSummary | null = null;
-  let neighborhoodResults: NeighResult[] = [];
+  let placeResults: NeighResult[] = [];
 
   try {
     if (latestResult?.outputSummary) simSummary = JSON.parse(latestResult.outputSummary) as SimSummary;
-    if (latestResult?.neighborhoodResults) neighborhoodResults = JSON.parse(latestResult.neighborhoodResults) as NeighResult[];
+    if (latestResult?.placeResults) placeResults = JSON.parse(latestResult.placeResults) as NeighResult[];
   } catch { /* ignore parse errors */ }
 
   // Merge: prefer simulation result over stored scenario fields
@@ -81,7 +81,7 @@ export async function GET(
   const interventions = scenario.scenarioInterventions.map(({ intervention: inv }) => ({
     name: inv.name,
     type: inv.type,
-    neighborhood: inv.neighborhood?.name ?? 'City-wide',
+    place: inv.place?.name ?? 'City-wide',
     cost: inv.estimatedCostUsd,
     coolingC: inv.estimatedTempReductionC,
     status: inv.status,
@@ -104,7 +104,7 @@ export async function GET(
     tone: 'ACCESSIBLE',
     reportType: 'COUNCIL_BRIEF',
     interventions,
-    neighborhoodResults: neighborhoodResults.length > 0 ? neighborhoodResults : undefined,
+    placeResults: placeResults.length > 0 ? placeResults : undefined,
     councilNotes: scenario.councilNotes,
     createdBy: scenario.createdBy?.name,
     approvedBy: scenario.approvedBy?.name,
@@ -145,8 +145,8 @@ export async function GET(
         value: String(interventions.length),
       },
       {
-        label: 'Neighborhoods',
-        value: String(new Set(interventions.map((i) => i.neighborhood)).size),
+        label: 'Places',
+        value: String(new Set(interventions.map((i) => i.place)).size),
       },
       { label: 'Energy Savings', value: energyKwh != null ? `${Math.round(energyKwh / 1000)}k kWh/yr` : 'N/A' },
       { label: 'Cost-Benefit Ratio', value: cbr != null ? cbr.toFixed(2) + 'x' : 'N/A', accent: cbr != null && cbr >= 1 },
@@ -155,25 +155,25 @@ export async function GET(
     // ── Interventions Plan ──
     .addH1('Interventions Plan')
     .addTable(
-      ['Intervention', 'Type', 'Neighborhood', 'Est. Cost', 'Est. Cooling'],
+      ['Intervention', 'Type', 'Place', 'Est. Cost', 'Est. Cooling'],
       interventions.map((inv) => [
         inv.name,
         inv.type.replace(/_/g, ' '),
-        inv.neighborhood,
+        inv.place,
         fmt$(inv.cost),
         inv.coolingC != null ? `-${inv.coolingC.toFixed(1)}\xb0C` : 'N/A',
       ]),
       [3, 2, 2, 1.5, 1.5],
     );
 
-  // ── Neighborhood Breakdown (if simulation data available) ──
-  if (neighborhoodResults.length > 0) {
+  // ── Place Breakdown (if simulation data available) ──
+  if (placeResults.length > 0) {
     pdf
-      .addH1('Neighborhood-Level Impact')
+      .addH1('Place-Level Impact')
       .addTable(
-        ['Neighborhood', 'Temperature Reduction', 'Lives Protected'],
-        neighborhoodResults.map((r) => [
-          r.neighborhood,
+        ['Place', 'Temperature Reduction', 'Lives Protected'],
+        placeResults.map((r) => [
+          r.place,
           `-${r.reductionCelsius.toFixed(2)}\xb0C`,
           String(r.livesSaved),
         ]),
@@ -211,7 +211,7 @@ export async function GET(
         ['Approved By', scenario.approvedBy?.name ?? 'N/A'],
         ['Approved On', approvedDate],
         ['Total Interventions', String(interventions.length)],
-        ['Neighborhoods Covered', String(new Set(interventions.map((i) => i.neighborhood)).size)],
+        ['Places Covered', String(new Set(interventions.map((i) => i.place)).size)],
         ['Scenario ID', scenario.id],
       ],
       [1, 2],

@@ -31,7 +31,7 @@ test.describe('Public Pages', () => {
 
   test('resident portal loads with hero section', async ({ page }) => {
     await page.goto('/resident');
-    await expect(page.locator('h1')).toContainText('Neighborhood');
+    await expect(page.locator('h1')).toContainText('Place');
   });
 
   test('resident request tree page loads', async ({ page }) => {

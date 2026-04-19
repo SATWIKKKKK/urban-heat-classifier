@@ -12,18 +12,18 @@ export async function GET(
     return NextResponse.json({ error: 'City not found' }, { status: 404 });
   }
 
-  const features = payload.neighborhoods.map((neighborhood) => ({
+  const features = payload.places.map((place) => ({
     type: 'Feature' as const,
     properties: {
-      id: neighborhood.id,
-      name: neighborhood.name,
-      population: neighborhood.population,
-      avgTemp: neighborhood.avgTemp,
-      maxTemp: neighborhood.maxTemp,
-      vulnerabilityScore: neighborhood.vulnerabilityScore,
-      vulnerabilityLevel: neighborhood.vulnerabilityLevel,
+      id: place.id,
+      name: place.name,
+      population: place.population,
+      avgTemp: place.avgTemp,
+      maxTemp: place.maxTemp,
+      vulnerabilityScore: place.vulnerabilityScore,
+      vulnerabilityLevel: place.vulnerabilityLevel,
     },
-    geometry: neighborhood.geometry,
+    geometry: place.geometry,
   }));
 
   return NextResponse.json({

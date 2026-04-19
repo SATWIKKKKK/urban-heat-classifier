@@ -67,7 +67,7 @@ export default function CitizenReporterDashboard() {
           <h1 className="font-[family-name:var(--font-headline)] text-3xl font-extrabold tracking-tight text-white">
             Citizen Reporter
           </h1>
-          <p className="text-[var(--text-secondary)] mt-1">Welcome, {session?.user?.name}. Report heat-related issues in your neighborhood.</p>
+          <p className="text-[var(--text-secondary)] mt-1">Welcome, {session?.user?.name}. Report heat-related issues in your place.</p>
         </div>
         <button
           onClick={() => setShowForm(!showForm)}

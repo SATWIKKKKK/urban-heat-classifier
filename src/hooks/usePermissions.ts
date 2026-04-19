@@ -11,7 +11,7 @@ type Permission =
   | 'ingest_data'
   | 'view_admin'
   | 'approve_intervention'
-  | 'edit_neighborhood'
+  | 'edit_place'
   | 'build_scenario'
   | 'submit_scenario'
   | 'approve_final_budget'
@@ -45,7 +45,7 @@ const PERMISSION_MAP: Record<Permission, string[]> = {
   ingest_data: ['CITY_ADMIN', 'SUPER_ADMIN', 'DATA_ANALYST'],
   view_admin: ['SUPER_ADMIN'],
   approve_intervention: ['CITY_ADMIN', 'SUPER_ADMIN', 'MUNICIPAL_COMMISSIONER'],
-  edit_neighborhood: ['URBAN_PLANNER', 'CITY_ADMIN', 'SUPER_ADMIN', 'WARD_OFFICER'],
+  edit_place: ['URBAN_PLANNER', 'CITY_ADMIN', 'SUPER_ADMIN', 'WARD_OFFICER'],
   build_scenario: ['URBAN_PLANNER', 'CITY_ADMIN', 'SUPER_ADMIN'],
   submit_scenario: ['URBAN_PLANNER', 'CITY_ADMIN', 'SUPER_ADMIN'],
   approve_final_budget: ['MUNICIPAL_COMMISSIONER', 'SUPER_ADMIN'],

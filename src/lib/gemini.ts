@@ -26,13 +26,13 @@ export interface ScenarioReportContext {
   interventions: Array<{
     name: string;
     type: string;
-    neighborhood: string;
+    place: string;
     cost: number | null;
     coolingC: number | null;
     status?: string;
   }>;
-  neighborhoodResults?: Array<{
-    neighborhood: string;
+  placeResults?: Array<{
+    place: string;
     reductionCelsius: number;
     livesSaved: number;
   }>;
@@ -54,13 +54,13 @@ function buildFallback(ctx: ScenarioReportContext): ReportNarrative {
   const lives = ctx.livesProtected ?? 0;
   const budget = ctx.budget != null ? `₹${ctx.budget.toLocaleString()}` : 'a dedicated budget';
   const interventionTypes = [...new Set(ctx.interventions.map((i) => i.type.replace(/_/g, ' ')))].join(', ');
-  const neighborhoods = [...new Set(ctx.interventions.map((i) => i.neighborhood))];
-  const neighborhoodCount = neighborhoods.length;
+  const places = [...new Set(ctx.interventions.map((i) => i.place))];
+  const placeCount = places.length;
 
   return {
     executiveSummary:
       `The "${ctx.scenarioName}" scenario proposes ${ctx.interventions.length} evidence-based urban heat mitigation interventions for ${ctx.cityName}. ` +
-      `These interventions span ${neighborhoodCount} neighborhood${neighborhoodCount !== 1 ? 's' : ''} and include ${interventionTypes}. ` +
+      `These interventions span ${placeCount} place${placeCount !== 1 ? 's' : ''} and include ${interventionTypes}. ` +
       `If implemented, this plan is projected to reduce average surface temperatures by ${cool}, protecting approximately ${lives.toLocaleString()} residents from heat-related illness or death each summer. ` +
       `The total estimated investment is ${budget}${ctx.costBenefitRatio != null ? `, delivering a cost-benefit ratio of ${ctx.costBenefitRatio.toFixed(2)}:1` : ''}. ` +
       `With India experiencing some of the world's most severe urban heat island effects — particularly in Tier-2 cities — this plan represents a critical and time-sensitive investment in public health, environmental resilience, and equitable urban development for ${ctx.cityName}.`,
@@ -72,10 +72,10 @@ function buildFallback(ctx: ScenarioReportContext): ReportNarrative {
       `Expanded tree canopy coverage and green infrastructure will enhance biodiversity, reduce stormwater runoff, and create compounding cooling effects that intensify over 5–10 years as plantings mature. ` +
       `Economic Impact: ${ctx.energySavingsKwh != null ? `An estimated ${Math.round(ctx.energySavingsKwh / 1000)}k kWh per year in energy savings from reduced air conditioning load translates to lower household electricity bills across affected wards. ` : ''}` +
       `${ctx.costBenefitRatio != null ? `The cost-benefit ratio of ${ctx.costBenefitRatio.toFixed(2)}:1 indicates that every rupee invested in this programme returns more than ${Math.floor(ctx.costBenefitRatio)} rupees in public health value, reduced healthcare costs, and productivity gains. ` : ''}` +
-      `Equity Dimension: Prioritisation of high-vulnerability neighborhoods ensures that communities with the least access to private cooling — lower-income wards, high-density slum clusters, and areas with elderly populations — receive the greatest per-capita benefit, directly addressing the structural inequity embedded in urban heat exposure.`,
+      `Equity Dimension: Prioritisation of high-vulnerability places ensures that communities with the least access to private cooling — lower-income wards, high-density slum clusters, and areas with elderly populations — receive the greatest per-capita benefit, directly addressing the structural inequity embedded in urban heat exposure.`,
 
     recommendations:
-      `1. IMMEDIATE (0–3 months): Deploy interventions in the highest-vulnerability neighborhoods first to maximise lives protected per rupee spent. Begin with "${ctx.interventions[0]?.name || 'the highest-priority intervention'}" in ${ctx.interventions[0]?.neighborhood || 'the priority neighborhood'}, as it offers the greatest temperature reduction impact. Fast-track procurement and community consultation for this phase.\n\n` +
+      `1. IMMEDIATE (0–3 months): Deploy interventions in the highest-vulnerability places first to maximise lives protected per rupee spent. Begin with "${ctx.interventions[0]?.name || 'the highest-priority intervention'}" in ${ctx.interventions[0]?.place || 'the priority place'}, as it offers the greatest temperature reduction impact. Fast-track procurement and community consultation for this phase.\n\n` +
       `2. MONITORING (start at month 1): Establish a ward-level monitoring programme using a combination of IoT-enabled temperature sensors, satellite LST (Land Surface Temperature) data from ISRO Bhuvan, and health outcome tracking via PHC (Primary Health Centre) records. Set baseline measurements before deployment and track ΔT changes monthly over 24 months.\n\n` +
       `3. FUNDING (months 1–6): Apply immediately for co-financing through AMRUT 2.0 (Urban Infrastructure Development), the Smart Cities Mission's climate resilience sub-component, and the National Adaptation Fund for Climate Change (NAFCC) administered by NABARD. Engage the State Disaster Management Authority (SDMA) for emergency climate funding given the critical vulnerability classification.\n\n` +
       `4. COMMUNITY ENGAGEMENT (ongoing): Partner with ward-level Resident Welfare Associations (RWAs), local NGOs, and self-help groups to run community heat safety awareness campaigns. Involve ward committees in intervention site selection, ensure maintenance agreements are signed before deployment, and establish a community feedback hotline to track on-ground conditions throughout implementation.`,
@@ -120,7 +120,7 @@ async function callGemini(prompt: string): Promise<string> {
 function buildPrompt(ctx: ScenarioReportContext): string {
   const toneGuide = {
     ACCESSIBLE:
-      'Write in clear, jargon-free language a newspaper reader can understand. Focus on human stories: lives saved, neighborhoods cooled, shade created. Use short sentences. Avoid acronyms.',
+      'Write in clear, jargon-free language a newspaper reader can understand. Focus on human stories: lives saved, places cooled, shade created. Use short sentences. Avoid acronyms.',
     TECHNICAL:
       'Write in precise technical language for urban planners and civil engineers. Include UHI intensity deltas (ΔT), albedo coefficients, canopy coverage percentages, WHO heat-mortality regression references, and cite best-practice frameworks (C40 Cities, EPA Green Infrastructure guidelines). Use SI units throughout.',
     EXECUTIVE:
@@ -130,16 +130,16 @@ function buildPrompt(ctx: ScenarioReportContext): string {
   const interventionLines = ctx.interventions
     .map(
       (i, idx) =>
-        `  ${idx + 1}. ${i.name}\n     Type: ${i.type.replace(/_/g, ' ')}\n     Neighborhood: ${i.neighborhood}\n     Cost: ${i.cost != null ? '₹' + i.cost.toLocaleString() : 'TBD'}\n     Projected cooling: ${i.coolingC != null ? '-' + i.coolingC.toFixed(1) + '°C' : 'TBD'}\n     Status: ${i.status || 'PROPOSED'}`
+        `  ${idx + 1}. ${i.name}\n     Type: ${i.type.replace(/_/g, ' ')}\n     Place: ${i.place}\n     Cost: ${i.cost != null ? '₹' + i.cost.toLocaleString() : 'TBD'}\n     Projected cooling: ${i.coolingC != null ? '-' + i.coolingC.toFixed(1) + '°C' : 'TBD'}\n     Status: ${i.status || 'PROPOSED'}`
     )
     .join('\n');
 
-  const neighborhoodLines = ctx.neighborhoodResults?.length
-    ? '\nNEIGHBORHOOD-LEVEL SIMULATION RESULTS:\n' +
-      ctx.neighborhoodResults
+  const placeLines = ctx.placeResults?.length
+    ? '\nPLACE-LEVEL SIMULATION RESULTS:\n' +
+      ctx.placeResults
         .map(
           (n) =>
-            `  - ${n.neighborhood}: ΔT = -${n.reductionCelsius.toFixed(2)}°C | Lives protected per summer: ${n.livesSaved}`
+            `  - ${n.place}: ΔT = -${n.reductionCelsius.toFixed(2)}°C | Lives protected per summer: ${n.livesSaved}`
         )
         .join('\n')
     : '';
@@ -167,7 +167,7 @@ ${ctx.costBenefitRatio != null ? '- Cost-benefit ratio: ' + ctx.costBenefitRatio
 
 INTERVENTIONS (${ctx.interventions.length} total):
 ${interventionLines}
-${neighborhoodLines}
+${placeLines}
 
 ${ctx.councilNotes ? 'COUNCIL / COMMISSIONER NOTES:\n' + ctx.councilNotes + '\n' : ''}
 
@@ -181,8 +181,8 @@ IMPACT ANALYSIS:
 Write 6-8 sentences organized into these sub-themes:
 a) Health impact — use WHO heat-mortality data; reference lives saved, vulnerable demographics (elderly ≥60, children ≤5).
 b) Environmental — CO₂ offset, increased tree canopy, reduced urban heat island intensity.
-c) Economic — energy savings from reduced AC load, cost-benefit ratio, property value uplift in greened neighborhoods.
-d) Neighborhood equity — which neighborhoods benefit most, how this addresses existing disparities.
+c) Economic — energy savings from reduced AC load, cost-benefit ratio, property value uplift in greened places.
+d) Place equity — which places benefit most, how this addresses existing disparities.
 Reference specific interventions by name when discussing their impact.
 
 RECOMMENDATIONS:

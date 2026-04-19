@@ -4,13 +4,13 @@ import { auth } from '@/lib/auth';
 import HeroGSAP from '@/components/animations/HeroGSAP';
 
 const demoCities = [
-  { name: 'Delhi NCR', status: 'Live heat map', neighborhoods: 12, interventions: 10, accent: 'var(--green-400)', icon: 'location_city' },
-  { name: 'Mumbai', status: 'Scenario planning', neighborhoods: 9, interventions: 14, accent: 'var(--info)', icon: 'wb_sunny' },
-  { name: 'Chennai', status: 'Council review', neighborhoods: 11, interventions: 8, accent: 'var(--high)', icon: 'thermostat' },
+  { name: 'Delhi NCR', status: 'Live heat map', places: 12, interventions: 10, accent: 'var(--green-400)', icon: 'location_city' },
+  { name: 'Mumbai', status: 'Scenario planning', places: 9, interventions: 14, accent: 'var(--info)', icon: 'wb_sunny' },
+  { name: 'Chennai', status: 'Council review', places: 11, interventions: 8, accent: 'var(--high)', icon: 'thermostat' },
 ];
 
 const features = [
-  { title: 'Map Vulnerability', desc: 'Identify neighborhoods with highest heat exposure using real temperature data and demographics.', icon: 'map', color: 'var(--critical)' },
+  { title: 'Map Vulnerability', desc: 'Identify places with highest heat exposure using real temperature data and demographics.', icon: 'map', color: 'var(--critical)' },
   { title: 'Plan Interventions', desc: 'Place trees, green roofs, cool pavement, and urban parks directly on the map with cost estimates.', icon: 'construction', color: 'var(--green-400)' },
   { title: 'Simulate Impact', desc: 'Run EPA-based simulations to estimate cooling, lives saved, and CO2 reductions.', icon: 'analytics', color: 'var(--info)' },
   { title: 'Council Approval', desc: 'Submit scenarios to city council with auto-generated reports and budget breakdowns.', icon: 'how_to_vote', color: 'var(--high)' },
@@ -18,14 +18,14 @@ const features = [
 
 const stats = [
   { label: 'Cities', value: '3+', icon: 'apartment' },
-  { label: 'Neighborhoods Mapped', value: '27', icon: 'grid_view' },
+  { label: 'Places Mapped', value: '27', icon: 'grid_view' },
   { label: 'Interventions Planned', value: '156', icon: 'eco' },
   { label: 'Lives Protected/Year', value: '890+', icon: 'favorite' },
 ];
 
 const timelineSteps = [
   { step: '01', title: 'Sign Up & Onboard', desc: 'Create your city account, set up wards, and invite your team members.', icon: 'person_add', color: 'var(--green-400)' },
-  { step: '02', title: 'Map Heat Zones', desc: 'Import temperature data and map vulnerable neighborhoods using satellite imagery.', icon: 'satellite_alt', color: 'var(--info)' },
+  { step: '02', title: 'Map Heat Zones', desc: 'Import temperature data and map vulnerable places using satellite imagery.', icon: 'satellite_alt', color: 'var(--info)' },
   { step: '03', title: 'Plan Interventions', desc: 'Place cooling interventions — trees, green roofs, cool pavements — with cost estimates.', icon: 'forest', color: 'var(--high)' },
   { step: '04', title: 'Simulate & Approve', desc: 'Run simulations to see projected impact, then route for multi-level approval.', icon: 'rocket_launch', color: 'var(--critical)' },
 ];
@@ -71,7 +71,7 @@ export default async function HomePage() {
               </h1>
 
               <p className="mt-8 max-w-lg text-lg leading-relaxed text-(--text-secondary) hero-desc">
-                Map vulnerable neighborhoods, plan interventions, simulate impact,
+                Map vulnerable places, plan interventions, simulate impact,
                 and get city council approval — all in one  platform.
               </p>
 
@@ -115,7 +115,7 @@ export default async function HomePage() {
                           <div>
                             <div className="text-base font-bold text-white group-hover:text-[var(--green-400)] transition-colors">{city.name}</div>
                             <div className="text-xs text-[var(--text-secondary)] flex items-center gap-3">
-                              <span>{city.neighborhoods} neighborhoods</span>
+                              <span>{city.places} places</span>
                               <span className="h-1 w-1 rounded-full bg-[var(--border-strong)]" />
                               <span>{city.status}</span>
                             </div>

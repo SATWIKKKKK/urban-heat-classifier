@@ -6,15 +6,12 @@ import { useSession, signOut } from 'next-auth/react';
 import { useState, useRef, useEffect } from 'react';
 
 const ALL_NAV_ITEMS = [
-  { label: 'My Data', href: '/dashboard/my-data', icon: 'person', roles: ['CITY_ADMIN', 'URBAN_PLANNER', 'SUPER_ADMIN', 'CITY_COUNCIL', 'MUNICIPAL_COMMISSIONER', 'WARD_OFFICER', 'SDMA_OBSERVER', 'NGO_FIELD_WORKER', 'DATA_ANALYST', 'CITIZEN_REPORTER'] },
-  { label: 'Map', href: '/map', icon: 'map', roles: ['CITY_ADMIN', 'URBAN_PLANNER', 'SUPER_ADMIN', 'CITY_COUNCIL', 'SDMA_OBSERVER', 'DATA_ANALYST', 'CITIZEN_REPORTER'] },
-  { label: 'Neighborhoods', href: '/dashboard/neighborhoods', icon: 'location_city', roles: ['CITY_ADMIN', 'URBAN_PLANNER', 'SUPER_ADMIN', 'WARD_OFFICER'] },
+  { label: 'My Data', href: '/dashboard/mydata', icon: 'person', roles: ['CITY_ADMIN', 'URBAN_PLANNER', 'SUPER_ADMIN', 'CITY_COUNCIL', 'MUNICIPAL_COMMISSIONER', 'WARD_OFFICER', 'SDMA_OBSERVER', 'NGO_FIELD_WORKER', 'DATA_ANALYST', 'CITIZEN_REPORTER'] },
+  { label: 'Map', href: '/dashboard/map', icon: 'map', roles: ['CITY_ADMIN', 'URBAN_PLANNER', 'SUPER_ADMIN', 'CITY_COUNCIL', 'SDMA_OBSERVER', 'DATA_ANALYST', 'CITIZEN_REPORTER'] },
   { label: 'Interventions', href: '/dashboard/interventions', icon: 'construction', roles: ['CITY_ADMIN', 'URBAN_PLANNER', 'SUPER_ADMIN'] },
   { label: 'Scenarios', href: '/dashboard/scenarios', icon: 'compare_arrows', roles: ['CITY_ADMIN', 'URBAN_PLANNER', 'SUPER_ADMIN', 'CITY_COUNCIL', 'MUNICIPAL_COMMISSIONER'] },
   { label: 'Reports', href: '/dashboard/reports', icon: 'assessment', roles: ['CITY_ADMIN', 'URBAN_PLANNER', 'SUPER_ADMIN', 'CITY_COUNCIL', 'MUNICIPAL_COMMISSIONER', 'SDMA_OBSERVER', 'DATA_ANALYST'] },
-  { label: 'Vulnerability', href: '/vulnerability', icon: 'crisis_alert', roles: ['CITY_ADMIN', 'URBAN_PLANNER', 'SUPER_ADMIN', 'CITY_COUNCIL', 'SDMA_OBSERVER', 'DATA_ANALYST'] },
   { label: 'Data Management', href: '/dashboard/data', icon: 'storage', roles: ['CITY_ADMIN', 'SUPER_ADMIN', 'DATA_ANALYST'] },
-  { label: 'Resident Portal', href: '/resident', icon: 'groups', roles: ['CITY_ADMIN', 'URBAN_PLANNER', 'SUPER_ADMIN', 'CITY_COUNCIL', 'MUNICIPAL_COMMISSIONER', 'WARD_OFFICER', 'SDMA_OBSERVER', 'NGO_FIELD_WORKER', 'DATA_ANALYST', 'CITIZEN_REPORTER'] },
   { label: 'Settings', href: '/dashboard/settings', icon: 'settings', roles: ['CITY_ADMIN', 'URBAN_PLANNER', 'SUPER_ADMIN', 'CITY_COUNCIL', 'MUNICIPAL_COMMISSIONER', 'WARD_OFFICER', 'SDMA_OBSERVER', 'NGO_FIELD_WORKER', 'DATA_ANALYST', 'CITIZEN_REPORTER'] },
 ];
 
@@ -70,7 +67,7 @@ export default function GlobalNavbar({ accentColor = 'var(--green-400)', activeH
         <div className="max-w-[1800px] mx-auto flex items-center justify-between gap-3">
           {/* Left: logo + page nav tabs */}
           <div className="flex items-center gap-3 min-w-0">
-            <Link href="/dashboard/my-data" className="flex items-center gap-2 shrink-0">
+            <Link href="/dashboard/mydata" className="flex items-center gap-2 shrink-0">
               <span className="material-symbols-outlined text-2xl shrink-0" style={{ color: accentColor, fontVariationSettings: "'FILL' 1" }}>eco</span>
               <span className="text-xs font-bold uppercase tracking-[0.2em] hidden sm:block font-[family-name:var(--font-headline)]" style={{ color: accentColor }}>HeatPlan</span>
             </Link>

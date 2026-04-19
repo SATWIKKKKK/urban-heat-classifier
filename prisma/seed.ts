@@ -8,7 +8,7 @@ const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
 const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
 
-type SeedNeighborhood = {
+type SeedPlace = {
   name: string;
   population: number;
   areaSqkm: number;
@@ -25,7 +25,7 @@ type SeedNeighborhood = {
 type SeedIntervention = {
   key: string;
   name: string;
-  neighborhoodName: string;
+  placeName: string;
   type: string;
   status: string;
   estimatedCostUsd: number;
@@ -57,7 +57,7 @@ type SeedCity = {
   admin: { email: string; name: string };
   planner: { email: string; name: string };
   council: { email: string; name: string };
-  neighborhoods: SeedNeighborhood[];
+  places: SeedPlace[];
   interventions: SeedIntervention[];
   scenarios: SeedScenario[];
   reports: Array<{ title: string; type: string; status: string; tone: string; content: string }>;
@@ -74,22 +74,22 @@ const cities: SeedCity[] = [
     admin: { email: 'mayor@austin.gov', name: 'Jane Martinez' },
     planner: { email: 'planner@austin.gov', name: 'David Chen' },
     council: { email: 'council@austin.gov', name: 'Sarah Wilson' },
-    neighborhoods: [
+    places: [
       { name: 'Rundberg', population: 28000, areaSqkm: 7.8, medianIncome: 31000, pctElderly: 16, pctChildren: 28, avgTempCelsius: 41.8, maxTempCelsius: 44.2, minTempCelsius: 38.1, treeCanopyPct: 9, imperviousSurfacePct: 78 },
       { name: 'Rosewood', population: 18000, areaSqkm: 4.7, medianIncome: 42000, pctElderly: 12, pctChildren: 21, avgTempCelsius: 41.2, maxTempCelsius: 43.7, minTempCelsius: 37.8, treeCanopyPct: 14, imperviousSurfacePct: 70 },
       { name: 'North Loop', population: 14500, areaSqkm: 3.9, medianIncome: 47000, pctElderly: 9, pctChildren: 17, avgTempCelsius: 40.8, maxTempCelsius: 43.0, minTempCelsius: 37.2, treeCanopyPct: 16, imperviousSurfacePct: 64 },
       { name: 'Downtown', population: 12500, areaSqkm: 3.2, medianIncome: 75000, pctElderly: 8, pctChildren: 5, avgTempCelsius: 39.9, maxTempCelsius: 42.1, minTempCelsius: 36.5, treeCanopyPct: 18, imperviousSurfacePct: 68 },
     ],
     interventions: [
-      { key: 'rundberg-trees', name: 'Rundberg Tree Planting', neighborhoodName: 'Rundberg', type: 'TREE_PLANTING', status: 'APPROVED', estimatedCostUsd: 120000, estimatedTempReductionC: 0.8, location: '30.355,-97.707' },
-      { key: 'rosewood-roofs', name: 'East Austin Green Roofs', neighborhoodName: 'Rosewood', type: 'GREEN_ROOF', status: 'APPROVED', estimatedCostUsd: 750000, estimatedTempReductionC: 0.6, location: '30.279,-97.700' },
-      { key: 'northloop-white-roofs', name: 'North Loop White Roofs', neighborhoodName: 'North Loop', type: 'COOL_ROOF', status: 'APPROVED', estimatedCostUsd: 375000, estimatedTempReductionC: 0.4, location: '30.318,-97.722' },
-      { key: 'rundberg-active-trees', name: 'Tree Planting Ph.1', neighborhoodName: 'Rundberg', type: 'TREE_PLANTING', status: 'IN_PROGRESS', estimatedCostUsd: 90000, estimatedTempReductionC: 0.6, location: '30.357,-97.709' },
+      { key: 'rundberg-trees', name: 'Rundberg Tree Planting', placeName: 'Rundberg', type: 'TREE_PLANTING', status: 'APPROVED', estimatedCostUsd: 120000, estimatedTempReductionC: 0.8, location: '30.355,-97.707' },
+      { key: 'rosewood-roofs', name: 'East Austin Green Roofs', placeName: 'Rosewood', type: 'GREEN_ROOF', status: 'APPROVED', estimatedCostUsd: 750000, estimatedTempReductionC: 0.6, location: '30.279,-97.700' },
+      { key: 'northloop-white-roofs', name: 'North Loop White Roofs', placeName: 'North Loop', type: 'COOL_ROOF', status: 'APPROVED', estimatedCostUsd: 375000, estimatedTempReductionC: 0.4, location: '30.318,-97.722' },
+      { key: 'rundberg-active-trees', name: 'Tree Planting Ph.1', placeName: 'Rundberg', type: 'TREE_PLANTING', status: 'IN_PROGRESS', estimatedCostUsd: 90000, estimatedTempReductionC: 0.6, location: '30.357,-97.709' },
     ],
     scenarios: [
       {
         name: 'Summer 2025 Emergency Cooling Plan',
-        description: 'Focuses on the two CRITICAL neighborhoods with the strongest cost-per-degree options first.',
+        description: 'Focuses on the two CRITICAL places with the strongest cost-per-degree options first.',
         status: 'APPROVED',
         priority: 'IMMEDIATE',
         totalEstimatedCostUsd: 1245000,
@@ -125,14 +125,14 @@ const cities: SeedCity[] = [
     admin: { email: 'mayor@phoenix.gov', name: 'Miguel Ortega' },
     planner: { email: 'planner@phoenix.gov', name: 'Priya Shah' },
     council: { email: 'council@phoenix.gov', name: 'Helen Brooks' },
-    neighborhoods: [
+    places: [
       { name: 'Maryvale', population: 24000, areaSqkm: 8.1, medianIncome: 36000, pctElderly: 11, pctChildren: 24, avgTempCelsius: 43.4, maxTempCelsius: 46.0, minTempCelsius: 39.1, treeCanopyPct: 7, imperviousSurfacePct: 81 },
       { name: 'Encanto', population: 19000, areaSqkm: 5.6, medianIncome: 51000, pctElderly: 13, pctChildren: 18, avgTempCelsius: 42.0, maxTempCelsius: 44.8, minTempCelsius: 38.0, treeCanopyPct: 12, imperviousSurfacePct: 74 },
       { name: 'Downtown Phoenix', population: 16500, areaSqkm: 4.1, medianIncome: 69000, pctElderly: 7, pctChildren: 9, avgTempCelsius: 41.1, maxTempCelsius: 44.0, minTempCelsius: 37.5, treeCanopyPct: 15, imperviousSurfacePct: 77 },
     ],
     interventions: [
-      { key: 'maryvale-misters', name: 'Maryvale Mist Station Network', neighborhoodName: 'Maryvale', type: 'MIST_STATION', status: 'IN_PROGRESS', estimatedCostUsd: 140000, estimatedTempReductionC: 0.5, location: '33.492,-112.185' },
-      { key: 'encanto-pavement', name: 'Encanto Cool Pavement Pilot', neighborhoodName: 'Encanto', type: 'COOL_PAVEMENT', status: 'PROPOSED', estimatedCostUsd: 410000, estimatedTempReductionC: 0.7, location: '33.474,-112.105' },
+      { key: 'maryvale-misters', name: 'Maryvale Mist Station Network', placeName: 'Maryvale', type: 'MIST_STATION', status: 'IN_PROGRESS', estimatedCostUsd: 140000, estimatedTempReductionC: 0.5, location: '33.492,-112.185' },
+      { key: 'encanto-pavement', name: 'Encanto Cool Pavement Pilot', placeName: 'Encanto', type: 'COOL_PAVEMENT', status: 'PROPOSED', estimatedCostUsd: 410000, estimatedTempReductionC: 0.7, location: '33.474,-112.105' },
     ],
     scenarios: [
       {
@@ -161,19 +161,19 @@ const cities: SeedCity[] = [
     admin: { email: 'mayor@houston.gov', name: 'Alicia Gomez' },
     planner: { email: 'planner@houston.gov', name: 'Marcus Lee' },
     council: { email: 'council@houston.gov', name: 'Eva Porter' },
-    neighborhoods: [
+    places: [
       { name: 'Third Ward', population: 21000, areaSqkm: 6.3, medianIncome: 38000, pctElderly: 14, pctChildren: 22, avgTempCelsius: 40.6, maxTempCelsius: 43.4, minTempCelsius: 36.9, treeCanopyPct: 11, imperviousSurfacePct: 73 },
       { name: 'Greenspoint', population: 17500, areaSqkm: 5.5, medianIncome: 34000, pctElderly: 12, pctChildren: 26, avgTempCelsius: 41.0, maxTempCelsius: 43.8, minTempCelsius: 37.1, treeCanopyPct: 10, imperviousSurfacePct: 76 },
       { name: 'Midtown', population: 13200, areaSqkm: 3.6, medianIncome: 72000, pctElderly: 8, pctChildren: 8, avgTempCelsius: 39.8, maxTempCelsius: 42.5, minTempCelsius: 36.2, treeCanopyPct: 17, imperviousSurfacePct: 69 },
     ],
     interventions: [
-      { key: 'third-ward-gardens', name: 'Third Ward Cooling Gardens', neighborhoodName: 'Third Ward', type: 'URBAN_GARDEN', status: 'APPROVED', estimatedCostUsd: 280000, estimatedTempReductionC: 0.6, location: '29.734,-95.357' },
-      { key: 'greenspoint-trees', name: 'Greenspoint Shade Tree Program', neighborhoodName: 'Greenspoint', type: 'TREE_PLANTING', status: 'IN_PROGRESS', estimatedCostUsd: 195000, estimatedTempReductionC: 0.7, location: '29.940,-95.415' },
+      { key: 'third-ward-gardens', name: 'Third Ward Cooling Gardens', placeName: 'Third Ward', type: 'URBAN_GARDEN', status: 'APPROVED', estimatedCostUsd: 280000, estimatedTempReductionC: 0.6, location: '29.734,-95.357' },
+      { key: 'greenspoint-trees', name: 'Greenspoint Shade Tree Program', placeName: 'Greenspoint', type: 'TREE_PLANTING', status: 'IN_PROGRESS', estimatedCostUsd: 195000, estimatedTempReductionC: 0.7, location: '29.940,-95.415' },
     ],
     scenarios: [
       {
         name: 'Equity-First Cooling Plan',
-        description: 'Targets high-vulnerability neighborhoods first with shade and green space interventions.',
+        description: 'Targets high-vulnerability places first with shade and green space interventions.',
         status: 'APPROVED',
         priority: 'IMMEDIATE',
         totalEstimatedCostUsd: 475000,
@@ -197,22 +197,22 @@ const cities: SeedCity[] = [
     admin: { email: 'admin@bolpur.gov.in', name: 'Sujoy Mukherjee' },
     planner: { email: 'planner@bolpur.gov.in', name: 'Ananya Das' },
     council: { email: 'council@bolpur.gov.in', name: 'Ratan Ghosh' },
-    neighborhoods: [
+    places: [
       { name: 'Bolpur Town', population: 35000, areaSqkm: 6.2, medianIncome: 18000, pctElderly: 14, pctChildren: 24, avgTempCelsius: 42.5, maxTempCelsius: 45.8, minTempCelsius: 38.2, treeCanopyPct: 18, imperviousSurfacePct: 55 },
       { name: 'Santiniketan', population: 22000, areaSqkm: 8.4, medianIncome: 24000, pctElderly: 11, pctChildren: 18, avgTempCelsius: 41.0, maxTempCelsius: 44.2, minTempCelsius: 37.0, treeCanopyPct: 32, imperviousSurfacePct: 35 },
       { name: 'Surul', population: 12000, areaSqkm: 4.8, medianIncome: 14000, pctElderly: 16, pctChildren: 28, avgTempCelsius: 43.2, maxTempCelsius: 46.5, minTempCelsius: 39.0, treeCanopyPct: 10, imperviousSurfacePct: 62 },
       { name: 'Prantik', population: 8500, areaSqkm: 3.1, medianIncome: 16000, pctElderly: 13, pctChildren: 22, avgTempCelsius: 42.0, maxTempCelsius: 45.0, minTempCelsius: 38.5, treeCanopyPct: 15, imperviousSurfacePct: 50 },
     ],
     interventions: [
-      { key: 'surul-trees', name: 'Surul Tree Corridor', neighborhoodName: 'Surul', type: 'TREE_PLANTING', status: 'APPROVED', estimatedCostUsd: 85000, estimatedTempReductionC: 0.9, location: '23.655,87.735' },
-      { key: 'bolpur-roofs', name: 'Bolpur Cool Roof Program', neighborhoodName: 'Bolpur Town', type: 'COOL_ROOF', status: 'APPROVED', estimatedCostUsd: 120000, estimatedTempReductionC: 0.5, location: '23.669,87.721' },
-      { key: 'prantik-gardens', name: 'Prantik Community Garden', neighborhoodName: 'Prantik', type: 'URBAN_GARDEN', status: 'IN_PROGRESS', estimatedCostUsd: 65000, estimatedTempReductionC: 0.4, location: '23.680,87.708' },
-      { key: 'santiniketan-canopy', name: 'Santiniketan Canopy Restoration', neighborhoodName: 'Santiniketan', type: 'TREE_PLANTING', status: 'PROPOSED', estimatedCostUsd: 95000, estimatedTempReductionC: 0.7, location: '23.683,87.685' },
+      { key: 'surul-trees', name: 'Surul Tree Corridor', placeName: 'Surul', type: 'TREE_PLANTING', status: 'APPROVED', estimatedCostUsd: 85000, estimatedTempReductionC: 0.9, location: '23.655,87.735' },
+      { key: 'bolpur-roofs', name: 'Bolpur Cool Roof Program', placeName: 'Bolpur Town', type: 'COOL_ROOF', status: 'APPROVED', estimatedCostUsd: 120000, estimatedTempReductionC: 0.5, location: '23.669,87.721' },
+      { key: 'prantik-gardens', name: 'Prantik Community Garden', placeName: 'Prantik', type: 'URBAN_GARDEN', status: 'IN_PROGRESS', estimatedCostUsd: 65000, estimatedTempReductionC: 0.4, location: '23.680,87.708' },
+      { key: 'santiniketan-canopy', name: 'Santiniketan Canopy Restoration', placeName: 'Santiniketan', type: 'TREE_PLANTING', status: 'PROPOSED', estimatedCostUsd: 95000, estimatedTempReductionC: 0.7, location: '23.683,87.685' },
     ],
     scenarios: [
       {
         name: 'Summer 2025 Bolpur Heat Action Plan',
-        description: 'Targets CRITICAL neighborhoods with tree planting and cool roofs before peak summer.',
+        description: 'Targets CRITICAL places with tree planting and cool roofs before peak summer.',
         status: 'APPROVED',
         priority: 'IMMEDIATE',
         totalEstimatedCostUsd: 205000,
@@ -248,7 +248,7 @@ const cities: SeedCity[] = [
     admin: { email: 'admin@pune.gov.in', name: 'Ravindra Deshmukh' },
     planner: { email: 'planner@pune.gov.in', name: 'Priya Joshi' },
     council: { email: 'council@pune.gov.in', name: 'Suresh Patil' },
-    neighborhoods: [
+    places: [
       { name: 'Hadapsar', population: 48000, areaSqkm: 9.2, medianIncome: 32000, pctElderly: 10, pctChildren: 26, avgTempCelsius: 43.1, maxTempCelsius: 46.4, minTempCelsius: 39.5, treeCanopyPct: 8, imperviousSurfacePct: 82 },
       { name: 'Kondhwa', population: 35000, areaSqkm: 7.6, medianIncome: 28000, pctElderly: 13, pctChildren: 29, avgTempCelsius: 44.0, maxTempCelsius: 47.1, minTempCelsius: 40.2, treeCanopyPct: 6, imperviousSurfacePct: 85 },
       { name: 'Kothrud', population: 29000, areaSqkm: 6.1, medianIncome: 55000, pctElderly: 15, pctChildren: 14, avgTempCelsius: 41.5, maxTempCelsius: 44.0, minTempCelsius: 37.8, treeCanopyPct: 20, imperviousSurfacePct: 65 },
@@ -256,11 +256,11 @@ const cities: SeedCity[] = [
       { name: 'Aundh', population: 38000, areaSqkm: 8.0, medianIncome: 68000, pctElderly: 9, pctChildren: 11, avgTempCelsius: 40.5, maxTempCelsius: 43.2, minTempCelsius: 36.8, treeCanopyPct: 25, imperviousSurfacePct: 58 },
     ],
     interventions: [
-      { key: 'hadapsar-trees', name: 'Hadapsar Industrial Green Buffer', neighborhoodName: 'Hadapsar', type: 'TREE_PLANTING', status: 'APPROVED', estimatedCostUsd: 135000, estimatedTempReductionC: 0.9, location: '18.506,73.930' },
-      { key: 'kondhwa-roofs', name: 'Kondhwa Cool Roof Scheme', neighborhoodName: 'Kondhwa', type: 'COOL_ROOF', status: 'APPROVED', estimatedCostUsd: 220000, estimatedTempReductionC: 0.7, location: '18.490,73.875' },
-      { key: 'yerawada-pavement', name: 'Yerawada Cool Pavement Pilot', neighborhoodName: 'Yerawada', type: 'COOL_PAVEMENT', status: 'IN_PROGRESS', estimatedCostUsd: 180000, estimatedTempReductionC: 0.6, location: '18.554,73.883' },
-      { key: 'kothrud-garden', name: 'Kothrud Community Cooling Garden', neighborhoodName: 'Kothrud', type: 'URBAN_GARDEN', status: 'APPROVED', estimatedCostUsd: 95000, estimatedTempReductionC: 0.5, location: '18.508,73.814' },
-      { key: 'aundh-canopy', name: 'Aundh Avenue Tree Canopy Expansion', neighborhoodName: 'Aundh', type: 'TREE_PLANTING', status: 'PROPOSED', estimatedCostUsd: 110000, estimatedTempReductionC: 0.6, location: '18.558,73.807' },
+      { key: 'hadapsar-trees', name: 'Hadapsar Industrial Green Buffer', placeName: 'Hadapsar', type: 'TREE_PLANTING', status: 'APPROVED', estimatedCostUsd: 135000, estimatedTempReductionC: 0.9, location: '18.506,73.930' },
+      { key: 'kondhwa-roofs', name: 'Kondhwa Cool Roof Scheme', placeName: 'Kondhwa', type: 'COOL_ROOF', status: 'APPROVED', estimatedCostUsd: 220000, estimatedTempReductionC: 0.7, location: '18.490,73.875' },
+      { key: 'yerawada-pavement', name: 'Yerawada Cool Pavement Pilot', placeName: 'Yerawada', type: 'COOL_PAVEMENT', status: 'IN_PROGRESS', estimatedCostUsd: 180000, estimatedTempReductionC: 0.6, location: '18.554,73.883' },
+      { key: 'kothrud-garden', name: 'Kothrud Community Cooling Garden', placeName: 'Kothrud', type: 'URBAN_GARDEN', status: 'APPROVED', estimatedCostUsd: 95000, estimatedTempReductionC: 0.5, location: '18.508,73.814' },
+      { key: 'aundh-canopy', name: 'Aundh Avenue Tree Canopy Expansion', placeName: 'Aundh', type: 'TREE_PLANTING', status: 'PROPOSED', estimatedCostUsd: 110000, estimatedTempReductionC: 0.6, location: '18.558,73.807' },
     ],
     scenarios: [
       {
@@ -309,7 +309,7 @@ async function resetDatabase() {
   await prisma.scenario.deleteMany();
   await prisma.intervention.deleteMany();
   await prisma.heatMeasurement.deleteMany();
-  await prisma.neighborhood.deleteMany();
+  await prisma.place.deleteMany();
   await prisma.dataIngestionJob.deleteMany();
   await prisma.onboardingState.deleteMany();
   await prisma.session.deleteMany();
@@ -426,7 +426,7 @@ async function seedCity(cityConfig: SeedCity, userPasswordHash: string) {
   const ward = await prisma.ward.create({
     data: {
       wardNumber: '1',
-      wardName: `Ward 1 - ${cityConfig.neighborhoods[0]?.name || 'Central'}`,
+      wardName: `Ward 1 - ${cityConfig.places[0]?.name || 'Central'}`,
       cityId: city.id,
       officerId: wardOfficer.id,
     },
@@ -438,7 +438,7 @@ async function seedCity(cityConfig: SeedCity, userPasswordHash: string) {
       wardId: ward.id,
       officerId: wardOfficer.id,
       status: 'IN_PROGRESS',
-      actualTempReading: cityConfig.neighborhoods[0]?.avgTempCelsius || 40,
+      actualTempReading: cityConfig.places[0]?.avgTempCelsius || 40,
       notes: 'Weekly routine heat assessment completed.',
     },
   });
@@ -458,31 +458,59 @@ async function seedCity(cityConfig: SeedCity, userPasswordHash: string) {
     },
   });
 
-  const neighborhoodMap = new Map<string, string>();
-  for (const neighborhood of cityConfig.neighborhoods) {
-    const createdNeighborhood = await prisma.neighborhood.create({
+  const placeMap = new Map<string, string>();
+  for (const place of cityConfig.places) {
+    const createdPlace = await prisma.place.create({
       data: {
         cityId: city.id,
-        name: neighborhood.name,
-        population: neighborhood.population,
-        areaSqkm: neighborhood.areaSqkm,
-        medianIncome: neighborhood.medianIncome,
-        pctElderly: neighborhood.pctElderly,
-        pctChildren: neighborhood.pctChildren,
+        name: place.name,
+        population: place.population,
+        areaSqkm: place.areaSqkm,
+        medianIncome: place.medianIncome,
+        pctElderly: place.pctElderly,
+        pctChildren: place.pctChildren,
       },
     });
 
-    neighborhoodMap.set(neighborhood.name, createdNeighborhood.id);
+    placeMap.set(place.name, createdPlace.id);
 
     await prisma.heatMeasurement.create({
       data: {
-        neighborhoodId: createdNeighborhood.id,
+        placeId: createdPlace.id,
         measurementDate: new Date('2024-08-01T12:00:00Z'),
-        avgTempCelsius: neighborhood.avgTempCelsius,
-        maxTempCelsius: neighborhood.maxTempCelsius,
-        minTempCelsius: neighborhood.minTempCelsius,
-        treeCanopyPct: neighborhood.treeCanopyPct,
-        imperviousSurfacePct: neighborhood.imperviousSurfacePct,
+        avgTempCelsius: place.avgTempCelsius,
+        maxTempCelsius: place.maxTempCelsius,
+        minTempCelsius: place.minTempCelsius,
+        treeCanopyPct: place.treeCanopyPct,
+        imperviousSurfacePct: place.imperviousSurfacePct,
+        dataSource: 'SEED_DATA',
+      },
+    });
+
+    // Second measurement — 30 days later, slightly different temps
+    await prisma.heatMeasurement.create({
+      data: {
+        placeId: createdPlace.id,
+        measurementDate: new Date('2024-09-01T12:00:00Z'),
+        avgTempCelsius: place.avgTempCelsius - 0.8,
+        maxTempCelsius: place.maxTempCelsius - 1.0,
+        minTempCelsius: place.minTempCelsius - 0.5,
+        treeCanopyPct: place.treeCanopyPct,
+        imperviousSurfacePct: place.imperviousSurfacePct,
+        dataSource: 'SEED_DATA',
+      },
+    });
+
+    // Second measurement — 30 days later, slightly different temps
+    await prisma.heatMeasurement.create({
+      data: {
+        placeId: createdPlace.id,
+        measurementDate: new Date('2024-09-01T12:00:00Z'),
+        avgTempCelsius: place.avgTempCelsius - 0.8,
+        maxTempCelsius: place.maxTempCelsius - 1.0,
+        minTempCelsius: place.minTempCelsius - 0.5,
+        treeCanopyPct: place.treeCanopyPct,
+        imperviousSurfacePct: place.imperviousSurfacePct,
         dataSource: 'SEED_DATA',
       },
     });
@@ -493,7 +521,7 @@ async function seedCity(cityConfig: SeedCity, userPasswordHash: string) {
     const createdIntervention = await prisma.intervention.create({
       data: {
         cityId: city.id,
-        neighborhoodId: neighborhoodMap.get(intervention.neighborhoodName),
+        placeId: placeMap.get(intervention.placeName),
         name: intervention.name,
         type: intervention.type,
         status: intervention.status,
@@ -553,11 +581,11 @@ async function seedCity(cityConfig: SeedCity, userPasswordHash: string) {
           projectedCo2ReductionTons: scenario.projectedCo2ReductionTons,
           costPerLifeProtected: Math.round(scenario.totalEstimatedCostUsd / Math.max(scenario.totalProjectedLivesSaved, 1)),
         }),
-        neighborhoodResults: JSON.stringify(
+        placeResults: JSON.stringify(
           scenario.interventionKeys.map((interventionKey) => {
             const intervention = cityConfig.interventions.find((item) => item.key === interventionKey);
             return {
-              neighborhood: intervention?.neighborhoodName || 'City-wide',
+              place: intervention?.placeName || 'City-wide',
               reductionCelsius: intervention?.estimatedTempReductionC || 0,
               livesSaved: Math.max(1, Math.round((intervention?.estimatedTempReductionC || 0) * 8)),
             };
@@ -596,7 +624,7 @@ async function seedCity(cityConfig: SeedCity, userPasswordHash: string) {
         action: 'WORKFLOW_READY',
         resourceType: 'City',
         resourceId: city.id,
-        afterValue: JSON.stringify({ neighborhoods: cityConfig.neighborhoods.length, interventions: cityConfig.interventions.length }),
+        afterValue: JSON.stringify({ places: cityConfig.places.length, interventions: cityConfig.interventions.length }),
       },
       {
         userId: council.id,

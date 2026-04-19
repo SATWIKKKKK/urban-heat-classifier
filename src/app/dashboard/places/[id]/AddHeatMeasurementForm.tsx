@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { addHeatMeasurementAction } from '@/lib/actions';
 import { useRouter } from 'next/navigation';
 
-export default function AddHeatMeasurementForm({ neighborhoodId }: { neighborhoodId: string }) {
+export default function AddHeatMeasurementForm({ placeId }: { placeId: string }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -19,7 +19,7 @@ export default function AddHeatMeasurementForm({ neighborhoodId }: { neighborhoo
 
     try {
       await addHeatMeasurementAction({
-        neighborhoodId,
+        placeId,
         measurementDate: new Date(fd.get('measurementDate') as string).toISOString(),
         avgTempCelsius: Number(fd.get('avgTempCelsius')),
         maxTempCelsius: Number(fd.get('maxTempCelsius')),

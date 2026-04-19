@@ -132,7 +132,7 @@ export default function RequestTreePage() {
               <span className="text-xs font-bold uppercase tracking-widest text-[var(--green-400)]">Tree Request Program</span>
             </div>
             <h1 className="text-4xl md:text-5xl font-black text-white font-[family-name:var(--font-headline)] tracking-tight">
-              Plant a Tree in<br /><span className="text-gradient-primary">Your Neighborhood</span>
+              Plant a Tree in<br /><span className="text-gradient-primary">Your Place</span>
             </h1>
             <p className="text-[var(--text-secondary)] mt-3 max-w-xl mx-auto">
               Choose a species, tell us where, and we&apos;ll handle the rest. Free for all residents.

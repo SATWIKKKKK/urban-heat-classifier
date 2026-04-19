@@ -27,7 +27,7 @@ model City {
   updatedAt  DateTime @updatedAt
 
   users              User[]
-  neighborhoods      Neighborhood[]
+  places      Place[]
   interventions      Intervention[]
   scenarios          Scenario[]
   reports            Report[]
@@ -146,7 +146,7 @@ model OnboardingState {
 
 // ─── GIS DATA ───
 
-model Neighborhood {
+model Place {
   id                 String  @id @default(cuid())
   cityId             String
   name               String
@@ -170,12 +170,12 @@ model Neighborhood {
 
   @@unique([cityId, name])
   @@index([cityId])
-  @@map("neighborhoods")
+  @@map("places")
 }
 
 model HeatMeasurement {
   id                   String   @id @default(cuid())
-  neighborhoodId       String
+  placeId       String
   measurementDate      DateTime
   avgTempCelsius       Float
   maxTempCelsius       Float?
@@ -185,11 +185,11 @@ model HeatMeasurement {
   imperviousSurfacePct Float?
   dataSource           String   @default("MANUAL")
 
-  neighborhood Neighborhood @relation(fields: [neighborhoodId], references: [id], onDelete: Cascade)
+  place Place @relation(fields: [placeId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
 
-  @@index([neighborhoodId, measurementDate(sort: Desc)])
+  @@index([placeId, measurementDate(sort: Desc)])
   @@map("heat_measurements")
 }
 
@@ -226,7 +226,7 @@ model WeatherReading {
 model Intervention {
   id                       String    @id @default(cuid())
   cityId                   String
-  neighborhoodId           String?
+  placeId           String?
   type                     String
   name                     String
   description              String?
@@ -246,7 +246,7 @@ model Intervention {
   completedAt              DateTime?
 
   city          City           @relation(fields: [cityId], references: [id], onDelete: Cascade)
-  neighborhood  Neighborhood?  @relation(fields: [neighborhoodId], references: [id])
+  place  Place?  @relation(fields: [placeId], references: [id])
   proposedBy    User?          @relation("ProposedBy", fields: [proposedById], references: [id])
   approvedBy    User?          @relation("ApprovedBy", fields: [approvedById], references: [id])
 
@@ -255,7 +255,7 @@ model Intervention {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@index([neighborhoodId, status])
+  @@index([placeId, status])
   @@index([cityId])
   @@map("interventions")
 }
@@ -314,7 +314,7 @@ model SimulationResult {
   runAt               DateTime @default(now())
   inputState          String?
   outputSummary       String?
-  neighborhoodResults String?
+  placeResults String?
   confidenceInterval  Float?
   modelVersion        String?
 
@@ -473,7 +473,7 @@ model NGOSurvey {
   workerId         String
   cityId           String
   wardId           String?
-  neighborhoodId   String?
+  placeId   String?
   surveyDate       DateTime  @default(now())
   observations     String?
   photoUrls        String?

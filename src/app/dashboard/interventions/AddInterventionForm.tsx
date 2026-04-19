@@ -14,7 +14,7 @@ const INTERVENTION_TYPES = [
   'MIST_STATION',
 ];
 
-interface Neighborhood {
+interface Place {
   id: string;
   name: string;
 }
@@ -24,13 +24,13 @@ export default function AddInterventionForm({ cityId }: { cityId: string }) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [neighborhoods, setNeighborhoods] = useState<Neighborhood[]>([]);
+  const [places, setPlaces] = useState<Place[]>([]);
 
   useEffect(() => {
     if (open) {
-      fetch(`/api/neighborhoods?cityId=${encodeURIComponent(cityId)}`)
+      fetch(`/api/places?cityId=${encodeURIComponent(cityId)}`)
         .then((r) => r.json())
-        .then((data) => setNeighborhoods(data ?? []))
+        .then((data) => setPlaces(data ?? []))
         .catch(() => {});
     }
   }, [open, cityId]);
@@ -46,7 +46,7 @@ export default function AddInterventionForm({ cityId }: { cityId: string }) {
       await addInterventionAction({
         name: fd.get('name') as string,
         type: fd.get('type') as string,
-        neighborhoodId: (fd.get('neighborhoodId') as string) || undefined,
+        placeId: (fd.get('placeId') as string) || undefined,
         description: (fd.get('description') as string) || undefined,
         estimatedCostUsd: fd.get('cost') ? Number(fd.get('cost')) : undefined,
         estimatedTempReductionC: fd.get('tempReduction') ? Number(fd.get('tempReduction')) : undefined,
@@ -90,10 +90,10 @@ export default function AddInterventionForm({ cityId }: { cityId: string }) {
           </select>
         </div>
         <div>
-          <label className="block text-xs text-[var(--text-secondary)] mb-1">Neighborhood</label>
-          <select name="neighborhoodId" className="w-full px-4 py-2 bg-[var(--bg-elevated)] border border-[var(--border-strong)] rounded-lg text-white focus:border-[var(--green-400)]/50 focus:outline-none">
+          <label className="block text-xs text-[var(--text-secondary)] mb-1">Place</label>
+          <select name="placeId" className="w-full px-4 py-2 bg-[var(--bg-elevated)] border border-[var(--border-strong)] rounded-lg text-white focus:border-[var(--green-400)]/50 focus:outline-none">
             <option value="" className="bg-[var(--bg-base)]">City-wide</option>
-            {neighborhoods.map((n) => (
+            {places.map((n) => (
               <option key={n.id} value={n.id} className="bg-[var(--bg-base)]">{n.name}</option>
             ))}
           </select>

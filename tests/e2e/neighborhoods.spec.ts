@@ -8,17 +8,17 @@ async function loginAsAdmin(page: Page) {
   await page.waitForURL(/\/(dashboard|onboarding)/, { timeout: 15000 });
 }
 
-test.describe('Neighborhood Detail', () => {
+test.describe('Place Detail', () => {
   test.beforeEach(async ({ page }) => {
     await loginAsAdmin(page);
   });
 
-  test('neighborhood detail page shows profile and heat data', async ({ page }) => {
-    await page.goto('/dashboard/neighborhoods');
+  test('place detail page shows profile and heat data', async ({ page }) => {
+    await page.goto('/dashboard/places');
     await expect(page.locator('text=Downtown')).toBeVisible({ timeout: 10000 });
-    // Click on the first neighborhood link
+    // Click on the first place link
     await page.click('text=Downtown');
-    await page.waitForURL(/\/dashboard\/neighborhoods\//);
+    await page.waitForURL(/\/dashboard\/places\//);
     await expect(page.locator('h1')).toContainText('Downtown');
   });
 });

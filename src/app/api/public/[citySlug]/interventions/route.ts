@@ -20,7 +20,7 @@ export async function GET(
       status: intervention.status,
       location: intervention.point,
       estimatedTempReductionC: intervention.estimatedTempReductionC,
-      neighborhood: intervention.neighborhoodName ? { name: intervention.neighborhoodName } : null,
+      place: intervention.placeName ? { name: intervention.placeName } : null,
     }))
   );
 }

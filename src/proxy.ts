@@ -78,48 +78,49 @@ export default auth((req) => {
       return NextResponse.redirect(loginUrl);
     }
 
+    // Redirect old my-data route to mydata
+    if (pathname === '/dashboard/my-data') {
+      return NextResponse.redirect(new URL('/dashboard/mydata', req.url));
+    }
+
     const role = session.user.role;
     const onboardingComplete = session.user.onboardingComplete;
+    const cityId = session.user.cityId;
 
-    if (role === 'CITY_ADMIN') {
-      const isOnboardingRoute = pathname.startsWith('/dashboard/onboarding');
-      if (!onboardingComplete && !isOnboardingRoute) {
-        return NextResponse.redirect(new URL('/dashboard/onboarding', req.url));
-      }
-      if (onboardingComplete && isOnboardingRoute) {
-        return NextResponse.redirect(new URL('/dashboard/map', req.url));
-      }
+    // SUPER_ADMIN bypasses all checks
+    if (role === 'SUPER_ADMIN') {
+      return NextResponse.next();
     }
 
-    if (role === 'URBAN_PLANNER') {
-      const isWaitingRoute = pathname.startsWith('/dashboard/waiting');
-      if (!onboardingComplete && !isWaitingRoute) {
-        return NextResponse.redirect(new URL('/dashboard/waiting', req.url));
-      }
-      if (onboardingComplete && isWaitingRoute) {
-        return NextResponse.redirect(new URL('/dashboard/map', req.url));
-      }
+    // No city → must onboard
+    if (!cityId && !pathname.startsWith('/dashboard/onboarding')) {
+      return NextResponse.redirect(new URL('/dashboard/onboarding', req.url));
     }
 
-    if (role === 'CITY_COUNCIL' && pathname === '/dashboard') {
-      return NextResponse.redirect(new URL('/dashboard/scenarios', req.url));
+    // Not onboarding complete → must onboard
+    if (!onboardingComplete && !pathname.startsWith('/dashboard/onboarding') && !pathname.startsWith('/dashboard/waiting')) {
+      return NextResponse.redirect(new URL('/dashboard/onboarding', req.url));
     }
 
-    if (['CITY_ADMIN', 'URBAN_PLANNER'].includes(role) && pathname === '/dashboard') {
-      return NextResponse.redirect(new URL('/dashboard/map', req.url));
+    // Onboarding complete → redirect away from onboarding
+    if (onboardingComplete && pathname.startsWith('/dashboard/onboarding')) {
+      return NextResponse.redirect(new URL('/dashboard/mydata', req.url));
     }
 
-    // New role default redirects
-    const roleDefaultRoute: Record<string, string> = {
-      MUNICIPAL_COMMISSIONER: '/dashboard/commissioner',
-      WARD_OFFICER: '/dashboard/ward',
-      SDMA_OBSERVER: '/dashboard/state',
-      NGO_FIELD_WORKER: '/dashboard/field',
-      DATA_ANALYST: '/dashboard/analyst',
-      CITIZEN_REPORTER: '/dashboard/citizen',
-    };
-    if (pathname === '/dashboard' && roleDefaultRoute[role]) {
-      return NextResponse.redirect(new URL(roleDefaultRoute[role], req.url));
+    // Default dashboard redirect by role
+    if (pathname === '/dashboard') {
+      const roleDefaultRoute: Record<string, string> = {
+        CITY_ADMIN: '/dashboard/mydata',
+        URBAN_PLANNER: '/dashboard/mydata',
+        CITY_COUNCIL: '/dashboard/scenarios',
+        MUNICIPAL_COMMISSIONER: '/dashboard/commissioner',
+        WARD_OFFICER: '/dashboard/ward',
+        SDMA_OBSERVER: '/dashboard/state',
+        NGO_FIELD_WORKER: '/dashboard/field',
+        DATA_ANALYST: '/dashboard/analyst',
+        CITIZEN_REPORTER: '/dashboard/citizen',
+      };
+      return NextResponse.redirect(new URL(roleDefaultRoute[role] || '/dashboard/mydata', req.url));
     }
 
     // Check role-based route access

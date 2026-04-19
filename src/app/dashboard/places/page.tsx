@@ -1,23 +1,23 @@
 import { auth } from '@/lib/auth';
 import { redirect } from 'next/navigation';
-import { getNeighborhoods } from '@/lib/actions';
+import { getPlaces } from '@/lib/actions';
 import Link from 'next/link';
 import { computeVulnerabilityScore } from '@/lib/compute/vulnerability';
-import AddNeighborhoodForm from './AddNeighborhoodForm';
+import AddPlaceForm from './AddPlaceForm';
 import GSAPWrapper from '@/components/shared/GSAPWrapper';
 
-export default async function NeighborhoodsPage() {
+export default async function PlacesPage() {
   const session = await auth();
   if (!session?.user?.cityId) redirect('/login');
 
-  const neighborhoods = await getNeighborhoods(session.user.cityId);
+  const places = await getPlaces(session.user.cityId);
 
   const cityAvgTemp =
-    neighborhoods.length > 0
-      ? neighborhoods.reduce((sum, n) => {
+    places.length > 0
+      ? places.reduce((sum, n) => {
           const latest = n.heatMeasurements[0];
           return sum + (latest?.avgTempCelsius ?? 0);
-        }, 0) / neighborhoods.length
+        }, 0) / places.length
       : 30;
 
   return (
@@ -27,24 +27,24 @@ export default async function NeighborhoodsPage() {
         <div>
           <div className="flex items-center gap-1.5 mb-2">
             <span className="material-symbols-outlined text-[var(--text-tertiary)] text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>location_city</span>
-            <span className="text-[10px] font-medium uppercase tracking-[0.06em] text-[var(--text-tertiary)]">Neighborhoods</span>
+            <span className="text-[10px] font-medium uppercase tracking-[0.06em] text-[var(--text-tertiary)]">Places</span>
           </div>
           <h1 className="text-2xl font-bold tracking-tight text-[var(--text-primary)]">
-            Neighborhoods
+            Places
           </h1>
-          <p className="text-sm text-[var(--text-secondary)] mt-0.5">Manage neighborhoods, heat data, and vulnerability scores</p>
+          <p className="text-sm text-[var(--text-secondary)] mt-0.5">Manage places, heat data, and vulnerability scores</p>
         </div>
       </div>
       </GSAPWrapper>
 
-      <AddNeighborhoodForm cityId={session.user.cityId} />
+      <AddPlaceForm cityId={session.user.cityId} />
 
       <GSAPWrapper animation="slideUp" delay={0.15} duration={0.5}>
-      {neighborhoods.length === 0 ? (
+      {places.length === 0 ? (
         <div className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-lg p-12 text-center">
           <span className="material-symbols-outlined text-4xl text-[var(--text-tertiary)] mb-3" style={{ fontVariationSettings: "'FILL' 1" }}>location_city</span>
-          <h3 className="text-base font-semibold text-[var(--text-primary)] mb-1">No neighborhoods yet</h3>
-          <p className="text-sm text-[var(--text-secondary)]">Add your first neighborhood above to get started.</p>
+          <h3 className="text-base font-semibold text-[var(--text-primary)] mb-1">No places yet</h3>
+          <p className="text-sm text-[var(--text-secondary)]">Add your first place above to get started.</p>
         </div>
       ) : (
         <div className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-lg overflow-hidden">
@@ -62,7 +62,7 @@ export default async function NeighborhoodsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--border)]">
-                {neighborhoods.map((n) => {
+                {places.map((n) => {
                   const latest = n.heatMeasurements[0];
                   const vuln = computeVulnerabilityScore(
                     {
@@ -101,7 +101,7 @@ export default async function NeighborhoodsPage() {
                       </td>
                       <td className="px-4 py-3 text-[var(--text-secondary)]">{n.interventions.length}</td>
                       <td className="px-4 py-3">
-                        <Link href={`/dashboard/neighborhoods/${n.id}`} className="text-xs font-medium text-[var(--green-400)] hover:underline">
+                        <Link href={`/dashboard/places/${n.id}`} className="text-xs font-medium text-[var(--green-400)] hover:underline">
                           View
                         </Link>
                       </td>

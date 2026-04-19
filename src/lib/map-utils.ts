@@ -27,7 +27,7 @@ export function parseBoundaryGeometry(boundary: string | null | undefined): Supp
   return null;
 }
 
-export function createFallbackNeighborhoodGeometry(
+export function createFallbackPlaceGeometry(
   centerLat: number,
   centerLng: number,
   index: number,

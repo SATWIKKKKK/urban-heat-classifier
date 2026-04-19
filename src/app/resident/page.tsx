@@ -74,7 +74,7 @@ export default async function ResidentPage() {
                 <span className="text-xs font-bold uppercase tracking-widest text-[var(--green-400)]">Civic Engagement Portal</span>
               </div>
               <h1 className="text-4xl md:text-5xl lg:text-6xl font-black text-white font-[family-name:var(--font-headline)] tracking-tight leading-[1.1]">
-                Cool Your<br /><span className="text-gradient-primary">Neighborhood</span>
+                Cool Your<br /><span className="text-gradient-primary">Place</span>
               </h1>
               <p className="text-[var(--text-secondary)] mt-5 text-lg max-w-xl leading-relaxed">
                 Request trees, report heat issues, and track how your community fights the urban heat island effect.

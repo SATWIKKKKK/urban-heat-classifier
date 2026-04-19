@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
 area[name="${cityName.replace(/"/g, '')}"]->.city;
 (
   relation["boundary"="administrative"]["admin_level"~"8|9|10"](area.city);
-  way["place"~"neighbourhood|suburb|quarter"](area.city);
+  way["place"~"place|suburb|quarter"](area.city);
 );
 out geom;
 `;
@@ -103,18 +103,18 @@ out geom;
       }
 
       try {
-        const existing = await prisma.neighborhood.findUnique({
+        const existing = await prisma.place.findUnique({
           where: { cityId_name: { cityId, name } },
         });
 
         if (existing) {
-          await prisma.neighborhood.update({
+          await prisma.place.update({
             where: { id: existing.id },
             data: { boundary },
           });
           updated++;
         } else {
-          await prisma.neighborhood.create({
+          await prisma.place.create({
             data: { cityId, name, boundary },
           });
           created++;

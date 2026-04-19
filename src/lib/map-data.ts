@@ -1,7 +1,7 @@
 import prisma from '@/lib/db';
 import { computeVulnerabilityScore, type VulnerabilityResult } from '@/lib/compute/vulnerability';
 import {
-  createFallbackNeighborhoodGeometry,
+  createFallbackPlaceGeometry,
   getGeometryCenter,
   parseBoundaryGeometry,
   parseInterventionPoint,
@@ -13,14 +13,14 @@ export interface CityMapIntervention {
   name: string;
   type: string;
   status: string;
-  neighborhoodId: string | null;
-  neighborhoodName: string | null;
+  placeId: string | null;
+  placeName: string | null;
   estimatedTempReductionC: number | null;
   estimatedCostUsd: number | null;
   point: [number, number];
 }
 
-export interface CityMapNeighborhood {
+export interface CityMapPlace {
   id: string;
   name: string;
   population: number | null;
@@ -48,14 +48,14 @@ export interface CityMapPayload {
     lat: number;
     lng: number;
   };
-  neighborhoods: CityMapNeighborhood[];
+  places: CityMapPlace[];
   interventions: CityMapIntervention[];
   stats: {
     criticalCount: number;
     highCount: number;
     interventionCount: number;
     approvedOrActiveCount: number;
-    neighborhoodCount: number;
+    placeCount: number;
   };
 }
 
@@ -88,7 +88,7 @@ export async function getCityMapData({
       ? undefined
       : ['APPROVED', 'IN_PROGRESS', 'COMPLETED'];
 
-  const neighborhoods = await prisma.neighborhood.findMany({
+  const places = await prisma.place.findMany({
     where: { cityId: city.id },
     include: {
       heatMeasurements: { orderBy: { measurementDate: 'desc' }, take: 1 },
@@ -100,24 +100,24 @@ export async function getCityMapData({
     orderBy: { name: 'asc' },
   });
 
-  const cityAverageTemperature = neighborhoods.length
-    ? neighborhoods.reduce((sum, neighborhood) => {
-        const latestMeasurement = neighborhood.heatMeasurements[0];
+  const cityAverageTemperature = places.length
+    ? places.reduce((sum, place) => {
+        const latestMeasurement = place.heatMeasurements[0];
         return sum + (latestMeasurement?.avgTempCelsius ?? 0);
-      }, 0) / neighborhoods.length
+      }, 0) / places.length
     : 0;
 
-  const mapNeighborhoods = neighborhoods.map((neighborhood, index) => {
-    const latestMeasurement = neighborhood.heatMeasurements[0];
+  const mapPlaces = places.map((place, index) => {
+    const latestMeasurement = place.heatMeasurements[0];
     const vulnerability = computeVulnerabilityScore(
       {
-        id: neighborhood.id,
-        name: neighborhood.name,
-        population: neighborhood.population,
-        areaSqkm: neighborhood.areaSqkm,
-        medianIncome: neighborhood.medianIncome,
-        pctElderly: neighborhood.pctElderly,
-        pctChildren: neighborhood.pctChildren,
+        id: place.id,
+        name: place.name,
+        population: place.population,
+        areaSqkm: place.areaSqkm,
+        medianIncome: place.medianIncome,
+        pctElderly: place.pctElderly,
+        pctChildren: place.pctChildren,
         avgTempCelsius: latestMeasurement?.avgTempCelsius,
         treeCanopyPct: latestMeasurement?.treeCanopyPct ?? undefined,
         imperviousSurfacePct: latestMeasurement?.imperviousSurfacePct ?? undefined,
@@ -126,18 +126,18 @@ export async function getCityMapData({
     );
 
     const geometry =
-      parseBoundaryGeometry(neighborhood.boundary) ||
-      createFallbackNeighborhoodGeometry(
+      parseBoundaryGeometry(place.boundary) ||
+      createFallbackPlaceGeometry(
         city.lat ?? 20.5937,
         city.lng ?? 78.9629,
         index,
-        neighborhoods.length
+        places.length
       );
 
     return {
-      id: neighborhood.id,
-      name: neighborhood.name,
-      population: neighborhood.population,
+      id: place.id,
+      name: place.name,
+      population: place.population,
       avgTemp: latestMeasurement?.avgTempCelsius ?? null,
       maxTemp: latestMeasurement?.maxTempCelsius ?? null,
       treeCanopyPct: latestMeasurement?.treeCanopyPct ?? null,
@@ -146,13 +146,13 @@ export async function getCityMapData({
       vulnerabilityLevel: vulnerability.level,
       geometry,
       center: getGeometryCenter(geometry),
-      interventions: neighborhood.interventions.map((intervention) => ({
+      interventions: place.interventions.map((intervention) => ({
         id: intervention.id,
         name: intervention.name,
         status: intervention.status,
         estimatedTempReductionC: intervention.estimatedTempReductionC,
       })),
-    } satisfies CityMapNeighborhood;
+    } satisfies CityMapPlace;
   });
 
   const interventions = await prisma.intervention.findMany({
@@ -161,17 +161,17 @@ export async function getCityMapData({
       ...(visibleStatuses ? { status: { in: visibleStatuses } } : {}),
     },
     include: {
-      neighborhood: { select: { id: true, name: true } },
+      place: { select: { id: true, name: true } },
     },
     orderBy: { createdAt: 'desc' },
   });
 
   const mapInterventions = interventions
     .map((intervention) => {
-      const matchingNeighborhood = mapNeighborhoods.find(
-        (neighborhood) => neighborhood.id === intervention.neighborhoodId
+      const matchingPlace = mapPlaces.find(
+        (place) => place.id === intervention.placeId
       );
-      const point = parseInterventionPoint(intervention.location) || matchingNeighborhood?.center;
+      const point = parseInterventionPoint(intervention.location) || matchingPlace?.center;
 
       if (!point) {
         return null;
@@ -182,8 +182,8 @@ export async function getCityMapData({
         name: intervention.name,
         type: intervention.type,
         status: intervention.status,
-        neighborhoodId: intervention.neighborhoodId,
-        neighborhoodName: intervention.neighborhood?.name || null,
+        placeId: intervention.placeId,
+        placeName: intervention.place?.name || null,
         estimatedTempReductionC: intervention.estimatedTempReductionC,
         estimatedCostUsd: intervention.estimatedCostUsd,
         point,
@@ -199,14 +199,14 @@ export async function getCityMapData({
       lat: city.lat ?? 20.5937,
       lng: city.lng ?? 78.9629,
     },
-    neighborhoods: mapNeighborhoods,
+    places: mapPlaces,
     interventions: mapInterventions,
     stats: {
-      criticalCount: mapNeighborhoods.filter((neighborhood) => neighborhood.vulnerabilityLevel === 'CRITICAL').length,
-      highCount: mapNeighborhoods.filter((neighborhood) => neighborhood.vulnerabilityLevel === 'HIGH').length,
+      criticalCount: mapPlaces.filter((place) => place.vulnerabilityLevel === 'CRITICAL').length,
+      highCount: mapPlaces.filter((place) => place.vulnerabilityLevel === 'HIGH').length,
       interventionCount: mapInterventions.length,
       approvedOrActiveCount: mapInterventions.filter((intervention) => intervention.status !== 'PROPOSED').length,
-      neighborhoodCount: mapNeighborhoods.length,
+      placeCount: mapPlaces.length,
     },
   };
 }

@@ -82,7 +82,7 @@ export default function DataManagementPage() {
           <div>
             <h3 className="text-sm font-medium text-[var(--text-primary)]">Quick Import from OpenStreetMap</h3>
             <p className="text-xs text-[var(--text-tertiary)] mt-0.5">
-              Automatically fetch neighborhood boundaries for your city from OSM.
+              Automatically fetch place boundaries for your city from OSM.
             </p>
           </div>
           <button
@@ -120,7 +120,7 @@ export default function DataManagementPage() {
       {/* Upload Form */}
       <form onSubmit={handleUpload} className="rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] p-5 space-y-4">
         <h3 className="text-sm font-medium text-[var(--text-primary)]">
-          {activeTab === 'csv' ? 'Import Neighborhood Data (CSV)' :
+          {activeTab === 'csv' ? 'Import Place Data (CSV)' :
            activeTab === 'geojson' ? 'Import GeoJSON Boundaries' :
            'Import Weather Station Data'}
         </h3>
@@ -130,7 +130,7 @@ export default function DataManagementPage() {
             <p>Expected columns: name, population, areaSqkm, medianIncome, pctElderly, pctChildren</p>
           )}
           {activeTab === 'geojson' && (
-            <p>Upload a GeoJSON FeatureCollection. Each feature should have a &ldquo;name&rdquo; property matching a neighborhood.</p>
+            <p>Upload a GeoJSON FeatureCollection. Each feature should have a &ldquo;name&rdquo; property matching a place.</p>
           )}
           {activeTab === 'weather' && (
             <p>Expected columns: stationId, stationName, lat, lng, recordedAt, tempCelsius, humidity, windSpeedKmh</p>

@@ -40,7 +40,7 @@ export default async function InterventionsPage() {
                 <tr className="border-b border-[var(--border)] text-[var(--text-tertiary)] text-[11px] uppercase tracking-[0.06em] font-medium">
                   <th className="px-4 py-3">Name</th>
                   <th className="px-4 py-3">Type</th>
-                  <th className="px-4 py-3">Neighborhood</th>
+                  <th className="px-4 py-3">Place</th>
                   <th className="px-4 py-3">Status</th>
                   <th className="px-4 py-3">Est. Reduction</th>
                   <th className="px-4 py-3">Cost</th>
@@ -52,7 +52,7 @@ export default async function InterventionsPage() {
                   <tr key={i.id} className="hover:bg-[var(--bg-elevated)] transition-colors">
                     <td className="px-4 py-3 font-medium text-[var(--text-primary)]">{i.name}</td>
                     <td className="px-4 py-3 text-[var(--text-secondary)] capitalize">{i.type.replace(/_/g, ' ').toLowerCase()}</td>
-                    <td className="px-4 py-3 text-[var(--text-secondary)]">{i.neighborhood?.name ?? 'City-wide'}</td>
+                    <td className="px-4 py-3 text-[var(--text-secondary)]">{i.place?.name ?? 'City-wide'}</td>
                     <td className="px-4 py-3">
                       <span
                         className="text-[10px] font-semibold px-2 py-0.5 rounded border uppercase tracking-[0.04em]"

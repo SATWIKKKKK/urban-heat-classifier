@@ -1,6 +1,6 @@
 export interface SimulationInput {
-  neighborhoodId: string;
-  neighborhoodName: string;
+  placeId: string;
+  placeName: string;
   baselineTemp: number;
   treeCanopyPct: number;
   imperviousSurfacePct: number;

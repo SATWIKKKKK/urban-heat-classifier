@@ -44,7 +44,7 @@ export default async function ScenarioDetailPage({ params }: { params: Promise<{
         include: {
           intervention: {
             include: {
-              neighborhood: { select: { name: true } },
+              place: { select: { name: true } },
             },
           },
         },
@@ -76,9 +76,9 @@ export default async function ScenarioDetailPage({ params }: { params: Promise<{
     projectedCo2ReductionTons?: number;
     costPerLifeProtected?: number | null;
   }>(latestResult?.outputSummary);
-  const neighborhoodResults =
-    parseJsonValue<Array<{ neighborhood: string; reductionCelsius: number; livesSaved: number }>>(
-      latestResult?.neighborhoodResults
+  const placeResults =
+    parseJsonValue<Array<{ place: string; reductionCelsius: number; livesSaved: number }>>(
+      latestResult?.placeResults
     ) || [];
 
   async function submitAction() {
@@ -158,7 +158,7 @@ export default async function ScenarioDetailPage({ params }: { params: Promise<{
                     <div>
                       <div className="font-semibold text-white">{intervention.name}</div>
                       <div className="text-sm text-[var(--text-secondary)]">
-                        {intervention.neighborhood?.name || 'City-wide'} · {intervention.type.replace(/_/g, ' ')}
+                        {intervention.place?.name || 'City-wide'} · {intervention.type.replace(/_/g, ' ')}
                       </div>
                     </div>
                     <div className="text-right text-sm">
@@ -188,20 +188,20 @@ export default async function ScenarioDetailPage({ params }: { params: Promise<{
               : 'No simulation summary is attached to this scenario yet.'}
           </p>
 
-          {neighborhoodResults.length > 0 && (
+          {placeResults.length > 0 && (
             <div className="mt-5 overflow-hidden rounded-xl border border-[var(--border)]">
               <table className="w-full text-left text-sm">
                 <thead className="bg-[var(--bg-elevated)] text-[var(--text-tertiary)] uppercase text-[10px] tracking-widest font-bold">
                   <tr>
-                    <th className="px-4 py-3">Neighborhood</th>
+                    <th className="px-4 py-3">Place</th>
                     <th className="px-4 py-3">Cooling</th>
                     <th className="px-4 py-3">Lives</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[var(--border)]">
-                  {neighborhoodResults.map((result) => (
-                    <tr key={result.neighborhood}>
-                      <td className="px-4 py-3 text-white">{result.neighborhood}</td>
+                  {placeResults.map((result) => (
+                    <tr key={result.place}>
+                      <td className="px-4 py-3 text-white">{result.place}</td>
                       <td className="px-4 py-3 text-[var(--green-400)]">-{result.reductionCelsius.toFixed(1)}°C</td>
                       <td className="px-4 py-3 text-[var(--text-secondary)]">{result.livesSaved}</td>
                     </tr>
