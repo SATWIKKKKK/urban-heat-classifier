@@ -50,3 +50,4 @@ test-results/
 # local db
 dev.db
 prisma/dev.dbplaywright-results.json*  
+.vercel
