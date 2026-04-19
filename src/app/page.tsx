@@ -72,7 +72,7 @@ export default async function HomePage() {
 
               <p className="mt-8 max-w-lg text-lg leading-relaxed text-(--text-secondary) hero-desc">
                 Map vulnerable neighborhoods, plan interventions, simulate impact,
-                and get city council approval — all in  platform.
+                and get city council approval — all in one  platform.
               </p>
 
               <div className="mt-8 flex flex-wrap gap-4">

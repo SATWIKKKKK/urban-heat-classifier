@@ -28,6 +28,24 @@ function SkeletonLine({ w = 'w-24' }: { w?: string }) {
   return <div className={`animate-pulse bg-[var(--bg-elevated)] h-4 ${w} rounded`} />;
 }
 
+const TILE_LAYERS = {
+  dark: {
+    url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+    attribution: '&copy; OpenStreetMap &copy; CARTO',
+    label: 'Dark',
+  },
+  satellite: {
+    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+    attribution: '&copy; Esri &copy; USGS &copy; NOAA',
+    label: 'Satellite',
+  },
+  street: {
+    url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
+    attribution: '&copy; OpenStreetMap &copy; CARTO',
+    label: 'Street',
+  },
+} as const;
+
 export default function MapPage() {
   const { data: session, status } = useSession();
   const role = session?.user?.role;
@@ -48,6 +66,8 @@ export default function MapPage() {
   const [inspectorLoading, setInspectorLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showSearch, setShowSearch] = useState(false);
+  const [tileStyle, setTileStyle] = useState<'dark' | 'satellite' | 'street'>('dark');
+  const tileLayerRef = useRef<L.TileLayer | null>(null);
 
   // Keep ref in sync so Leaflet event handlers always see the current selection
   useEffect(() => { selectedNeighborhoodRef.current = selectedNeighborhood; }, [selectedNeighborhood]);
@@ -107,18 +127,20 @@ export default function MapPage() {
       if (!mapRef.current || mapInstanceRef.current) return;
 
       const map = leaflet.map(mapRef.current, {
-        center: [20.5937, 78.9629],
-        zoom: 5,
+        center: [22.5, 82.0], // approximate India center away from any major city
+        zoom: 4,
         zoomControl: false,   // we render custom controls
         scrollWheelZoom: true,
       });
 
       leaflet
-        .tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-          attribution: '&copy; OpenStreetMap &copy; CARTO',
+        .tileLayer(TILE_LAYERS.dark.url, {
+          attribution: TILE_LAYERS.dark.attribution,
           maxZoom: 19,
         })
         .addTo(map);
+
+      tileLayerRef.current = map.eachLayer((l) => l) as unknown as L.TileLayer;
 
       mapInstanceRef.current = map;
       setMapReady(true); // triggers polygon rendering when payload is also ready
@@ -131,6 +153,20 @@ export default function MapPage() {
       }
     };
   }, []); // CRITICAL: empty — runs exactly once on mount
+
+  // Swap tile layer when tileStyle changes
+  useEffect(() => {
+    if (!mapReady || !mapInstanceRef.current) return;
+    void import('leaflet').then((L) => {
+      const map = mapInstanceRef.current!;
+      // Remove all tile layers
+      map.eachLayer((layer) => {
+        if (layer instanceof L.TileLayer) map.removeLayer(layer);
+      });
+      const cfg = TILE_LAYERS[tileStyle];
+      L.tileLayer(cfg.url, { attribution: cfg.attribution, maxZoom: 19 }).addTo(map);
+    });
+  }, [tileStyle, mapReady]);
 
   // Fly to city when we have both map + coordinates
   useEffect(() => {
@@ -244,7 +280,7 @@ export default function MapPage() {
           <span className="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-sm text-[var(--text-tertiary)] pointer-events-none">search</span>
           <input
             type="text"
-            placeholder="Search neighborhoods…"
+            placeholder="Search places\u2026"
             value={searchQuery}
             onChange={(e) => { setSearchQuery(e.target.value); setShowSearch(true); }}
             onFocus={() => setShowSearch(true)}
@@ -372,7 +408,7 @@ export default function MapPage() {
               <div className="bg-[var(--bg-elevated)] border border-[var(--border-strong)] rounded-lg p-6 text-center max-w-sm">
                 <span className="material-symbols-outlined text-2xl text-[var(--text-tertiary)] mb-2" style={{ fontVariationSettings: "'FILL' 1" }}>map</span>
                 <p className="mt-2 text-sm font-medium text-[var(--text-primary)]">No city data yet</p>
-                <p className="mt-1 text-xs text-[var(--text-tertiary)]">Complete onboarding and add neighbourhoods to see your city on the map.</p>
+                <p className="mt-1 text-xs text-[var(--text-tertiary)]">Complete onboarding and add places to see your city on the map.</p>
                 {isAuthenticated && (
                   <Link href="/dashboard/onboarding" className="mt-4 inline-flex items-center gap-1 h-8 px-4 text-xs font-medium bg-[var(--green-500)] text-white rounded-md hover:bg-[var(--green-400)] transition-colors">
                     Go to Onboarding
@@ -391,6 +427,24 @@ export default function MapPage() {
             <button type="button" onClick={zoomOut} aria-label="Zoom out" className="w-8 h-8 bg-[var(--bg-surface)] border border-[var(--border)] rounded-md flex items-center justify-center text-[var(--text-secondary)] hover:bg-[var(--bg-elevated)] hover:text-[var(--text-primary)] transition-colors shadow-lg">
               <span className="material-symbols-outlined text-sm">remove</span>
             </button>
+          </div>
+
+          {/* Tile layer toggle — bottom-left, above legend */}
+          <div className="absolute bottom-16 right-4 z-[400] flex flex-col gap-px bg-[var(--bg-surface)] border border-[var(--border)] rounded-md overflow-hidden shadow-lg">
+            {(['dark', 'satellite', 'street'] as const).map((style) => (
+              <button
+                key={style}
+                type="button"
+                onClick={() => setTileStyle(style)}
+                className={`px-2.5 py-1.5 text-[10px] font-medium uppercase tracking-[0.04em] transition-colors ${
+                  tileStyle === style
+                    ? 'bg-[var(--green-500)] text-white'
+                    : 'text-[var(--text-tertiary)] hover:bg-[var(--bg-elevated)] hover:text-[var(--text-secondary)]'
+                }`}
+              >
+                {TILE_LAYERS[style].label}
+              </button>
+            ))}
           </div>
 
           {/* Mobile vulnerability legend */}
@@ -422,7 +476,7 @@ export default function MapPage() {
                   <span className="font-medium text-[var(--text-primary)]">{selectedIntervention.status.replace(/_/g, ' ')}</span>
                 </div>
                 <div className="flex justify-between items-center px-3 py-2">
-                  <span className="text-[var(--text-tertiary)]">Neighborhood</span>
+                  <span className="text-[var(--text-tertiary)]">Place</span>
                   <span className="font-medium text-[var(--text-primary)]">{selectedIntervention.neighborhoodName || 'City-wide'}</span>
                 </div>
                 <div className="flex justify-between items-center px-3 py-2">

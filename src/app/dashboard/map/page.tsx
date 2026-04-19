@@ -4,5 +4,5 @@ import { redirect } from 'next/navigation';
 // /dashboard → /dashboard/map → /map → /dashboard → ...
 // Now we go directly to the neighborhoods page.
 export default function DashboardMapPage() {
-  redirect('/dashboard/neighborhoods');
+  redirect('/dashboard/my-data');
 }

@@ -134,11 +134,11 @@ export class PdfBuilder {
   addTitle(text: string): this {
     const sz = 20;
     const lines = wrapText(text, sz, CW - 10);
-    const h = lines.length * (sz + 6) + 28;
+    const h = lines.length * (sz + 6) + 36;
     this._need(h);
-    // top accent bar
+    // top accent bar — drawn above text, separated to avoid overlap with ascenders
     this._fillRect(ML, this.pg.y - 4, CW, 4, 0.09, 0.56, 0.40);
-    this.pg.y -= 16;
+    this.pg.y -= 24;
     for (const ln of lines) {
       this._text(ML, this.pg.y, ln, sz, true, 0.06, 0.09, 0.16);
       this.pg.y -= sz + 6;
