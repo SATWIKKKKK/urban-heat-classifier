@@ -71,6 +71,26 @@ interface LivePlaceData {
   forecast?: { dates: string[]; maxTemps: number[]; minTemps: number[] };
 }
 
+interface LiveVulnerabilityFactor {
+  name: string; weight: number; value: string; points: number; maxPoints: number;
+}
+
+interface LiveVulnerabilityData {
+  placeId: string;
+  live: {
+    temp: number | null; humidity: number | null; apparentTemp: number | null;
+    windSpeed: number | null; todayMax: number | null; todayMin: number | null;
+    precipToday: number | null; source: string; fetchedAt: string;
+  };
+  stored: { avgTemp: number | null; maxTemp: number | null; treeCanopyPct: number | null; imperviousSurfacePct: number | null; };
+  vulnerability: {
+    score: number; level: 'LOW' | 'MODERATE' | 'HIGH' | 'CRITICAL';
+    factors: LiveVulnerabilityFactor[];
+    topRisks: string[];
+    improvementSuggestions: string[];
+  };
+}
+
 export default function DashboardMapPage() {
   const { isLoaded, loadError } = useJsApiLoader({
     id: 'google-map-script',
@@ -100,6 +120,8 @@ export default function DashboardMapPage() {
   const [searchedMarkerPos, setSearchedMarkerPos] = useState<google.maps.LatLngLiteral | null>(null);
   const [geminiReport, setGeminiReport] = useState<string | null>(null);
   const [geminiLoading, setGeminiLoading] = useState(false);
+  const [liveVuln, setLiveVuln] = useState<LiveVulnerabilityData | null>(null);
+  const [liveVulnLoading, setLiveVulnLoading] = useState(false);
 
   const localResults = useMemo(() => {
     if (!localQuery.trim() || !payload) return [];
@@ -136,9 +158,20 @@ export default function DashboardMapPage() {
     void load();
   }, [cityQuery, status, searchParams]);
 
-  // Fly to city when payload + map both ready
+  // Fetch real-time vulnerability when a place is selected
   useEffect(() => {
-    if (!mapRef.current || !payload?.city.lat || !isLoaded) return;
+    if (!selectedPlace) { setLiveVuln(null); return; }
+    setLiveVulnLoading(true);
+    setLiveVuln(null);
+    fetch(`/api/vulnerability/realtime?placeId=${encodeURIComponent(selectedPlace.id)}`)
+      .then(r => r.json())
+      .then((data: LiveVulnerabilityData) => { setLiveVuln(data); })
+      .catch(() => { /* non-critical */ })
+      .finally(() => setLiveVulnLoading(false));
+  }, [selectedPlace?.id]);
+
+  // Fly to city when payload + map both ready
+  useEffect(() => {    if (!mapRef.current || !payload?.city.lat || !isLoaded) return;
     if (payload.places.length > 0) {
       const bounds = new google.maps.LatLngBounds();
       payload.places.forEach(p => extendBoundsWithGeometry(bounds, p.geometry));
@@ -163,6 +196,7 @@ export default function DashboardMapPage() {
     setSearchedPlace(null);
     setSearchedMarkerPos(null);
     setLocalQuery('');
+    setGeminiReport(null);
   }, [isLoaded]);
 
   // Google Places Autocomplete place selection
@@ -260,7 +294,7 @@ export default function DashboardMapPage() {
   }), [mapType]);
 
   return (
-    <div className="flex flex-col h-[calc(100dvh-64px)]">
+    <div className="flex flex-col" style={{ height: 'calc(100vh - 60px)' }}>
       {/* Top bar with search */}
       <div className="flex items-center gap-3 px-4 py-2.5 bg-[var(--bg-surface)] border-b border-[var(--border-default)] shrink-0">
         <h1 className="text-sm font-semibold text-[var(--text-primary)] shrink-0">Map</h1>
@@ -416,7 +450,7 @@ export default function DashboardMapPage() {
                       strokeWeight: isSelected ? 1.5 : isHovered ? 1 : 0,
                       clickable: true,
                     }}
-                    onClick={() => { setSelectedPlace(place); setSelectedIntervention(null); setSearchedPlace(null); setSearchedMarkerPos(null); }}
+                    onClick={() => { setSelectedPlace(place); setSelectedIntervention(null); setSearchedPlace(null); setSearchedMarkerPos(null); setGeminiReport(null); }}
                     onMouseOver={() => setHoveredPlaceId(place.id)}
                     onMouseOut={() => setHoveredPlaceId(null)}
                   />
@@ -588,25 +622,119 @@ export default function DashboardMapPage() {
             <>
               <h2 className="text-sm font-semibold text-[var(--text-primary)]">{inspectorPlace.name}</h2>
               <div className="mt-1.5">
-                <span className="inline-flex items-center text-[10px] font-semibold uppercase tracking-[0.05em] rounded px-2 py-0.5"
-                  style={{ backgroundColor: `${VULN_COLORS[inspectorPlace.vulnerabilityLevel] ?? '#22c55e'}1a`, borderColor: `${VULN_COLORS[inspectorPlace.vulnerabilityLevel] ?? '#22c55e'}4d`, borderWidth: '1px', color: VULN_COLORS[inspectorPlace.vulnerabilityLevel] ?? '#22c55e' }}>
-                  {inspectorPlace.vulnerabilityLevel} · Score {inspectorPlace.vulnerabilityScore}
-                </span>
+                {/* Show live vulnerability if available, else stored */}
+                {(() => {
+                  const displayLevel = liveVuln?.vulnerability.level ?? inspectorPlace.vulnerabilityLevel;
+                  const displayScore = liveVuln?.vulnerability.score ?? inspectorPlace.vulnerabilityScore;
+                  const isLive = !!liveVuln;
+                  return (
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="inline-flex items-center text-[10px] font-semibold uppercase tracking-[0.05em] rounded px-2 py-0.5"
+                        style={{ backgroundColor: `${VULN_COLORS[displayLevel] ?? '#22c55e'}1a`, borderColor: `${VULN_COLORS[displayLevel] ?? '#22c55e'}4d`, borderWidth: '1px', color: VULN_COLORS[displayLevel] ?? '#22c55e' }}>
+                        {displayLevel} · Score {displayScore}
+                      </span>
+                      {isLive && (
+                        <span className="inline-flex items-center gap-0.5 text-[9px] font-medium text-emerald-400 bg-emerald-400/10 border border-emerald-400/20 rounded px-1.5 py-0.5">
+                          <span className="w-1 h-1 rounded-full bg-emerald-400 animate-pulse" />LIVE
+                        </span>
+                      )}
+                      {liveVulnLoading && (
+                        <span className="inline-flex items-center gap-1 text-[9px] text-[var(--text-tertiary)]">
+                          <div className="w-2.5 h-2.5 border border-[var(--green-400)]/30 border-t-[var(--green-400)] rounded-full animate-spin" />fetching live data…
+                        </span>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
-              <div className="mt-3 border border-[var(--border-default)] rounded-md divide-y divide-[var(--border-default)] text-xs">
-                <div className="flex justify-between px-3 py-2"><span className="text-[var(--text-tertiary)]">Population</span><span className="font-medium text-[var(--text-primary)]">{inspectorPlace.population?.toLocaleString() ?? '—'}</span></div>
-                {inspectorPlace.avgTemp != null && <div className="flex justify-between px-3 py-2"><span className="text-[var(--text-tertiary)]">Avg temp</span><span className="font-medium text-[var(--text-primary)]">{inspectorPlace.avgTemp.toFixed(1)}°C</span></div>}
-                {inspectorPlace.maxTemp != null && <div className="flex justify-between px-3 py-2"><span className="text-[var(--text-tertiary)]">Max temp</span><span className="font-semibold text-[var(--high)]">{inspectorPlace.maxTemp.toFixed(1)}°C</span></div>}
-                {inspectorPlace.treeCanopyPct != null && <div className="flex justify-between px-3 py-2"><span className="text-[var(--text-tertiary)]">Tree canopy</span><span className="font-medium text-[var(--green-400)]">{inspectorPlace.treeCanopyPct.toFixed(0)}%</span></div>}
-              </div>
-              {inspectorPlace.avgTemp != null && (
-                <div className="mt-3 p-3 bg-[var(--bg-elevated)] border border-[var(--border-default)] rounded-md">
-                  <div className="flex justify-between text-[10px] text-[var(--text-tertiary)] mb-1.5"><span>Heat Intensity</span><span>{inspectorPlace.avgTemp.toFixed(1)}°C avg</span></div>
-                  <div className="h-1.5 bg-[var(--bg-base)] rounded-full overflow-hidden">
-                    <div className="h-full rounded-full transition-all" style={{ width: `${Math.min(100, Math.max(8, ((inspectorPlace.avgTemp - 20) / 25) * 100))}%`, backgroundColor: VULN_COLORS[inspectorPlace.vulnerabilityLevel] ?? '#22c55e' }} />
+
+              {/* Live temperature panel */}
+              {liveVuln?.live && (
+                <div className="mt-2 border border-emerald-500/20 bg-emerald-500/5 rounded-md p-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[10px] font-medium uppercase tracking-[0.05em] text-emerald-400 flex items-center gap-1">
+                      <span className="material-symbols-outlined text-xs" style={{ fontVariationSettings: "'FILL' 1" }}>thermostat</span>
+                      Live Conditions
+                    </span>
+                    <span className="text-[9px] text-[var(--text-tertiary)]">
+                      {new Date(liveVuln.live.fetchedAt).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-[11px]">
+                    {liveVuln.live.temp !== null && (
+                      <div><span className="text-[var(--text-tertiary)]">Temp</span><span className="font-semibold text-[var(--text-primary)] ml-1">{liveVuln.live.temp.toFixed(1)}°C</span></div>
+                    )}
+                    {liveVuln.live.apparentTemp !== null && (
+                      <div><span className="text-[var(--text-tertiary)]">Feels</span><span className="font-medium text-[var(--text-primary)] ml-1">{liveVuln.live.apparentTemp.toFixed(1)}°C</span></div>
+                    )}
+                    {liveVuln.live.humidity !== null && (
+                      <div><span className="text-[var(--text-tertiary)]">Humidity</span><span className="font-medium text-[var(--text-primary)] ml-1">{liveVuln.live.humidity}%</span></div>
+                    )}
+                    {liveVuln.live.windSpeed !== null && (
+                      <div><span className="text-[var(--text-tertiary)]">Wind</span><span className="font-medium text-[var(--text-primary)] ml-1">{liveVuln.live.windSpeed} km/h</span></div>
+                    )}
+                    {liveVuln.live.todayMax !== null && (
+                      <div><span className="text-[var(--text-tertiary)]">Max today</span><span className="font-semibold text-[var(--high)] ml-1">{liveVuln.live.todayMax.toFixed(1)}°C</span></div>
+                    )}
+                    {liveVuln.live.todayMin !== null && (
+                      <div><span className="text-[var(--text-tertiary)]">Min today</span><span className="font-medium text-[var(--info)] ml-1">{liveVuln.live.todayMin.toFixed(1)}°C</span></div>
+                    )}
                   </div>
                 </div>
               )}
+
+              {/* Vulnerability factors breakdown */}
+              {liveVuln?.vulnerability.factors && liveVuln.vulnerability.factors.length > 0 && (
+                <div className="mt-2 border border-[var(--border-default)] rounded-md p-3">
+                  <h3 className="text-[10px] font-medium uppercase tracking-[0.05em] text-[var(--text-tertiary)] mb-2">Risk Factors</h3>
+                  <div className="space-y-2">
+                    {liveVuln.vulnerability.factors.map((f) => {
+                      const pct = Math.round((f.points / f.maxPoints) * 100);
+                      const barColor = pct >= 80 ? '#ef4444' : pct >= 60 ? '#f97316' : pct >= 40 ? '#eab308' : '#22c55e';
+                      return (
+                        <div key={f.name}>
+                          <div className="flex justify-between text-[10px] mb-0.5">
+                            <span className="text-[var(--text-secondary)]">{f.name}</span>
+                            <span className="text-[var(--text-tertiary)]">{f.value} · {f.points}/{f.maxPoints}pts</span>
+                          </div>
+                          <div className="h-1 bg-[var(--bg-base)] rounded-full overflow-hidden">
+                            <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, backgroundColor: barColor }} />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  {liveVuln.vulnerability.topRisks.length > 0 && (
+                    <p className="mt-2 text-[10px] text-[var(--text-tertiary)]">
+                      Top risks: <span className="text-[var(--text-secondary)]">{liveVuln.vulnerability.topRisks.join(', ')}</span>
+                    </p>
+                  )}
+                </div>
+              )}
+
+              <div className="mt-2 border border-[var(--border-default)] rounded-md divide-y divide-[var(--border-default)] text-xs">
+                <div className="flex justify-between px-3 py-2"><span className="text-[var(--text-tertiary)]">Population</span><span className="font-medium text-[var(--text-primary)]">{inspectorPlace.population?.toLocaleString() ?? '—'}</span></div>
+                {(liveVuln?.stored.treeCanopyPct ?? inspectorPlace.treeCanopyPct) != null && <div className="flex justify-between px-3 py-2"><span className="text-[var(--text-tertiary)]">Tree canopy</span><span className="font-medium text-[var(--green-400)]">{(liveVuln?.stored.treeCanopyPct ?? inspectorPlace.treeCanopyPct)!.toFixed(0)}%</span></div>}
+                {(liveVuln?.stored.imperviousSurfacePct ?? inspectorPlace.imperviousSurfacePct) != null && <div className="flex justify-between px-3 py-2"><span className="text-[var(--text-tertiary)]">Impervious surface</span><span className="font-medium text-[var(--text-primary)]">{(liveVuln?.stored.imperviousSurfacePct ?? inspectorPlace.imperviousSurfacePct)!.toFixed(0)}%</span></div>}
+              </div>
+
+              {/* Heat intensity bar using live score */}
+              {(() => {
+                const score = liveVuln?.vulnerability.score ?? inspectorPlace.vulnerabilityScore;
+                const level = liveVuln?.vulnerability.level ?? inspectorPlace.vulnerabilityLevel;
+                return score > 0 ? (
+                  <div className="mt-2 p-3 bg-[var(--bg-elevated)] border border-[var(--border-default)] rounded-md">
+                    <div className="flex justify-between text-[10px] text-[var(--text-tertiary)] mb-1.5">
+                      <span>Vulnerability Score</span>
+                      <span>{score}/100</span>
+                    </div>
+                    <div className="h-1.5 bg-[var(--bg-base)] rounded-full overflow-hidden">
+                      <div className="h-full rounded-full transition-all" style={{ width: `${score}%`, backgroundColor: VULN_COLORS[level] ?? '#22c55e' }} />
+                    </div>
+                  </div>
+                ) : null;
+              })()}
+
               <div className="mt-4 pt-3 border-t border-[var(--border-default)]">
                 <h3 className="text-[10px] font-medium uppercase tracking-[0.06em] text-[var(--text-tertiary)] pb-2 border-b border-[var(--border-default)]">Interventions in this area</h3>
                 {inspectorPlace.interventions.length === 0 ? (

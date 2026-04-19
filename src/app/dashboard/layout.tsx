@@ -12,6 +12,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const onboardingComplete = session?.user?.onboardingComplete;
   const hideNav = isOnboarding || !onboardingComplete;
 
+  // Full-screen routes that must not be wrapped in the page container
+  const isFullscreen = pathname.startsWith('/dashboard/map');
+
   return (
     <div className="min-h-screen bg-[var(--bg-base)] relative overflow-x-hidden">
       {/* Background effects matching design system */}
@@ -21,11 +24,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
       {!hideNav && <GlobalNavbar />}
 
-      <main className={`${hideNav ? '' : 'pt-[60px]'} relative z-10 min-h-screen`}>
-        <div className="max-w-[1200px] mx-auto px-4 md:px-8 py-6 pb-20">
+      {isFullscreen ? (
+        <main className={`${hideNav ? '' : 'pt-[60px]'} relative z-10`}>
           {children}
-        </div>
-      </main>
+        </main>
+      ) : (
+        <main className={`${hideNav ? '' : 'pt-[60px]'} relative z-10 min-h-screen`}>
+          <div className="max-w-[1200px] mx-auto px-4 md:px-8 py-6 pb-20">
+            {children}
+          </div>
+        </main>
+      )}
     </div>
   );
 }
