@@ -53,32 +53,32 @@ export default async function HomePage() {
       {/* Hero Section */}
       <section className="relative min-h-screen flex items-center grid-pattern">
         <div className="noise-bg absolute inset-0" />
-        <div data-hero className="mx-auto max-w-7xl px-6 py-20 lg:px-10 relative z-10">
-          <div className="grid items-center gap-16 lg:gap-24 lg:grid-cols-[1.1fr_0.9fr]">
+        <div data-hero className="mx-auto max-w-7xl px-6 py-12 lg:px-10 relative z-10">
+          <div className="grid items-center gap-16 lg:gap-48 lg:grid-cols-[1.1fr_0.9fr] lg:mb-12">
             {/* Left Hero Content */}
             <div className="animate-reveal-up">
-              <div className="inline-flex items-center gap-3 rounded-full glass-card px-5 py-2.5 mb-11 hero-pill">
-                <span className="material-symbols-outlined text-[var(--green-400)] text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>eco</span>
-                <span className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--green-400)]">HeatPlan</span>
-                <span className="h-1 w-1 rounded-full bg-[var(--green-400)]/40" />
-                <span className="text-xs text-[var(--text-secondary)]">Urban Climate Action</span>
+              <div className="inline-flex items-center gap-3 rounded-full glass-card px-5 py-2.5 mb-8 hero-pill">
+                <span className="material-symbols-outlined text-(--green-400) text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>eco</span>
+                <span className="text-xs font-bold uppercase tracking-[0.2em] text-(--green-400)">HeatPlan</span>
+                <span className="h-1 w-1 rounded-full bg-(--green-400)/40" />
+                <span className="text-xs text-(--text-secondary)">Urban Climate Action</span>
               </div>
 
-              <h1 className="hero-headline text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-black leading-[1.0] tracking-[-0.04em] font-[family-name:var(--font-headline)] ">
+              <h1 className="hero-headline text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-black leading-[0.95] tracking-[-0.04em] font-[family-name:var(--font-headline)]  ">
                 <span className="line text-white">Fight</span><br />
-                <span className="line text-gradient-primary">Urban Heat</span><br />
-                <span className="line text-[var(--text-secondary)]">Together</span>
+                <span className="line text-gradient-primary"> Heat</span><br />
+                <span className="line text-(--text-secondary)">Together</span>
               </h1>
 
-              <p className="mt-8 max-w-lg text-lg leading-relaxed text-[var(--text-secondary)] hero-desc">
+              <p className="mt-8 max-w-lg text-lg leading-relaxed text-(--text-secondary) hero-desc">
                 Map vulnerable neighborhoods, plan interventions, simulate impact,
-                and get city council approval — all in one platform.
+                and get city council approval — all in  platform.
               </p>
 
-              <div className="mt-10 flex flex-wrap gap-4">
+              <div className="mt-8 flex flex-wrap gap-4">
                 <Link
                   href="/register"
-                  className="group relative px-8 py-4 bg-gradient-to-r from-[var(--green-400)] to-[var(--green-500)] text-[var(--bg-base)] font-bold rounded-2xl shadow-lg shadow-[var(--green-400)]/20 transition-all hover:shadow-xl hover:shadow-[var(--green-400)]/30 hover:-translate-y-0.5 active:scale-[0.98] hero-cta"
+                  className="group relative px-8 py-4 bg-linear-to-r from-(--green-400) to-[var(--green-500)] text-[var(--bg-base)] font-bold rounded-2xl shadow-lg shadow-[var(--green-400)]/20 transition-all hover:shadow-xl hover:shadow-[var(--green-400)]/30 hover:-translate-y-0.5 active:scale-[0.98] hero-cta"
                 >
                   <span className="flex items-center gap-2">
                     Get Started 
@@ -87,7 +87,7 @@ export default async function HomePage() {
                 </Link>
               </div>
 
-              <p className="mt-6 text-sm text-[var(--text-tertiary)]">
+              <p className="         mt-4 text-sm text-[var(--text-tertiary)]">
                 Already have an account?{' '}
                 <Link href="/login" className="text-[var(--green-400)] hover:underline font-semibold underline-offset-4">
                   Sign in
