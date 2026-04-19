@@ -80,12 +80,13 @@ export default function GlobalNavbar({ accentColor = 'var(--green-400)', activeH
                   <Link
                     key={item.href}
                     href={item.href}
-                    className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all whitespace-nowrap"
+                    className={isActive
+                      ? "px-3 py-1.5 rounded-lg text-xs font-semibold transition-all whitespace-nowrap"
+                      : "px-3 py-1.5 rounded-lg text-xs font-semibold transition-all whitespace-nowrap text-[var(--text-tertiary)] hover:bg-white/5"
+                    }
                     style={isActive ? { backgroundColor: `color-mix(in srgb, ${accentColor} 12%, transparent)`, color: accentColor } : undefined}
                     onMouseEnter={(e) => { if (!isActive) (e.currentTarget as HTMLElement).style.color = accentColor; }}
                     onMouseLeave={(e) => { if (!isActive) (e.currentTarget as HTMLElement).style.color = ''; }}
-                    {...(!isActive ? { 'data-inactive': 'true' } : {})}
-                    {...(!isActive ? { className: 'px-3 py-1.5 rounded-lg text-xs font-semibold transition-all whitespace-nowrap text-[var(--text-tertiary)] hover:bg-white/5' } : {})}
                   >
                     {item.label}
                   </Link>
