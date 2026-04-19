@@ -106,9 +106,9 @@ export default function GlobalNavbar({ accentColor = 'var(--green-400)', activeH
               <div className="hidden sm:flex items-center">
                 <div className="flex items-stretch rounded-lg overflow-hidden mr-2">
                   <div className="flex flex-col w-2">
+                    <span className="block h-1/3 bg-[var(--green-500)]" />
                     <span className="block h-1/3 bg-[var(--green-400)]" />
-                    <span className="block h-1/3 bg-[var(--info)]" />
-                    <span className="block h-1/3 bg-[var(--high)]" />
+                    <span className="block h-1/3 bg-[var(--green-500)]/80" />
                   </div>
                   <span className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest bg-white/5 border border-white/10 text-[var(--text-secondary)] rounded-r-lg whitespace-nowrap">
                     {role.replace(/_/g, ' ')}
@@ -130,7 +130,7 @@ export default function GlobalNavbar({ accentColor = 'var(--green-400)', activeH
                 </button>
                 {userMenuOpen && (
                   <div className="absolute right-0 top-full mt-2 w-56 glass-overlay border border-white/10 rounded-xl overflow-hidden shadow-2xl z-[60]">
-                    <div className="px-4 py-3 border-b border-white/10 flex items-center gap-3 bg-gradient-to-r from-[var(--green-400)]/8 via-[var(--info)]/6 to-[var(--high)]/6">
+                    <div className="px-4 py-3 border-b border-white/10 flex items-center gap-3 bg-gradient-to-r from-[var(--green-500)]/10 via-[var(--green-400)]/8 to-[var(--green-500)]/6">
                       <span className="inline-flex items-center justify-center rounded-full h-8 w-8 bg-[var(--green-400)]/12 text-[var(--green-400)]">
                         <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>auto_awesome</span>
                       </span>
@@ -177,9 +177,9 @@ export default function GlobalNavbar({ accentColor = 'var(--green-400)', activeH
               className="flex flex-col justify-center items-center gap-[4px] h-9 w-9 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all shrink-0"
               aria-label="Open menu"
             >
-              <span className="block h-[2px] w-5 bg-[var(--green-400)] rounded-full transition-all" />
-              <span className="block h-[2px] w-4 bg-[var(--info)] rounded-full transition-all" />
-              <span className="block h-[2px] w-5 bg-[var(--high)] rounded-full transition-all" />
+              <span className="block h-[2px] w-5 bg-[var(--green-500)] rounded-full transition-all" />
+              <span className="block h-[2px] w-4 bg-[var(--green-400)] rounded-full transition-all" />
+              <span className="block h-[2px] w-5 bg-[var(--green-500)]/80 rounded-full transition-all" />
             </button>
           </div>
         </div>
