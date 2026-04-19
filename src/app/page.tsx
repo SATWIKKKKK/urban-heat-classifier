@@ -53,10 +53,10 @@ export default async function HomePage() {
       <section className="relative min-h-screen flex items-center grid-pattern">
         <div className="noise-bg absolute inset-0" />
         <div className="mx-auto max-w-7xl px-6 py-20 lg:px-10 relative z-10">
-          <div className="grid items-center gap-16 lg:grid-cols-[1.2fr_0.8fr]">
+          <div className="grid items-center gap-16 lg:gap-24 lg:grid-cols-[1.1fr_0.9fr]">
             {/* Left Hero Content */}
             <div className="animate-reveal-up">
-              <div className="inline-flex items-center gap-2 rounded-full glass-card px-5 py-2.5 mb-8">
+              <div className="inline-flex items-center gap-2 rounded-full glass-card px-5 py-2.5 mb-12">
                 <span className="material-symbols-outlined text-[var(--green-400)] text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>eco</span>
                 <span className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--green-400)]">HeatPlan</span>
                 <span className="h-1 w-1 rounded-full bg-[var(--green-400)]/40" />
@@ -96,10 +96,10 @@ export default async function HomePage() {
 
             {/* Right - Cities Card */}
             <div className="animate-reveal-up" style={{ animationDelay: '0.15s' }}>
-              <div className="glass-card rounded-3xl p-8 glow-primary relative overflow-hidden">
+              <div className="glass-card rounded-3xl p-8 glow-primary relative overflow-hidden w-full max-w-[520px] ml-auto">
                 <div className="shimmer-bg absolute inset-0 rounded-3xl" />
                 <div className="relative z-10">
-                  <div className="flex items-center gap-2 mb-6">
+                  <div className="flex items-center gap-2 mb-8">
                     <span className="material-symbols-outlined text-[var(--green-400)]" style={{ fontVariationSettings: "'FILL' 1" }}>language</span>
                     <span className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--green-400)]">Cities using HeatPlan</span>
                   </div>
