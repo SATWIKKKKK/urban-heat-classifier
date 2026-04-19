@@ -58,23 +58,23 @@ export default function WaitingPage() {
 
   if (status === 'loading') {
     return (
-      <div className="glass-card rounded-2xl p-10 text-center max-w-2xl mx-auto">
+      <div className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-lg p-10 text-center max-w-2xl mx-auto">
         <div className="flex flex-col items-center gap-3">
-          <div className="w-8 h-8 border-2 border-[#69f6b8]/30 border-t-[#69f6b8] rounded-full animate-spin"></div>
-          <span className="text-sm text-[#a3aac4]">Checking setup…</span>
+          <div className="w-8 h-8 border-2 border-[var(--green-400)]/30 border-t-[var(--green-400)] rounded-full animate-spin"></div>
+          <span className="text-sm text-[var(--text-secondary)]">Checking setup…</span>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="mx-auto max-w-2xl glass-card rounded-2xl p-10 text-center text-white">
-      <div className="relative inline-flex items-center justify-center w-20 h-20 rounded-full bg-[#69f6b8]/10 mb-6">
-        <span className="material-symbols-outlined text-4xl text-[#69f6b8]" style={{ fontVariationSettings: "'FILL' 1" }}>hourglass_top</span>
-        <div className="absolute inset-0 rounded-full border-2 border-[#69f6b8]/20 animate-ping"></div>
+    <div className="mx-auto max-w-2xl bg-[var(--bg-surface)] border border-[var(--border)] rounded-lg p-10 text-center text-white">
+      <div className="relative inline-flex items-center justify-center w-20 h-20 rounded-full bg-[var(--green-400)]/10 mb-6">
+        <span className="material-symbols-outlined text-4xl text-[var(--green-400)]" style={{ fontVariationSettings: "'FILL' 1" }}>hourglass_top</span>
+        <div className="absolute inset-0 rounded-full border-2 border-[var(--green-400)]/20 animate-ping"></div>
       </div>
       <h1 className="text-3xl font-bold tracking-tight font-[family-name:var(--font-headline)]">Almost there</h1>
-      <p className="mt-4 text-base text-[#a3aac4] max-w-md mx-auto">
+      <p className="mt-4 text-base text-[var(--text-secondary)] max-w-md mx-auto">
         Your city administrator is still completing the setup for your city. You will gain access to the
         planning dashboard as soon as onboarding is complete.
       </p>
@@ -82,11 +82,11 @@ export default function WaitingPage() {
         <button
           type="button"
           onClick={() => void checkStatus()}
-          className="rounded-xl bg-gradient-to-r from-[#69f6b8] to-[#06b77f] px-5 py-3 text-sm font-bold text-[#002919] btn-shine"
+          className="rounded-xl bg-gradient-to-r from-[var(--green-400)] to-[var(--green-500)] px-5 py-3 text-sm font-bold text-[var(--bg-base)] "
         >
           {checking ? 'Checking…' : 'Check Again'}
         </button>
-        <Link href="/login" className="rounded-xl border border-white/10 px-5 py-3 text-sm font-semibold text-white hover:bg-white/5 transition-all">
+        <Link href="/login" className="rounded-xl border border-[var(--border-strong)] px-5 py-3 text-sm font-semibold text-white hover:bg-[var(--bg-elevated)] transition-all">
           Back to Sign In
         </Link>
       </div>

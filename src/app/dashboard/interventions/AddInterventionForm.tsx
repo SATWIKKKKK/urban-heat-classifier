@@ -64,7 +64,7 @@ export default function AddInterventionForm({ cityId, userId }: { cityId: string
 
   if (!open) {
     return (
-      <button onClick={() => setOpen(true)} className="px-6 py-3 bg-gradient-to-br from-[#69f6b8] to-[#06b77f] text-[#002919] font-bold rounded-xl self-start shadow-lg shadow-[#69f6b8]/20 btn-shine">
+      <button onClick={() => setOpen(true)} className="px-6 py-3 bg-gradient-to-br from-[var(--green-400)] to-[var(--green-500)] text-[var(--bg-base)] font-bold rounded-xl self-start shadow-lg shadow-[var(--green-400)]/20 ">
         <span className="flex items-center gap-2">
           <span className="material-symbols-outlined text-lg">add</span>
           Add Intervention
@@ -80,45 +80,45 @@ export default function AddInterventionForm({ cityId, userId }: { cityId: string
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         <div>
-          <label className="block text-xs text-[#a3aac4] mb-1">Name *</label>
-          <input name="name" required className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:border-[#69f6b8]/50 focus:outline-none" />
+          <label className="block text-xs text-[var(--text-secondary)] mb-1">Name *</label>
+          <input name="name" required className="w-full px-4 py-2 bg-[var(--bg-elevated)] border border-[var(--border-strong)] rounded-lg text-white focus:border-[var(--green-400)]/50 focus:outline-none" />
         </div>
         <div>
-          <label className="block text-xs text-[#a3aac4] mb-1">Type *</label>
-          <select name="type" required className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:border-[#69f6b8]/50 focus:outline-none">
+          <label className="block text-xs text-[var(--text-secondary)] mb-1">Type *</label>
+          <select name="type" required className="w-full px-4 py-2 bg-[var(--bg-elevated)] border border-[var(--border-strong)] rounded-lg text-white focus:border-[var(--green-400)]/50 focus:outline-none">
             {INTERVENTION_TYPES.map((t) => (
-              <option key={t} value={t} className="bg-[#060e20]">{t.replace(/_/g, ' ')}</option>
+              <option key={t} value={t} className="bg-[var(--bg-base)]">{t.replace(/_/g, ' ')}</option>
             ))}
           </select>
         </div>
         <div>
-          <label className="block text-xs text-[#a3aac4] mb-1">Neighborhood</label>
-          <select name="neighborhoodId" className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:border-[#69f6b8]/50 focus:outline-none">
-            <option value="" className="bg-[#060e20]">City-wide</option>
+          <label className="block text-xs text-[var(--text-secondary)] mb-1">Neighborhood</label>
+          <select name="neighborhoodId" className="w-full px-4 py-2 bg-[var(--bg-elevated)] border border-[var(--border-strong)] rounded-lg text-white focus:border-[var(--green-400)]/50 focus:outline-none">
+            <option value="" className="bg-[var(--bg-base)]">City-wide</option>
             {neighborhoods.map((n) => (
-              <option key={n.id} value={n.id} className="bg-[#060e20]">{n.name}</option>
+              <option key={n.id} value={n.id} className="bg-[var(--bg-base)]">{n.name}</option>
             ))}
           </select>
         </div>
         <div>
-          <label className="block text-xs text-[#a3aac4] mb-1">Estimated Cost ($)</label>
-          <input name="cost" type="number" className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:border-[#69f6b8]/50 focus:outline-none" />
+          <label className="block text-xs text-[var(--text-secondary)] mb-1">Estimated Cost ($)</label>
+          <input name="cost" type="number" className="w-full px-4 py-2 bg-[var(--bg-elevated)] border border-[var(--border-strong)] rounded-lg text-white focus:border-[var(--green-400)]/50 focus:outline-none" />
         </div>
         <div>
-          <label className="block text-xs text-[#a3aac4] mb-1">Est. Temp Reduction (°C)</label>
-          <input name="tempReduction" type="number" step="0.1" className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:border-[#69f6b8]/50 focus:outline-none" />
+          <label className="block text-xs text-[var(--text-secondary)] mb-1">Est. Temp Reduction (°C)</label>
+          <input name="tempReduction" type="number" step="0.1" className="w-full px-4 py-2 bg-[var(--bg-elevated)] border border-[var(--border-strong)] rounded-lg text-white focus:border-[var(--green-400)]/50 focus:outline-none" />
         </div>
         <div className="md:col-span-2 lg:col-span-1">
-          <label className="block text-xs text-[#a3aac4] mb-1">Description</label>
-          <input name="description" className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:border-[#69f6b8]/50 focus:outline-none" />
+          <label className="block text-xs text-[var(--text-secondary)] mb-1">Description</label>
+          <input name="description" className="w-full px-4 py-2 bg-[var(--bg-elevated)] border border-[var(--border-strong)] rounded-lg text-white focus:border-[var(--green-400)]/50 focus:outline-none" />
         </div>
       </div>
 
       <div className="flex gap-3">
-        <button type="submit" disabled={loading} className="px-6 py-2 bg-gradient-to-br from-[#69f6b8] to-[#06b77f] text-[#002919] font-bold rounded-xl disabled:opacity-50 btn-shine">
+        <button type="submit" disabled={loading} className="px-6 py-2 bg-gradient-to-br from-[var(--green-400)] to-[var(--green-500)] text-[var(--bg-base)] font-bold rounded-xl disabled:opacity-50 ">
           {loading ? 'Saving...' : 'Save'}
         </button>
-        <button type="button" onClick={() => setOpen(false)} className="px-6 py-2 border border-white/10 text-[#a3aac4] rounded-xl hover:bg-white/5 transition-all">
+        <button type="button" onClick={() => setOpen(false)} className="px-6 py-2 border border-[var(--border-strong)] text-[var(--text-secondary)] rounded-xl hover:bg-[var(--bg-elevated)] transition-all">
           Cancel
         </button>
       </div>

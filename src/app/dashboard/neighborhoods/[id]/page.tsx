@@ -41,8 +41,8 @@ export default async function NeighborhoodDetailPage({ params }: { params: Promi
   return (
     <div className="flex flex-col gap-8">
       {/* Breadcrumb */}
-      <div className="flex items-center gap-2 text-sm text-[#a3aac4]">
-        <Link href="/dashboard/neighborhoods" className="hover:text-[#69f6b8]">Neighborhoods</Link>
+      <div className="flex items-center gap-2 text-sm text-[var(--text-secondary)]">
+        <Link href="/dashboard/neighborhoods" className="hover:text-[var(--green-400)]">Neighborhoods</Link>
         <span>/</span>
         <span className="text-white font-semibold">{neighborhood.name}</span>
       </div>
@@ -64,18 +64,18 @@ export default async function NeighborhoodDetailPage({ params }: { params: Promi
       {/* Profile Grid */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { label: 'Population', value: neighborhood.population?.toLocaleString() ?? '—', icon: 'groups', color: '#69f6b8' },
-          { label: 'Area', value: neighborhood.areaSqkm ? `${neighborhood.areaSqkm} km²` : '—', icon: 'square_foot', color: '#699cff' },
-          { label: 'Median Income', value: neighborhood.medianIncome ? `$${(neighborhood.medianIncome / 1000).toFixed(0)}k` : '—', icon: 'payments', color: '#ff8439' },
-          { label: 'Latest Temp', value: latest ? `${latest.avgTempCelsius.toFixed(1)}°C` : '—', icon: 'thermostat', color: '#ff716c' },
+          { label: 'Population', value: neighborhood.population?.toLocaleString() ?? '—', icon: 'groups', color: 'var(--green-400)' },
+          { label: 'Area', value: neighborhood.areaSqkm ? `${neighborhood.areaSqkm} km²` : '—', icon: 'square_foot', color: 'var(--info)' },
+          { label: 'Median Income', value: neighborhood.medianIncome ? `$${(neighborhood.medianIncome / 1000).toFixed(0)}k` : '—', icon: 'payments', color: 'var(--high)' },
+          { label: 'Latest Temp', value: latest ? `${latest.avgTempCelsius.toFixed(1)}°C` : '—', icon: 'thermostat', color: 'var(--critical)' },
 
-          { label: '% Elderly', value: neighborhood.pctElderly != null ? `${neighborhood.pctElderly}%` : '—', icon: 'elderly', color: '#ff8439' },
-          { label: '% Children', value: neighborhood.pctChildren != null ? `${neighborhood.pctChildren}%` : '—', icon: 'child_care', color: '#dee5ff' },
+          { label: '% Elderly', value: neighborhood.pctElderly != null ? `${neighborhood.pctElderly}%` : '—', icon: 'elderly', color: 'var(--high)' },
+          { label: '% Children', value: neighborhood.pctChildren != null ? `${neighborhood.pctChildren}%` : '—', icon: 'child_care', color: 'var(--text-primary)' },
         ].map((item) => (
           <div key={item.label} className="glass-card p-4 rounded-xl">
             <div className="flex items-center gap-2 mb-2">
               <span className="material-symbols-outlined text-sm" style={{ color: item.color }}>{item.icon}</span>
-              <span className="text-[10px] uppercase tracking-widest text-[#6d758c]">{item.label}</span>
+              <span className="text-[10px] uppercase tracking-widest text-[var(--text-tertiary)]">{item.label}</span>
             </div>
             <div className="text-xl font-bold text-white">{item.value}</div>
           </div>
@@ -87,28 +87,28 @@ export default async function NeighborhoodDetailPage({ params }: { params: Promi
         <h3 className="font-[family-name:var(--font-headline)] font-bold text-lg text-white mb-4">Vulnerability Breakdown</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {vuln.factors.map((f) => (
-            <div key={f.name} className="bg-white/5 p-4 rounded-lg">
+            <div key={f.name} className="bg-[var(--bg-elevated)] p-4 rounded-lg">
               <div className="flex justify-between items-center mb-2">
-                <span className="text-sm font-semibold text-[#dee5ff]">{f.name}</span>
+                <span className="text-sm font-semibold text-[var(--text-primary)]">{f.name}</span>
                 <span className="text-sm font-bold text-white">{f.points}/{f.maxPoints}</span>
               </div>
-              <div className="h-2 bg-black/30 rounded-full overflow-hidden">
+              <div className="h-2 bg-[var(--bg-overlay)] rounded-full overflow-hidden">
                 <div
                   className="h-full rounded-full transition-all"
                   style={{
                     width: `${(f.points / f.maxPoints) * 100}%`,
-                    backgroundColor: f.points / f.maxPoints > 0.7 ? '#ff716c' : f.points / f.maxPoints > 0.4 ? '#ff8439' : '#69f6b8',
+                    backgroundColor: f.points / f.maxPoints > 0.7 ? 'var(--critical)' : f.points / f.maxPoints > 0.4 ? 'var(--high)' : 'var(--green-400)',
                   }}
                 />
               </div>
-              <span className="text-[10px] text-[#a3aac4] mt-1 block">{f.value}</span>
+              <span className="text-[10px] text-[var(--text-secondary)] mt-1 block">{f.value}</span>
             </div>
           ))}
         </div>
         {vuln.improvementSuggestions.length > 0 && (
-          <div className="mt-4 p-4 bg-[#69f6b8]/5 border border-[#69f6b8]/20 rounded-lg">
-            <h4 className="text-sm font-bold text-[#69f6b8] mb-2">Improvement Suggestions</h4>
-            <ul className="text-xs text-[#a3aac4] space-y-1">
+          <div className="mt-4 p-4 bg-[var(--green-400)]/5 border border-[var(--green-400)]/20 rounded-lg">
+            <h4 className="text-sm font-bold text-[var(--green-400)] mb-2">Improvement Suggestions</h4>
+            <ul className="text-xs text-[var(--text-secondary)] space-y-1">
               {vuln.improvementSuggestions.map((s, i) => (
                 <li key={i}>• {s}</li>
               ))}
@@ -123,13 +123,13 @@ export default async function NeighborhoodDetailPage({ params }: { params: Promi
       {/* Temperature History */}
       {neighborhood.heatMeasurements.length > 0 && (
         <div className="glass-card rounded-xl overflow-hidden">
-          <div className="p-6 border-b border-white/5">
+          <div className="p-6 border-b border-[var(--border)]">
             <h3 className="font-[family-name:var(--font-headline)] font-bold text-lg text-white">Temperature History</h3>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead>
-                <tr className="bg-white/5 text-[#6d758c] uppercase text-[10px] tracking-widest font-bold">
+                <tr className="bg-[var(--bg-elevated)] text-[var(--text-tertiary)] uppercase text-[10px] tracking-widest font-bold">
                   <th className="px-6 py-3">Date</th>
                   <th className="px-6 py-3">Avg Temp</th>
                   <th className="px-6 py-3">Max Temp</th>
@@ -137,14 +137,14 @@ export default async function NeighborhoodDetailPage({ params }: { params: Promi
                   <th className="px-6 py-3">Source</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/5">
+              <tbody className="divide-y divide-[var(--border)]">
                 {neighborhood.heatMeasurements.map((m) => (
-                  <tr key={m.id} className="hover:bg-white/5">
-                    <td className="px-6 py-3 text-[#dee5ff]">{new Date(m.measurementDate).toLocaleDateString()}</td>
-                    <td className="px-6 py-3 font-bold text-[#ff8439]">{m.avgTempCelsius.toFixed(1)}°C</td>
-                    <td className="px-6 py-3 text-[#ff716c]">{m.maxTempCelsius?.toFixed(1) ?? '—'}°C</td>
-                    <td className="px-6 py-3 text-[#699cff]">{m.minTempCelsius?.toFixed(1) ?? '—'}°C</td>
-                    <td className="px-6 py-3 text-[#a3aac4]">{m.dataSource ?? 'Manual'}</td>
+                  <tr key={m.id} className="hover:bg-[var(--bg-elevated)]">
+                    <td className="px-6 py-3 text-[var(--text-primary)]">{new Date(m.measurementDate).toLocaleDateString()}</td>
+                    <td className="px-6 py-3 font-bold text-[var(--high)]">{m.avgTempCelsius.toFixed(1)}°C</td>
+                    <td className="px-6 py-3 text-[var(--critical)]">{m.maxTempCelsius?.toFixed(1) ?? '—'}°C</td>
+                    <td className="px-6 py-3 text-[var(--info)]">{m.minTempCelsius?.toFixed(1) ?? '—'}°C</td>
+                    <td className="px-6 py-3 text-[var(--text-secondary)]">{m.dataSource ?? 'Manual'}</td>
                   </tr>
                 ))}
               </tbody>
@@ -155,17 +155,17 @@ export default async function NeighborhoodDetailPage({ params }: { params: Promi
 
       {/* Active Interventions */}
       <div className="glass-card rounded-xl overflow-hidden">
-        <div className="p-6 border-b border-white/5 flex justify-between items-center">
+        <div className="p-6 border-b border-[var(--border)] flex justify-between items-center">
           <h3 className="font-[family-name:var(--font-headline)] font-bold text-lg text-white">Active Interventions</h3>
-          <span className="text-xs text-[#a3aac4]">{neighborhood.interventions.length} total</span>
+          <span className="text-xs text-[var(--text-secondary)]">{neighborhood.interventions.length} total</span>
         </div>
         {neighborhood.interventions.length === 0 ? (
-          <div className="p-8 text-center text-[#a3aac4] text-sm">No interventions in this neighborhood yet.</div>
+          <div className="p-8 text-center text-[var(--text-secondary)] text-sm">No interventions in this neighborhood yet.</div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead>
-                <tr className="bg-white/5 text-[#6d758c] uppercase text-[10px] tracking-widest font-bold">
+                <tr className="bg-[var(--bg-elevated)] text-[var(--text-tertiary)] uppercase text-[10px] tracking-widest font-bold">
                   <th className="px-6 py-3">Name</th>
                   <th className="px-6 py-3">Type</th>
                   <th className="px-6 py-3">Status</th>
@@ -174,21 +174,21 @@ export default async function NeighborhoodDetailPage({ params }: { params: Promi
                   <th className="px-6 py-3">Created By</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/5">
+              <tbody className="divide-y divide-[var(--border)]">
                 {neighborhood.interventions.map((i) => (
-                  <tr key={i.id} className="hover:bg-white/5">
-                    <td className="px-6 py-3 font-semibold text-[#dee5ff]">{i.name}</td>
-                    <td className="px-6 py-3 text-[#a3aac4] capitalize">{i.type.replace(/_/g, ' ').toLowerCase()}</td>
+                  <tr key={i.id} className="hover:bg-[var(--bg-elevated)]">
+                    <td className="px-6 py-3 font-semibold text-[var(--text-primary)]">{i.name}</td>
+                    <td className="px-6 py-3 text-[var(--text-secondary)] capitalize">{i.type.replace(/_/g, ' ').toLowerCase()}</td>
                     <td className="px-6 py-3">
                       <span className={`text-[10px] font-bold px-2 py-1 rounded ${
-                        i.status === 'COMPLETED' ? 'bg-[#69f6b8]/10 text-[#69f6b8]' :
-                        i.status === 'IN_PROGRESS' ? 'bg-[#699cff]/10 text-[#699cff]' :
-                        'bg-[#ff8439]/10 text-[#ff8439]'
+                        i.status === 'COMPLETED' ? 'bg-[var(--green-400)]/10 text-[var(--green-400)]' :
+                        i.status === 'IN_PROGRESS' ? 'bg-[var(--info)]/10 text-[var(--info)]' :
+                        'bg-[var(--high)]/10 text-[var(--high)]'
                       }`}>{i.status}</span>
                     </td>
-                    <td className="px-6 py-3 text-[#69f6b8]">{i.estimatedTempReductionC ? `${i.estimatedTempReductionC.toFixed(1)}°C` : '—'}</td>
-                    <td className="px-6 py-3 text-[#a3aac4]">{i.estimatedCostUsd ? `$${(i.estimatedCostUsd / 1000).toFixed(0)}k` : '—'}</td>
-                    <td className="px-6 py-3 text-[#a3aac4]">{i.proposedBy?.name ?? '—'}</td>
+                    <td className="px-6 py-3 text-[var(--green-400)]">{i.estimatedTempReductionC ? `${i.estimatedTempReductionC.toFixed(1)}°C` : '—'}</td>
+                    <td className="px-6 py-3 text-[var(--text-secondary)]">{i.estimatedCostUsd ? `$${(i.estimatedCostUsd / 1000).toFixed(0)}k` : '—'}</td>
+                    <td className="px-6 py-3 text-[var(--text-secondary)]">{i.proposedBy?.name ?? '—'}</td>
                   </tr>
                 ))}
               </tbody>

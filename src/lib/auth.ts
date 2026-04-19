@@ -125,72 +125,79 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           return false;
         }
 
-        const existingUser = await prisma.user.findUnique({
-          where: { email },
-          include: { city: { include: { onboardingState: true } } },
-        });
+        try {
+          const existingUser = await prisma.user.findUnique({
+            where: { email },
+            include: { city: { include: { onboardingState: true } } },
+          });
 
-        if (existingUser) {
-          if (existingUser.passwordHash) {
-            return `/login?error=${encodeURIComponent(
-              'This email uses password login. Please sign in with your email and password.'
-            )}`;
+          if (existingUser) {
+            if (existingUser.passwordHash) {
+              return `/login?error=${encodeURIComponent(
+                'This email uses password login. Please sign in with your email and password.'
+              )}`;
+            }
+
+            await prisma.user.update({
+              where: { id: existingUser.id },
+              data: { lastLoginAt: new Date() },
+            });
+
+            return true;
           }
 
-          await prisma.user.update({
-            where: { id: existingUser.id },
-            data: { lastLoginAt: new Date() },
-          });
+          const displayName = user.name?.trim() || email.split('@')[0];
+          const firstName = displayName.split(' ')[0] || 'New';
+          const cityName = `${firstName}'s City`;
+          const slug = await createUniqueCitySlug(cityName);
 
-          return true;
+          await prisma.$transaction(async (tx) => {
+            const city = await tx.city.create({
+              data: {
+                name: cityName,
+                slug,
+              },
+            });
+
+            const createdUser = await tx.user.create({
+              data: {
+                email,
+                name: displayName,
+                image: user.image ?? null,
+                cityId: city.id,
+                role: 'CITY_ADMIN',
+                lastLoginAt: new Date(),
+              },
+            });
+
+            await tx.onboardingState.create({
+              data: {
+                cityId: city.id,
+              },
+            });
+
+            await tx.auditLog.create({
+              data: {
+                userId: createdUser.id,
+                action: 'USER_REGISTERED_GOOGLE',
+                resourceType: 'User',
+                resourceId: createdUser.id,
+                afterValue: JSON.stringify({ email, role: 'CITY_ADMIN', cityName }),
+              },
+            });
+          });
+        } catch (error) {
+          console.error('[Auth] Google signIn DB error:', error);
+          return `/login?error=${encodeURIComponent('Sign-in failed. Please try again.')}`;
         }
-
-        const displayName = user.name?.trim() || email.split('@')[0];
-        const firstName = displayName.split(' ')[0] || 'New';
-        const cityName = `${firstName}'s City`;
-        const slug = await createUniqueCitySlug(cityName);
-
-        await prisma.$transaction(async (tx) => {
-          const city = await tx.city.create({
-            data: {
-              name: cityName,
-              slug,
-            },
-          });
-
-          const createdUser = await tx.user.create({
-            data: {
-              email,
-              name: displayName,
-              image: user.image,
-              cityId: city.id,
-              role: 'CITY_ADMIN',
-              lastLoginAt: new Date(),
-            },
-          });
-
-          await tx.onboardingState.create({
-            data: {
-              cityId: city.id,
-            },
-          });
-
-          await tx.auditLog.create({
-            data: {
-              userId: createdUser.id,
-              action: 'USER_REGISTERED_GOOGLE',
-              resourceType: 'User',
-              resourceId: createdUser.id,
-              afterValue: JSON.stringify({ email, role: 'CITY_ADMIN', cityName }),
-            },
-          });
-        });
       }
 
       return true;
     },
     async jwt({ token, user, account, trigger, session }) {
       if (user) {
+        // Store email in token so we can look up the DB user on every refresh
+        token.email = user.email?.toLowerCase().trim() ?? token.email;
         token.role = (user as typeof user & { role?: string }).role;
         token.cityId = (user as typeof user & { cityId?: string | null }).cityId ?? null;
         token.userId = user.id;
@@ -198,17 +205,28 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           (user as typeof user & { onboardingComplete?: boolean }).onboardingComplete ?? false;
       }
 
-      if (account?.provider === 'google' || (!token.userId && token.email)) {
-        const dbUser = await prisma.user.findUnique({
-          where: { email: token.email ?? undefined },
-          include: { city: { include: { onboardingState: true } } },
-        });
+      // On initial Google sign-in: fetch the DB user to get role, cityId, onboardingComplete.
+      // token.email is now reliably set above (and normalized to lowercase).
+      if (account?.provider === 'google') {
+        const lookupEmail = (token.email as string | undefined)?.toLowerCase().trim();
+        if (lookupEmail) {
+          try {
+            const dbUser = await prisma.user.findUnique({
+              where: { email: lookupEmail },
+              include: { city: { include: { onboardingState: true } } },
+            });
 
-        if (dbUser) {
-          token.userId = dbUser.id;
-          token.role = dbUser.role;
-          token.cityId = dbUser.cityId;
-          token.onboardingComplete = dbUser.city?.onboardingState?.isComplete ?? false;
+            if (dbUser) {
+              token.userId = dbUser.id;
+              token.role = dbUser.role;
+              token.cityId = dbUser.cityId;
+              token.onboardingComplete = dbUser.city?.onboardingState?.isComplete ?? false;
+            } else {
+              console.error('[Auth] Google jwt: DB user not found for email:', lookupEmail);
+            }
+          } catch (error) {
+            console.error('[Auth] Google jwt DB lookup error:', error);
+          }
         }
       }
 

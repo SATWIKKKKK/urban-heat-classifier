@@ -45,7 +45,7 @@ export default function DataAnalystDashboard() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[50vh]">
-        <span className="material-symbols-outlined animate-spin text-4xl text-[#69f6b8]">progress_activity</span>
+        <span className="material-symbols-outlined animate-spin text-4xl text-[var(--green-400)]">progress_activity</span>
       </div>
     );
   }
@@ -58,56 +58,56 @@ export default function DataAnalystDashboard() {
         <h1 className="font-[family-name:var(--font-headline)] text-3xl font-extrabold tracking-tight text-white">
           Data Analyst Dashboard
         </h1>
-        <p className="text-[#a3aac4] mt-1">Welcome, {session?.user?.name}. Manage data sources, run analyses, and generate reports.</p>
+        <p className="text-[var(--text-secondary)] mt-1">Welcome, {session?.user?.name}. Manage data sources, run analyses, and generate reports.</p>
       </div>
 
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { label: 'Data Sources', value: dataSources.length, icon: 'database', color: '#699cff' },
-          { label: 'Total Records', value: totalRecords.toLocaleString(), icon: 'dataset', color: '#69f6b8' },
-          { label: 'Reports Generated', value: reports.filter(r => r.status === 'GENERATED').length, icon: 'analytics', color: '#ff8439' },
-          { label: 'Active Feeds', value: dataSources.filter(d => d.status === 'ACTIVE').length, icon: 'rss_feed', color: '#ff716c' },
+          { label: 'Data Sources', value: dataSources.length, icon: 'database', color: 'var(--info)' },
+          { label: 'Total Records', value: totalRecords.toLocaleString(), icon: 'dataset', color: 'var(--green-400)' },
+          { label: 'Reports Generated', value: reports.filter(r => r.status === 'GENERATED').length, icon: 'analytics', color: 'var(--high)' },
+          { label: 'Active Feeds', value: dataSources.filter(d => d.status === 'ACTIVE').length, icon: 'rss_feed', color: 'var(--critical)' },
         ].map((stat) => (
-          <div key={stat.label} className="glass-card rounded-2xl p-5">
+          <div key={stat.label} className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-lg p-5">
             <span className="material-symbols-outlined text-2xl mb-2" style={{ color: stat.color, fontVariationSettings: "'FILL' 1" }}>{stat.icon}</span>
             <div className="text-2xl font-black text-white font-[family-name:var(--font-headline)]">{stat.value}</div>
-            <div className="text-[10px] uppercase tracking-widest text-[#6d758c] mt-1">{stat.label}</div>
+            <div className="text-[10px] uppercase tracking-widest text-[var(--text-tertiary)] mt-1">{stat.label}</div>
           </div>
         ))}
       </div>
 
       {/* Data Sources */}
-      <div className="glass-card rounded-2xl p-6">
+      <div className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-lg p-6">
         <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
-          <span className="material-symbols-outlined text-[#699cff]" style={{ fontVariationSettings: "'FILL' 1" }}>storage</span>
+          <span className="material-symbols-outlined text-[var(--info)]" style={{ fontVariationSettings: "'FILL' 1" }}>storage</span>
           Data Sources
         </h2>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-white/5">
-                <th className="text-left py-3 px-4 text-[10px] font-bold uppercase tracking-widest text-[#6d758c]">Source</th>
-                <th className="text-left py-3 px-4 text-[10px] font-bold uppercase tracking-widest text-[#6d758c]">Type</th>
-                <th className="text-left py-3 px-4 text-[10px] font-bold uppercase tracking-widest text-[#6d758c]">Records</th>
-                <th className="text-left py-3 px-4 text-[10px] font-bold uppercase tracking-widest text-[#6d758c]">Last Updated</th>
-                <th className="text-left py-3 px-4 text-[10px] font-bold uppercase tracking-widest text-[#6d758c]">Status</th>
+              <tr className="border-b border-[var(--border)]">
+                <th className="text-left py-3 px-4 text-[10px] font-bold uppercase tracking-widest text-[var(--text-tertiary)]">Source</th>
+                <th className="text-left py-3 px-4 text-[10px] font-bold uppercase tracking-widest text-[var(--text-tertiary)]">Type</th>
+                <th className="text-left py-3 px-4 text-[10px] font-bold uppercase tracking-widest text-[var(--text-tertiary)]">Records</th>
+                <th className="text-left py-3 px-4 text-[10px] font-bold uppercase tracking-widest text-[var(--text-tertiary)]">Last Updated</th>
+                <th className="text-left py-3 px-4 text-[10px] font-bold uppercase tracking-widest text-[var(--text-tertiary)]">Status</th>
               </tr>
             </thead>
             <tbody>
               {dataSources.map((source) => (
-                <tr key={source.id} className="border-b border-white/5 hover:bg-white/[0.02]">
+                <tr key={source.id} className="border-b border-[var(--border)] hover:bg-white/[0.02]">
                   <td className="py-3 px-4 text-white font-bold">{source.name}</td>
                   <td className="py-3 px-4">
-                    <span className="text-xs font-bold px-2 py-0.5 rounded bg-white/5 text-[#a3aac4]">{source.type}</span>
+                    <span className="text-xs font-bold px-2 py-0.5 rounded bg-[var(--bg-elevated)] text-[var(--text-secondary)]">{source.type}</span>
                   </td>
-                  <td className="py-3 px-4 text-[#a3aac4]">{source.records.toLocaleString()}</td>
-                  <td className="py-3 px-4 text-[#a3aac4]">{source.lastUpdated}</td>
+                  <td className="py-3 px-4 text-[var(--text-secondary)]">{source.records.toLocaleString()}</td>
+                  <td className="py-3 px-4 text-[var(--text-secondary)]">{source.lastUpdated}</td>
                   <td className="py-3 px-4">
                     <span className={`text-xs font-bold px-2.5 py-1 rounded-lg ${
-                      source.status === 'ACTIVE' ? 'bg-[#69f6b8]/10 text-[#69f6b8]' :
-                      source.status === 'STALE' ? 'bg-[#ff8439]/10 text-[#ff8439]' :
-                      'bg-[#ff716c]/10 text-[#ff716c]'
+                      source.status === 'ACTIVE' ? 'bg-[var(--green-400)]/10 text-[var(--green-400)]' :
+                      source.status === 'STALE' ? 'bg-[var(--high)]/10 text-[var(--high)]' :
+                      'bg-[var(--critical)]/10 text-[var(--critical)]'
                     }`}>{source.status}</span>
                   </td>
                 </tr>
@@ -118,21 +118,21 @@ export default function DataAnalystDashboard() {
       </div>
 
       {/* Analysis Reports */}
-      <div className="glass-card rounded-2xl p-6">
+      <div className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-lg p-6">
         <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
-          <span className="material-symbols-outlined text-[#ff8439]" style={{ fontVariationSettings: "'FILL' 1" }}>assessment</span>
+          <span className="material-symbols-outlined text-[var(--high)]" style={{ fontVariationSettings: "'FILL' 1" }}>assessment</span>
           Analysis Reports
         </h2>
         <div className="space-y-3">
           {reports.map((report) => (
-            <div key={report.id} className="flex items-center justify-between glass-card rounded-xl px-5 py-4">
+            <div key={report.id} className="flex items-center justify-between bg-[var(--bg-elevated)] border border-[var(--border)] rounded-md px-5 py-4">
               <div className="flex items-center gap-4">
                 <div className={`h-10 w-10 rounded-xl flex items-center justify-center ${
-                  report.status === 'GENERATED' ? 'bg-[#69f6b8]/10' :
-                  report.status === 'PENDING' ? 'bg-[#ff8439]/10' : 'bg-[#ff716c]/10'
+                  report.status === 'GENERATED' ? 'bg-[var(--green-400)]/10' :
+                  report.status === 'PENDING' ? 'bg-[var(--high)]/10' : 'bg-[var(--critical)]/10'
                 }`}>
                   <span className="material-symbols-outlined" style={{
-                    color: report.status === 'GENERATED' ? '#69f6b8' : report.status === 'PENDING' ? '#ff8439' : '#ff716c',
+                    color: report.status === 'GENERATED' ? 'var(--green-400)' : report.status === 'PENDING' ? 'var(--high)' : 'var(--critical)',
                     fontVariationSettings: "'FILL' 1"
                   }}>
                     {report.status === 'GENERATED' ? 'check_circle' : report.status === 'PENDING' ? 'hourglass_top' : 'error'}
@@ -140,17 +140,17 @@ export default function DataAnalystDashboard() {
                 </div>
                 <div>
                   <div className="text-white font-bold text-sm">{report.title}</div>
-                  <div className="text-xs text-[#a3aac4] flex items-center gap-2">
+                  <div className="text-xs text-[var(--text-secondary)] flex items-center gap-2">
                     <span>{report.type}</span>
-                    <span className="h-1 w-1 rounded-full bg-[#40485d]" />
+                    <span className="h-1 w-1 rounded-full bg-[var(--border-strong)]" />
                     <span>{report.date}</span>
                   </div>
                 </div>
               </div>
               <span className={`text-xs font-bold px-2.5 py-1 rounded-lg ${
-                report.status === 'GENERATED' ? 'bg-[#69f6b8]/10 text-[#69f6b8]' :
-                report.status === 'PENDING' ? 'bg-[#ff8439]/10 text-[#ff8439]' :
-                'bg-[#ff716c]/10 text-[#ff716c]'
+                report.status === 'GENERATED' ? 'bg-[var(--green-400)]/10 text-[var(--green-400)]' :
+                report.status === 'PENDING' ? 'bg-[var(--high)]/10 text-[var(--high)]' :
+                'bg-[var(--critical)]/10 text-[var(--critical)]'
               }`}>{report.status}</span>
             </div>
           ))}

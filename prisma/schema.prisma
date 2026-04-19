@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
 }
 
 // ─── TENANCY ───
@@ -15,9 +15,10 @@ model City {
   state      String?
   country    String   @default("India")
   currency   String   @default("INR")
-  lat        Float?
-  lng        Float?
-  population Int?
+  lat         Float?
+  lng         Float?
+  defaultZoom Int     @default(13)
+  population  Int?
   areaSqkm   Float?
   timezone   String?
   boundary   String?
@@ -165,7 +166,10 @@ model Neighborhood {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  isActive Boolean @default(true)
+
   @@unique([cityId, name])
+  @@index([cityId])
   @@map("neighborhoods")
 }
 
@@ -185,6 +189,7 @@ model HeatMeasurement {
 
   createdAt DateTime @default(now())
 
+  @@index([neighborhoodId, measurementDate(sort: Desc)])
   @@map("heat_measurements")
 }
 
@@ -250,6 +255,8 @@ model Intervention {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@index([neighborhoodId, status])
+  @@index([cityId])
   @@map("interventions")
 }
 

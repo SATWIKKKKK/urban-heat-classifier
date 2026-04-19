@@ -74,7 +74,9 @@ export async function getCityMapData({
 }: GetCityMapDataOptions): Promise<CityMapPayload | null> {
   const city = cityId
     ? await prisma.city.findUnique({ where: { id: cityId } })
-    : await prisma.city.findUnique({ where: { slug: citySlug || 'austin-tx' } });
+    : citySlug
+      ? await prisma.city.findUnique({ where: { slug: citySlug } })
+      : null;
 
   if (!city) {
     return null;
@@ -126,8 +128,8 @@ export async function getCityMapData({
     const geometry =
       parseBoundaryGeometry(neighborhood.boundary) ||
       createFallbackNeighborhoodGeometry(
-        city.lat ?? 30.2672,
-        city.lng ?? -97.7431,
+        city.lat ?? 20.5937,
+        city.lng ?? 78.9629,
         index,
         neighborhoods.length
       );
@@ -194,8 +196,8 @@ export async function getCityMapData({
       id: city.id,
       name: city.name,
       slug: city.slug,
-      lat: city.lat ?? 30.2672,
-      lng: city.lng ?? -97.7431,
+      lat: city.lat ?? 20.5937,
+      lng: city.lng ?? 78.9629,
     },
     neighborhoods: mapNeighborhoods,
     interventions: mapInterventions,

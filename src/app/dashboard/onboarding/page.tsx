@@ -43,7 +43,10 @@ export default function OnboardingPage() {
   }
 
   async function nextStep() {
-    if (!session?.user?.cityId) return;
+    if (!session?.user?.cityId) {
+      setStepError('Your session is missing city data. Please sign out and sign back in.');
+      return;
+    }
     const error = validateCurrentStep();
     if (error) {
       setStepError(error);
@@ -54,7 +57,11 @@ export default function OnboardingPage() {
     setCurrentStep(next);
     const stepData: Record<string, boolean> = {};
     stepData[STEP_KEYS[currentStep]] = true;
-    await updateOnboardingAction(session.user.cityId, stepData);
+    try {
+      await updateOnboardingAction(session.user.cityId, stepData);
+    } catch (e) {
+      console.error('Failed to save step progress:', e);
+    }
   }
 
   async function prevStep() {
@@ -63,8 +70,13 @@ export default function OnboardingPage() {
   }
 
   async function addNeighborhood() {
-    if (!neighborhoodName.trim() || !session?.user?.cityId) return;
+    if (!neighborhoodName.trim()) return;
+    if (!session?.user?.cityId) {
+      setStepError('Your session is missing city data. Please sign out and sign back in.');
+      return;
+    }
     setSaving(true);
+    setStepError(null);
     try {
       await addNeighborhoodAction({
         cityId: session.user.cityId,
@@ -72,8 +84,8 @@ export default function OnboardingPage() {
       });
       setNeighborhoods([...neighborhoods, neighborhoodName]);
       setNeighborhoodName('');
-    } catch {
-      // ignore
+    } catch (e) {
+      setStepError(`Failed to add neighborhood: ${e instanceof Error ? e.message : 'Unknown error'}`);
     } finally {
       setSaving(false);
     }
@@ -88,7 +100,7 @@ export default function OnboardingPage() {
     try {
       await completeOnboardingAction(session.user.cityId);
       await update({ onboardingComplete: true });
-      router.replace('/dashboard/map');
+      router.replace('/dashboard/my-data');
       router.refresh();
     } catch {
       setLaunchError('Unable to launch the dashboard right now. Please try again.');
@@ -102,7 +114,7 @@ export default function OnboardingPage() {
         <h1 className="font-[family-name:var(--font-headline)] text-3xl font-extrabold tracking-tight text-white">
           Welcome to HeatPlan
         </h1>
-        <p className="text-[#a3aac4] mt-1">Let&apos;s set up your city&apos;s heat mitigation program</p>
+        <p className="text-[var(--text-secondary)] mt-1">Let&apos;s set up your city&apos;s heat mitigation program</p>
       </div>
 
       {/* Step Indicators */}
@@ -110,9 +122,9 @@ export default function OnboardingPage() {
         {STEPS.map((step, idx) => (
           <div key={step.title} className="flex items-center gap-2 shrink-0">
             <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-all ${
-              idx < currentStep ? 'bg-[#69f6b8] text-[#002919]' :
-              idx === currentStep ? 'bg-[#69f6b8]/20 text-[#69f6b8] border border-[#69f6b8]' :
-              'bg-white/5 text-[#a3aac4]'
+              idx < currentStep ? 'bg-[var(--green-400)] text-[var(--bg-base)]' :
+              idx === currentStep ? 'bg-[var(--green-400)]/20 text-[var(--green-400)] border border-[var(--green-400)]' :
+              'bg-[var(--bg-elevated)] text-[var(--text-secondary)]'
             }`}>
               {idx < currentStep ? (
                 <span className="material-symbols-outlined text-sm">check</span>
@@ -120,8 +132,8 @@ export default function OnboardingPage() {
                 idx + 1
               )}
             </div>
-            <span className={`text-xs font-semibold hidden md:block ${idx === currentStep ? 'text-white' : 'text-[#a3aac4]'}`}>{step.title}</span>
-            {idx < STEPS.length - 1 && <div className="w-8 h-px bg-white/10 hidden md:block" />}
+            <span className={`text-xs font-semibold hidden md:block ${idx === currentStep ? 'text-white' : 'text-[var(--text-secondary)]'}`}>{step.title}</span>
+            {idx < STEPS.length - 1 && <div className="w-8 h-px bg-[var(--bg-elevated)] hidden md:block" />}
           </div>
         ))}
       </div>
@@ -129,21 +141,21 @@ export default function OnboardingPage() {
       {/* Step Content */}
       <div className="glass-card p-8 rounded-2xl">
         <div className="flex items-center gap-3 mb-6">
-          <span className="material-symbols-outlined text-3xl text-[#69f6b8]" style={{ fontVariationSettings: "'FILL' 1" }}>
+          <span className="material-symbols-outlined text-3xl text-[var(--green-400)]" style={{ fontVariationSettings: "'FILL' 1" }}>
             {STEPS[currentStep].icon}
           </span>
           <div>
             <h2 className="text-xl font-bold text-white">{STEPS[currentStep].title}</h2>
-            <p className="text-sm text-[#a3aac4]">{STEPS[currentStep].description}</p>
+            <p className="text-sm text-[var(--text-secondary)]">{STEPS[currentStep].description}</p>
           </div>
         </div>
 
         {/* Step 0: City Profile */}
         {currentStep === 0 && (
           <div className="space-y-4">
-            <p className="text-[#a3aac4]">Your city has been created. You can update details later from the admin panel.</p>
-            <div className="bg-white/5 p-4 rounded-lg">
-              <span className="text-[10px] uppercase tracking-widest text-[#6d758c]">City Name</span>
+            <p className="text-[var(--text-secondary)]">Your city has been created. You can update details later from the admin panel.</p>
+            <div className="bg-[var(--bg-elevated)] p-4 rounded-lg">
+              <span className="text-[10px] uppercase tracking-widest text-[var(--text-tertiary)]">City Name</span>
               <p className="text-white font-bold">{session?.user?.name ? `${session.user.name}'s City` : 'Your City'}</p>
             </div>
           </div>
@@ -152,24 +164,24 @@ export default function OnboardingPage() {
         {/* Step 1: Neighborhoods */}
         {currentStep === 1 && (
           <div className="space-y-4">
-            <p className="text-[#a3aac4]">Add the neighborhoods you want to track. You can add more later.</p>
+            <p className="text-[var(--text-secondary)]">Add the neighborhoods you want to track. You can add more later.</p>
             <div className="flex gap-2">
               <input
                 value={neighborhoodName}
                 onChange={(e) => setNeighborhoodName(e.target.value)}
                 placeholder="Neighborhood name"
-                className="flex-1 px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:border-[#69f6b8]/50 focus:outline-none"
+                className="flex-1 px-4 py-2 bg-[var(--bg-elevated)] border border-[var(--border-strong)] rounded-lg text-white focus:border-[var(--green-400)]/50 focus:outline-none"
                 onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addNeighborhood())}
               />
-              <button onClick={addNeighborhood} disabled={saving} className="px-4 py-2 bg-gradient-to-r from-[#69f6b8] to-[#06b77f] text-[#002919] font-bold rounded-xl disabled:opacity-50 btn-shine">
+              <button onClick={addNeighborhood} disabled={saving} className="px-4 py-2 bg-gradient-to-r from-[var(--green-400)] to-[var(--green-500)] text-[var(--bg-base)] font-bold rounded-xl disabled:opacity-50 ">
                 Add
               </button>
             </div>
             {neighborhoods.length > 0 && (
               <div className="space-y-2">
                 {neighborhoods.map((n, i) => (
-                  <div key={i} className="flex items-center gap-2 bg-white/5 px-4 py-2 rounded-lg">
-                    <span className="material-symbols-outlined text-[#69f6b8] text-sm">check_circle</span>
+                  <div key={i} className="flex items-center gap-2 bg-[var(--bg-elevated)] px-4 py-2 rounded-lg">
+                    <span className="material-symbols-outlined text-[var(--green-400)] text-sm">check_circle</span>
                     <span className="text-white text-sm">{n}</span>
                   </div>
                 ))}
@@ -181,9 +193,9 @@ export default function OnboardingPage() {
         {/* Step 2: Heat Data */}
         {currentStep === 2 && (
           <div className="space-y-4">
-            <p className="text-[#a3aac4]">You can import heat data later from the Data Management page, or record measurements manually for each neighborhood.</p>
-            <div className="bg-[#ff8439]/10 border border-[#ff8439]/20 p-4 rounded-lg">
-              <span className="text-sm text-[#ff8439] font-semibold">Tip: For best results, import CSV data with temperature measurements from NOAA or local weather stations.</span>
+            <p className="text-[var(--text-secondary)]">You can import heat data later from the Data Management page, or record measurements manually for each neighborhood.</p>
+            <div className="bg-[var(--high)]/10 border border-[var(--high)]/20 p-4 rounded-lg">
+              <span className="text-sm text-[var(--high)] font-semibold">Tip: For best results, import CSV data with temperature measurements from NOAA or local weather stations.</span>
             </div>
           </div>
         )}
@@ -191,9 +203,9 @@ export default function OnboardingPage() {
         {/* Step 3: Team */}
         {currentStep === 3 && (
           <div className="space-y-4">
-            <p className="text-[#a3aac4]">Invite team members to collaborate. You can do this later from the admin panel.</p>
-            <div className="bg-[#699cff]/10 border border-[#699cff]/20 p-4 rounded-lg">
-              <span className="text-sm text-[#699cff] font-semibold">Team management can be configured after onboarding from Dashboard → Admin.</span>
+            <p className="text-[var(--text-secondary)]">Invite team members to collaborate. You can do this later from the admin panel.</p>
+            <div className="bg-[var(--info)]/10 border border-[var(--info)]/20 p-4 rounded-lg">
+              <span className="text-sm text-[var(--info)] font-semibold">Team management can be configured after onboarding from Dashboard → Admin.</span>
             </div>
           </div>
         )}
@@ -201,15 +213,15 @@ export default function OnboardingPage() {
         {/* Step 4: Alerts */}
         {currentStep === 4 && (
           <div className="space-y-4">
-            <p className="text-[#a3aac4]">Configure heat alert thresholds for your city.</p>
+            <p className="text-[var(--text-secondary)]">Configure heat alert thresholds for your city.</p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs text-[#a3aac4] mb-1">Warning Threshold (°C)</label>
-                <input type="number" value={warningThreshold} onChange={(e) => setWarningThreshold(Number(e.target.value))} className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:border-[#ff8439]/50 focus:outline-none" />
+                <label className="block text-xs text-[var(--text-secondary)] mb-1">Warning Threshold (°C)</label>
+                <input type="number" value={warningThreshold} onChange={(e) => setWarningThreshold(Number(e.target.value))} className="w-full px-4 py-2 bg-[var(--bg-elevated)] border border-[var(--border-strong)] rounded-lg text-white focus:border-[var(--high)]/50 focus:outline-none" />
               </div>
               <div>
-                <label className="block text-xs text-[#a3aac4] mb-1">Critical Threshold (°C)</label>
-                <input type="number" value={criticalThreshold} onChange={(e) => setCriticalThreshold(Number(e.target.value))} className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:border-[#ff716c]/50 focus:outline-none" />
+                <label className="block text-xs text-[var(--text-secondary)] mb-1">Critical Threshold (°C)</label>
+                <input type="number" value={criticalThreshold} onChange={(e) => setCriticalThreshold(Number(e.target.value))} className="w-full px-4 py-2 bg-[var(--bg-elevated)] border border-[var(--border-strong)] rounded-lg text-white focus:border-[var(--critical)]/50 focus:outline-none" />
               </div>
             </div>
           </div>
@@ -218,19 +230,19 @@ export default function OnboardingPage() {
         {/* Step 5: Review */}
         {currentStep === 5 && (
           <div className="space-y-4">
-            <p className="text-[#a3aac4]">You&apos;re all set! Review the summary and launch your heat mitigation program.</p>
+            <p className="text-[var(--text-secondary)]">You&apos;re all set! Review the summary and launch your heat mitigation program.</p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="bg-white/5 p-4 rounded-lg">
-                <span className="text-[10px] uppercase tracking-widest text-[#6d758c]">Neighborhoods Added</span>
-                <p className="text-2xl font-bold text-[#69f6b8]">{neighborhoods.length}</p>
+              <div className="bg-[var(--bg-elevated)] p-4 rounded-lg">
+                <span className="text-[10px] uppercase tracking-widest text-[var(--text-tertiary)]">Neighborhoods Added</span>
+                <p className="text-2xl font-bold text-[var(--green-400)]">{neighborhoods.length}</p>
               </div>
-              <div className="bg-white/5 p-4 rounded-lg">
-                <span className="text-[10px] uppercase tracking-widest text-[#6d758c]">Status</span>
-                <p className="text-2xl font-bold text-[#69f6b8]">Ready</p>
+              <div className="bg-[var(--bg-elevated)] p-4 rounded-lg">
+                <span className="text-[10px] uppercase tracking-widest text-[var(--text-tertiary)]">Status</span>
+                <p className="text-2xl font-bold text-[var(--green-400)]">Ready</p>
               </div>
             </div>
             {launchError && (
-              <div className="rounded-lg border border-[#ff716c]/20 bg-[#ff716c]/10 px-4 py-3 text-sm text-[#ffb4ad]">
+              <div className="rounded-lg border border-[var(--critical)]/20 bg-[var(--critical)]/10 px-4 py-3 text-sm text-[#ffb4ad]">
                 {launchError}
               </div>
             )}
@@ -239,30 +251,30 @@ export default function OnboardingPage() {
 
         {/* Step Error */}
         {stepError && (
-          <div className="mt-4 rounded-lg border border-[#ff716c]/20 bg-[#ff716c]/10 px-4 py-3 text-sm text-[#ffb4ad] flex items-center gap-2">
+          <div className="mt-4 rounded-lg border border-[var(--critical)]/20 bg-[var(--critical)]/10 px-4 py-3 text-sm text-[#ffb4ad] flex items-center gap-2">
             <span className="material-symbols-outlined text-lg">error</span>
             {stepError}
           </div>
         )}
 
         {/* Navigation */}
-        <div className="flex justify-between mt-8 pt-6 border-t border-white/5">
+        <div className="flex justify-between mt-8 pt-6 border-t border-[var(--border)]">
           <button
             onClick={prevStep}
             disabled={currentStep === 0}
-            className="px-6 py-2 border border-white/10 text-[#a3aac4] rounded-xl hover:bg-white/5 disabled:opacity-30 transition-all"
+            className="px-6 py-2 border border-[var(--border-strong)] text-[var(--text-secondary)] rounded-xl hover:bg-[var(--bg-elevated)] disabled:opacity-30 transition-all"
           >
             Back
           </button>
           {currentStep < STEPS.length - 1 ? (
-            <button onClick={nextStep} className="px-6 py-2 bg-gradient-to-r from-[#69f6b8] to-[#06b77f] text-[#002919] font-bold rounded-xl btn-shine">
+            <button onClick={nextStep} className="px-6 py-2 bg-gradient-to-r from-[var(--green-400)] to-[var(--green-500)] text-[var(--bg-base)] font-bold rounded-xl ">
               Continue
             </button>
           ) : (
             <button
               onClick={finish}
               disabled={launching}
-              className="px-6 py-2 bg-gradient-to-r from-[#69f6b8] to-[#06b77f] text-[#002919] font-bold rounded-xl btn-shine disabled:opacity-50"
+              className="px-6 py-2 bg-gradient-to-r from-[var(--green-400)] to-[var(--green-500)] text-[var(--bg-base)] font-bold rounded-xl  disabled:opacity-50"
             >
               {launching ? 'Launching...' : 'Launch Dashboard'}
             </button>

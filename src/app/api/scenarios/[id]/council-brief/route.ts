@@ -210,10 +210,96 @@ export async function GET(
         ['Created By', scenario.createdBy?.name ?? 'Unknown'],
         ['Approved By', scenario.approvedBy?.name ?? 'N/A'],
         ['Approved On', approvedDate],
+        ['Total Interventions', String(interventions.length)],
+        ['Neighborhoods Covered', String(new Set(interventions.map((i) => i.neighborhood)).size)],
         ['Scenario ID', scenario.id],
       ],
       [1, 2],
     );
+
+  // ── Risk Matrix ──
+  const criticalInterventions = interventions.filter((i) => i.coolingC != null && i.coolingC >= 2.0);
+  const highCostInterventions = interventions.filter((i) => i.cost != null && i.cost >= 500000);
+  const pendingInterventions = interventions.filter((i) => i.status === 'PROPOSED');
+
+  pdf.addH1('Risk Assessment Matrix');
+  if (criticalInterventions.length > 0) {
+    pdf.addCallout(
+      `HIGH IMPACT — ${criticalInterventions.length} intervention${criticalInterventions.length !== 1 ? 's' : ''} project a temperature reduction ≥ 2.0°C: ` +
+      criticalInterventions.map((i) => `${i.name} (${fmtC(i.coolingC)})`).join(', ') + '. Prioritise these for earliest deployment.',
+      'success',
+    );
+  }
+  if (pendingInterventions.length > 0) {
+    pdf.addCallout(
+      `PENDING APPROVAL — ${pendingInterventions.length} intervention${pendingInterventions.length !== 1 ? 's' : ''} still in PROPOSED status: ` +
+      pendingInterventions.map((i) => i.name).join(', ') + '. Council approval required before site preparation begins.',
+      'warn',
+    );
+  }
+  if (highCostInterventions.length > 0) {
+    pdf.addCallout(
+      `BUDGET FLAG — ${highCostInterventions.length} intervention${highCostInterventions.length !== 1 ? 's' : ''} with individual cost ≥ ₹5,00,000: ` +
+      highCostInterventions.map((i) => `${i.name} (${fmt$(i.cost)})`).join(', ') + '. Verify procurement capacity and phased disbursement timelines.',
+      'info',
+    );
+  }
+
+  // ── Budget Breakdown by Type ──
+  const typeGroups: Record<string, { count: number; totalCost: number; totalCooling: number }> = {};
+  interventions.forEach((inv) => {
+    const key = inv.type.replace(/_/g, ' ');
+    if (!typeGroups[key]) typeGroups[key] = { count: 0, totalCost: 0, totalCooling: 0 };
+    typeGroups[key].count++;
+    if (inv.cost != null) typeGroups[key].totalCost += inv.cost;
+    if (inv.coolingC != null) typeGroups[key].totalCooling += inv.coolingC;
+  });
+
+  if (Object.keys(typeGroups).length > 1) {
+    pdf
+      .addH1('Budget Breakdown by Intervention Type')
+      .addTable(
+        ['Type', 'Count', 'Total Cost', 'Avg. Cooling'],
+        Object.entries(typeGroups).map(([type, g]) => [
+          type,
+          String(g.count),
+          g.totalCost > 0 ? fmt$(g.totalCost) : 'N/A',
+          g.count > 0 ? `-${(g.totalCooling / g.count).toFixed(1)}°C avg` : 'N/A',
+        ]),
+        [2.5, 1, 1.5, 1.5],
+      );
+  }
+
+  // ── Implementation Phases ──
+  pdf.addH1('Implementation Phases');
+  const phase1 = interventions.filter((i) => i.coolingC != null && i.coolingC >= 1.5);
+  const phase2 = interventions.filter((i) => !phase1.includes(i) && i.status !== 'PROPOSED');
+  const phase3 = interventions.filter((i) => i.status === 'PROPOSED');
+
+  pdf.addTable(
+    ['Phase', 'Scope', 'Interventions', 'Est. Cost'],
+    [
+      [
+        'Phase 1 (0–6 mo)',
+        'Highest-cooling impact',
+        phase1.length > 0 ? String(phase1.length) : '—',
+        fmt$(phase1.reduce((s, i) => s + (i.cost ?? 0), 0) || null),
+      ],
+      [
+        'Phase 2 (6–18 mo)',
+        'Approved & in-progress',
+        phase2.length > 0 ? String(phase2.length) : '—',
+        fmt$(phase2.reduce((s, i) => s + (i.cost ?? 0), 0) || null),
+      ],
+      [
+        'Phase 3 (18–36 mo)',
+        'Proposed / pending',
+        phase3.length > 0 ? String(phase3.length) : '—',
+        fmt$(phase3.reduce((s, i) => s + (i.cost ?? 0), 0) || null),
+      ],
+    ],
+    [2, 2, 1.5, 1.5],
+  );
 
   const pdfBuffer = pdf.build();
 

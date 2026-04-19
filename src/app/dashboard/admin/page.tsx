@@ -106,56 +106,56 @@ export default async function AdminPage() {
   return (
     <div className="flex flex-col gap-8">
       <div>
-        <div className="inline-flex items-center gap-2 glass-card rounded-full px-3 py-1.5 mb-3">
-          <span className="material-symbols-outlined text-[#ff716c] text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>admin_panel_settings</span>
-          <span className="text-[10px] font-bold uppercase tracking-widest text-[#ff716c]">Super Admin</span>
+        <div className="flex items-center gap-1.5 mb-2">
+          <span className="material-symbols-outlined text-[var(--text-tertiary)] text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>admin_panel_settings</span>
+          <span className="text-[10px] font-medium uppercase tracking-[0.06em] text-[var(--text-tertiary)]">Super Admin</span>
         </div>
-        <h1 className="text-3xl font-extrabold tracking-tight text-white font-[family-name:var(--font-headline)]">System Admin</h1>
-        <p className="mt-1 text-sm text-[#6d758c]">Monitor city adoption, data health, and heat-risk issues across the platform.</p>
+        <h1 className="text-2xl font-bold tracking-tight text-[var(--text-primary)]">System Admin</h1>
+        <p className="mt-0.5 text-sm text-[var(--text-secondary)]">Monitor city adoption, data health, and heat-risk issues across the platform.</p>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-5">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
         {[
-          { label: 'Cities', value: citySummaries.length, color: '#69f6b8' },
-          { label: 'Users', value: users.length, color: '#699cff' },
-          { label: 'Neighborhoods', value: totalNeighborhoods, color: '#ff8439' },
-          { label: 'Interventions', value: totalInterventions, color: '#dee5ff' },
-          { label: 'Critical', value: totalCritical, color: '#ff716c' },
+          { label: 'Cities', value: citySummaries.length, color: 'var(--green-400)' },
+          { label: 'Users', value: users.length, color: 'var(--info)' },
+          { label: 'Neighborhoods', value: totalNeighborhoods, color: 'var(--high)' },
+          { label: 'Interventions', value: totalInterventions, color: 'var(--text-primary)' },
+          { label: 'Critical', value: totalCritical, color: 'var(--critical)' },
         ].map((s) => (
-          <div key={s.label} className="glass-card rounded-2xl p-5 hover:scale-[1.02] transition-transform">
-            <span className="text-[10px] uppercase tracking-widest text-[#6d758c]">{s.label}</span>
-            <div className="text-3xl font-bold" style={{ color: s.color }}>{s.value}</div>
+          <div key={s.label} className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-lg px-4 py-3">
+            <span className="text-[10px] uppercase tracking-[0.06em] text-[var(--text-tertiary)]">{s.label}</span>
+            <div className="text-2xl font-bold tabular-nums mt-0.5" style={{ color: s.color }}>{s.value}</div>
           </div>
         ))}
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-[1.25fr_0.75fr]">
-        <div className="glass-card rounded-2xl overflow-hidden">
-          <div className="p-6 border-b border-white/5">
-            <h3 className="text-lg font-bold text-white font-[family-name:var(--font-headline)]">City Health</h3>
+      <div className="grid gap-4 xl:grid-cols-[1.25fr_0.75fr]">
+        <div className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-lg overflow-hidden">
+          <div className="px-4 py-3 border-b border-[var(--border)]">
+            <h3 className="text-sm font-semibold text-[var(--text-primary)]">City Health</h3>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead>
-                <tr className="bg-white/5 text-[#6d758c] uppercase text-[10px] tracking-widest font-bold">
-                  <th className="px-6 py-3">City</th>
-                  <th className="px-6 py-3">Neighborhoods</th>
-                  <th className="px-6 py-3">Users</th>
-                  <th className="px-6 py-3">Data Health</th>
-                  <th className="px-6 py-3">Issues</th>
+                <tr className="border-b border-[var(--border)] text-[var(--text-tertiary)] text-[11px] uppercase tracking-[0.06em] font-medium">
+                  <th className="px-4 py-3">City</th>
+                  <th className="px-4 py-3">Neighborhoods</th>
+                  <th className="px-4 py-3">Users</th>
+                  <th className="px-4 py-3">Data Health</th>
+                  <th className="px-4 py-3">Issues</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/5">
+              <tbody className="divide-y divide-[var(--border)]">
                 {citySummaries.map((city) => (
-                  <tr key={city.id} className="hover:bg-white/5">
-                    <td className="px-6 py-3 font-semibold text-white">{city.name}</td>
-                    <td className="px-6 py-3 text-[#a3aac4]">{city.neighborhoodCount}</td>
-                    <td className="px-6 py-3 text-[#a3aac4]">{city.userCount}</td>
-                    <td className="px-6 py-3">
-                      <div className="font-semibold text-white">{city.dataCoverage}%</div>
-                      <div className="text-xs text-[#6d758c]">{city.dataHealthLabel}</div>
+                  <tr key={city.id} className="hover:bg-[var(--bg-elevated)] transition-colors">
+                    <td className="px-4 py-3 font-medium text-[var(--text-primary)]">{city.name}</td>
+                    <td className="px-4 py-3 text-[var(--text-secondary)]">{city.neighborhoodCount}</td>
+                    <td className="px-4 py-3 text-[var(--text-secondary)]">{city.userCount}</td>
+                    <td className="px-4 py-3">
+                      <div className="font-medium text-[var(--text-primary)]">{city.dataCoverage}%</div>
+                      <div className="text-xs text-[var(--text-tertiary)]">{city.dataHealthLabel}</div>
                     </td>
-                    <td className="px-6 py-3 text-[#a3aac4]">{city.issues[0] || 'No active issues'}</td>
+                    <td className="px-4 py-3 text-[var(--text-secondary)]">{city.issues[0] || 'No active issues'}</td>
                   </tr>
                 ))}
               </tbody>
@@ -163,19 +163,19 @@ export default async function AdminPage() {
           </div>
         </div>
 
-        <div className="glass-card rounded-2xl overflow-hidden">
-          <div className="p-6 border-b border-white/5">
-            <h3 className="text-lg font-bold text-white font-[family-name:var(--font-headline)]">Recent Alerts</h3>
+        <div className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-lg overflow-hidden">
+          <div className="px-4 py-3 border-b border-[var(--border)]">
+            <h3 className="text-sm font-semibold text-[var(--text-primary)]">Recent Alerts</h3>
           </div>
-          <div className="p-6">
+          <div className="p-4">
             {alerts.length === 0 ? (
-              <p className="text-sm text-[#6d758c]">No issues need attention right now.</p>
+              <p className="text-sm text-[var(--text-tertiary)]">No issues need attention right now.</p>
             ) : (
-              <div className="space-y-3">
+              <div className="space-y-2">
                 {alerts.map((alert, index) => (
-                  <div key={`${alert.city}-${alert.issue}-${index}`} className="glass-card rounded-xl px-4 py-4">
-                    <div className="text-sm font-semibold text-white">{alert.city}</div>
-                    <div className="mt-1 text-sm text-[#a3aac4]">{alert.issue}</div>
+                  <div key={`${alert.city}-${alert.issue}-${index}`} className="bg-[var(--bg-elevated)] border border-[var(--border)] rounded-md px-3 py-2.5">
+                    <div className="text-xs font-medium text-[var(--text-primary)]">{alert.city}</div>
+                    <div className="mt-0.5 text-xs text-[var(--text-secondary)]">{alert.issue}</div>
                   </div>
                 ))}
               </div>
@@ -184,29 +184,29 @@ export default async function AdminPage() {
         </div>
       </div>
 
-      <div className="glass-card rounded-2xl overflow-hidden">
-        <div className="p-6 border-b border-white/5">
-          <h3 className="text-lg font-bold text-white font-[family-name:var(--font-headline)]">Recent Users</h3>
+      <div className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-lg overflow-hidden">
+        <div className="px-4 py-3 border-b border-[var(--border)]">
+          <h3 className="text-sm font-semibold text-[var(--text-primary)]">Recent Users</h3>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead>
-              <tr className="bg-white/5 text-[#6d758c] uppercase text-[10px] tracking-widest font-bold">
-                <th className="px-6 py-3">Name</th>
-                <th className="px-6 py-3">Email</th>
-                <th className="px-6 py-3">Role</th>
-                <th className="px-6 py-3">City</th>
-                <th className="px-6 py-3">Joined</th>
+              <tr className="border-b border-[var(--border)] text-[var(--text-tertiary)] text-[11px] uppercase tracking-[0.06em] font-medium">
+                <th className="px-4 py-3">Name</th>
+                <th className="px-4 py-3">Email</th>
+                <th className="px-4 py-3">Role</th>
+                <th className="px-4 py-3">City</th>
+                <th className="px-4 py-3">Joined</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-white/5">
+            <tbody className="divide-y divide-[var(--border)]">
               {users.slice(0, 12).map((u) => (
-                <tr key={u.id} className="hover:bg-white/5">
-                  <td className="px-6 py-3 font-semibold text-white">{u.name ?? '—'}</td>
-                  <td className="px-6 py-3 text-[#a3aac4]">{u.email}</td>
-                  <td className="px-6 py-3 text-[#a3aac4]">{u.role}</td>
-                  <td className="px-6 py-3 text-[#a3aac4]">{u.city?.name ?? '—'}</td>
-                  <td className="px-6 py-3 text-[#a3aac4]">{new Date(u.createdAt).toLocaleDateString()}</td>
+                <tr key={u.id} className="hover:bg-[var(--bg-elevated)] transition-colors">
+                  <td className="px-4 py-3 font-medium text-[var(--text-primary)]">{u.name ?? '—'}</td>
+                  <td className="px-4 py-3 text-[var(--text-secondary)]">{u.email}</td>
+                  <td className="px-4 py-3 text-[var(--text-secondary)]">{u.role}</td>
+                  <td className="px-4 py-3 text-[var(--text-secondary)]">{u.city?.name ?? '—'}</td>
+                  <td className="px-4 py-3 text-[var(--text-secondary)]">{new Date(u.createdAt).toLocaleDateString()}</td>
                 </tr>
               ))}
             </tbody>

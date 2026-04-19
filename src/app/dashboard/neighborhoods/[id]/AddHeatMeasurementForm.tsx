@@ -37,7 +37,7 @@ export default function AddHeatMeasurementForm({ neighborhoodId }: { neighborhoo
 
   if (!open) {
     return (
-      <button onClick={() => setOpen(true)} className="px-5 py-2 bg-[#ff8439] text-white font-bold rounded-md text-sm self-start">
+      <button onClick={() => setOpen(true)} className="px-5 py-2 bg-[var(--high)] text-white font-bold rounded-md text-sm self-start">
         <span className="flex items-center gap-2">
           <span className="material-symbols-outlined text-lg">thermostat</span>
           Record Heat Measurement
@@ -53,32 +53,32 @@ export default function AddHeatMeasurementForm({ neighborhoodId }: { neighborhoo
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div>
-          <label className="block text-xs text-[#a3aac4] mb-1">Date *</label>
-          <input name="measurementDate" type="date" required className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:border-[#ff8439]/50 focus:outline-none" />
+          <label className="block text-xs text-[var(--text-secondary)] mb-1">Date *</label>
+          <input name="measurementDate" type="date" required className="w-full px-4 py-2 bg-[var(--bg-elevated)] border border-[var(--border)] rounded-lg text-white focus:border-[var(--high)]/50 focus:outline-none" />
         </div>
         <div>
-          <label className="block text-xs text-[#a3aac4] mb-1">Avg Temp (°C) *</label>
-          <input name="avgTempCelsius" type="number" step="0.1" required className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:border-[#ff8439]/50 focus:outline-none" />
+          <label className="block text-xs text-[var(--text-secondary)] mb-1">Avg Temp (°C) *</label>
+          <input name="avgTempCelsius" type="number" step="0.1" required className="w-full px-4 py-2 bg-[var(--bg-elevated)] border border-[var(--border)] rounded-lg text-white focus:border-[var(--high)]/50 focus:outline-none" />
         </div>
         <div>
-          <label className="block text-xs text-[#a3aac4] mb-1">Max Temp (°C) *</label>
-          <input name="maxTempCelsius" type="number" step="0.1" required className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:border-[#ff8439]/50 focus:outline-none" />
+          <label className="block text-xs text-[var(--text-secondary)] mb-1">Max Temp (°C) *</label>
+          <input name="maxTempCelsius" type="number" step="0.1" required className="w-full px-4 py-2 bg-[var(--bg-elevated)] border border-[var(--border)] rounded-lg text-white focus:border-[var(--high)]/50 focus:outline-none" />
         </div>
         <div>
-          <label className="block text-xs text-[#a3aac4] mb-1">Min Temp (°C)</label>
-          <input name="minTempCelsius" type="number" step="0.1" className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:border-[#ff8439]/50 focus:outline-none" />
+          <label className="block text-xs text-[var(--text-secondary)] mb-1">Min Temp (°C)</label>
+          <input name="minTempCelsius" type="number" step="0.1" className="w-full px-4 py-2 bg-[var(--bg-elevated)] border border-[var(--border)] rounded-lg text-white focus:border-[var(--high)]/50 focus:outline-none" />
         </div>
         <div>
-          <label className="block text-xs text-[#a3aac4] mb-1">Source</label>
-          <input name="dataSource" placeholder="e.g., NOAA, Manual" className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:border-[#ff8439]/50 focus:outline-none" />
+          <label className="block text-xs text-[var(--text-secondary)] mb-1">Source</label>
+          <input name="dataSource" placeholder="e.g., NOAA, Manual" className="w-full px-4 py-2 bg-[var(--bg-elevated)] border border-[var(--border)] rounded-lg text-white focus:border-[var(--high)]/50 focus:outline-none" />
         </div>
       </div>
 
       <div className="flex gap-3">
-        <button type="submit" disabled={loading} className="px-6 py-2 bg-[#ff8439] text-white font-bold rounded-md disabled:opacity-50">
+        <button type="submit" disabled={loading} className="px-6 py-2 bg-[var(--high)] text-white font-bold rounded-md disabled:opacity-50">
           {loading ? 'Saving...' : 'Save Measurement'}
         </button>
-        <button type="button" onClick={() => setOpen(false)} className="px-6 py-2 border border-white/10 text-[#a3aac4] rounded-md hover:bg-white/5">
+        <button type="button" onClick={() => setOpen(false)} className="px-6 py-2 border border-[var(--border)] text-[var(--text-secondary)] rounded-md hover:bg-[var(--bg-elevated)]">
           Cancel
         </button>
       </div>

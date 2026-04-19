@@ -5,6 +5,7 @@ import type { NextAuthConfig } from 'next-auth';
  * Used by middleware to validate JWT sessions.
  */
 export const authConfig: NextAuthConfig = {
+  trustHost: true,
   pages: {
     signIn: '/login',
     error: '/login',

@@ -48,16 +48,16 @@ export default function CitizenReporterDashboard() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[50vh]">
-        <span className="material-symbols-outlined animate-spin text-4xl text-[#69f6b8]">progress_activity</span>
+        <span className="material-symbols-outlined animate-spin text-4xl text-[var(--green-400)]">progress_activity</span>
       </div>
     );
   }
 
   const statusConfig: Record<string, { color: string; icon: string }> = {
-    SUBMITTED: { color: '#ff8439', icon: 'schedule_send' },
-    ACKNOWLEDGED: { color: '#699cff', icon: 'visibility' },
-    IN_PROGRESS: { color: '#ca8a04', icon: 'engineering' },
-    RESOLVED: { color: '#69f6b8', icon: 'check_circle' },
+    SUBMITTED: { color: 'var(--high)', icon: 'schedule_send' },
+    ACKNOWLEDGED: { color: 'var(--info)', icon: 'visibility' },
+    IN_PROGRESS: { color: 'var(--moderate)', icon: 'engineering' },
+    RESOLVED: { color: 'var(--green-400)', icon: 'check_circle' },
   };
 
   return (
@@ -67,11 +67,11 @@ export default function CitizenReporterDashboard() {
           <h1 className="font-[family-name:var(--font-headline)] text-3xl font-extrabold tracking-tight text-white">
             Citizen Reporter
           </h1>
-          <p className="text-[#a3aac4] mt-1">Welcome, {session?.user?.name}. Report heat-related issues in your neighborhood.</p>
+          <p className="text-[var(--text-secondary)] mt-1">Welcome, {session?.user?.name}. Report heat-related issues in your neighborhood.</p>
         </div>
         <button
           onClick={() => setShowForm(!showForm)}
-          className="px-4 py-2 bg-gradient-to-r from-[#69f6b8] to-[#06b77f] text-[#002919] font-bold rounded-xl btn-shine flex items-center gap-2"
+          className="px-4 py-2 bg-gradient-to-r from-[var(--green-400)] to-[var(--green-500)] text-[var(--bg-base)] font-bold rounded-xl  flex items-center gap-2"
         >
           <span className="material-symbols-outlined text-lg">report</span>
           New Report
@@ -81,74 +81,74 @@ export default function CitizenReporterDashboard() {
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { label: 'Reports Filed', value: reports.length, icon: 'description', color: '#699cff' },
-          { label: 'Acknowledged', value: reports.filter(r => r.status === 'ACKNOWLEDGED').length, icon: 'visibility', color: '#ff8439' },
-          { label: 'In Progress', value: reports.filter(r => r.status === 'IN_PROGRESS').length, icon: 'engineering', color: '#ca8a04' },
-          { label: 'Resolved', value: reports.filter(r => r.status === 'RESOLVED').length, icon: 'check_circle', color: '#69f6b8' },
+          { label: 'Reports Filed', value: reports.length, icon: 'description', color: 'var(--info)' },
+          { label: 'Acknowledged', value: reports.filter(r => r.status === 'ACKNOWLEDGED').length, icon: 'visibility', color: 'var(--high)' },
+          { label: 'In Progress', value: reports.filter(r => r.status === 'IN_PROGRESS').length, icon: 'engineering', color: 'var(--moderate)' },
+          { label: 'Resolved', value: reports.filter(r => r.status === 'RESOLVED').length, icon: 'check_circle', color: 'var(--green-400)' },
         ].map((stat) => (
-          <div key={stat.label} className="glass-card rounded-2xl p-5">
+          <div key={stat.label} className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-lg p-5">
             <span className="material-symbols-outlined text-2xl mb-2" style={{ color: stat.color, fontVariationSettings: "'FILL' 1" }}>{stat.icon}</span>
             <div className="text-2xl font-black text-white font-[family-name:var(--font-headline)]">{stat.value}</div>
-            <div className="text-[10px] uppercase tracking-widest text-[#6d758c] mt-1">{stat.label}</div>
+            <div className="text-[10px] uppercase tracking-widest text-[var(--text-tertiary)] mt-1">{stat.label}</div>
           </div>
         ))}
       </div>
 
       {/* New Report Form */}
       {showForm && (
-        <div className="glass-card rounded-2xl p-6">
+        <div className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-lg p-6">
           <h2 className="text-lg font-bold text-white mb-4">Report a Heat Issue</h2>
           <form onSubmit={handleSubmitReport} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-bold uppercase tracking-widest text-[#6d758c] mb-2">Title</label>
-                <input value={newReport.title} onChange={(e) => setNewReport({ ...newReport, title: e.target.value })} className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:border-[#69f6b8]/50 focus:outline-none" placeholder="Brief issue title" required />
+                <label className="block text-xs font-bold uppercase tracking-widest text-[var(--text-tertiary)] mb-2">Title</label>
+                <input value={newReport.title} onChange={(e) => setNewReport({ ...newReport, title: e.target.value })} className="w-full px-4 py-3 bg-[var(--bg-elevated)] border border-[var(--border-strong)] rounded-xl text-white focus:border-[var(--green-400)]/50 focus:outline-none" placeholder="Brief issue title" required />
               </div>
               <div>
-                <label className="block text-xs font-bold uppercase tracking-widest text-[#6d758c] mb-2">Location</label>
-                <input value={newReport.location} onChange={(e) => setNewReport({ ...newReport, location: e.target.value })} className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:border-[#69f6b8]/50 focus:outline-none" placeholder="Area, Ward, Landmark" required />
+                <label className="block text-xs font-bold uppercase tracking-widest text-[var(--text-tertiary)] mb-2">Location</label>
+                <input value={newReport.location} onChange={(e) => setNewReport({ ...newReport, location: e.target.value })} className="w-full px-4 py-3 bg-[var(--bg-elevated)] border border-[var(--border-strong)] rounded-xl text-white focus:border-[var(--green-400)]/50 focus:outline-none" placeholder="Area, Ward, Landmark" required />
               </div>
             </div>
             <div>
-              <label className="block text-xs font-bold uppercase tracking-widest text-[#6d758c] mb-2">Category</label>
-              <select value={newReport.category} onChange={(e) => setNewReport({ ...newReport, category: e.target.value })} className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:border-[#69f6b8]/50 focus:outline-none appearance-none">
-                <option value="HEAT_COMPLAINT" className="bg-[#0a1628]">Heat Complaint</option>
-                <option value="SHADE_REQUEST" className="bg-[#0a1628]">Shade / Tree Request</option>
-                <option value="INFRASTRUCTURE" className="bg-[#0a1628]">Infrastructure Issue</option>
-                <option value="WATER_ACCESS" className="bg-[#0a1628]">Water Access Problem</option>
-                <option value="OTHER" className="bg-[#0a1628]">Other</option>
+              <label className="block text-xs font-bold uppercase tracking-widest text-[var(--text-tertiary)] mb-2">Category</label>
+              <select value={newReport.category} onChange={(e) => setNewReport({ ...newReport, category: e.target.value })} className="w-full px-4 py-3 bg-[var(--bg-elevated)] border border-[var(--border-strong)] rounded-xl text-white focus:border-[var(--green-400)]/50 focus:outline-none appearance-none">
+                <option value="HEAT_COMPLAINT" className="bg-[var(--bg-base)]">Heat Complaint</option>
+                <option value="SHADE_REQUEST" className="bg-[var(--bg-base)]">Shade / Tree Request</option>
+                <option value="INFRASTRUCTURE" className="bg-[var(--bg-base)]">Infrastructure Issue</option>
+                <option value="WATER_ACCESS" className="bg-[var(--bg-base)]">Water Access Problem</option>
+                <option value="OTHER" className="bg-[var(--bg-base)]">Other</option>
               </select>
             </div>
             <div>
-              <label className="block text-xs font-bold uppercase tracking-widest text-[#6d758c] mb-2">Description</label>
+              <label className="block text-xs font-bold uppercase tracking-widest text-[var(--text-tertiary)] mb-2">Description</label>
               <textarea
                 value={newReport.description}
                 onChange={(e) => setNewReport({ ...newReport, description: e.target.value })}
-                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:border-[#69f6b8]/50 focus:outline-none resize-none"
+                className="w-full px-4 py-3 bg-[var(--bg-elevated)] border border-[var(--border-strong)] rounded-xl text-white focus:border-[var(--green-400)]/50 focus:outline-none resize-none"
                 rows={3}
                 placeholder="Describe the issue in detail..."
                 required
               />
             </div>
             <div className="flex gap-3">
-              <button type="submit" className="px-6 py-2 bg-gradient-to-r from-[#69f6b8] to-[#06b77f] text-[#002919] font-bold rounded-xl btn-shine">Submit Report</button>
-              <button type="button" onClick={() => setShowForm(false)} className="px-6 py-2 glass-card rounded-xl text-[#a3aac4] hover:text-white transition-all">Cancel</button>
+              <button type="submit" className="px-6 py-2 bg-gradient-to-r from-[var(--green-400)] to-[var(--green-500)] text-[var(--bg-base)] font-bold rounded-xl ">Submit Report</button>
+              <button type="button" onClick={() => setShowForm(false)} className="px-6 py-2 bg-[var(--bg-elevated)] border border-[var(--border)] rounded-md text-[var(--text-secondary)] hover:text-white transition-all">Cancel</button>
             </div>
           </form>
         </div>
       )}
 
       {/* Reports */}
-      <div className="glass-card rounded-2xl p-6">
+      <div className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-lg p-6">
         <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
-          <span className="material-symbols-outlined text-[#699cff]" style={{ fontVariationSettings: "'FILL' 1" }}>list_alt</span>
+          <span className="material-symbols-outlined text-[var(--info)]" style={{ fontVariationSettings: "'FILL' 1" }}>list_alt</span>
           My Reports
         </h2>
         <div className="space-y-3">
           {reports.map((report) => {
             const config = statusConfig[report.status];
             return (
-              <div key={report.id} className="glass-card rounded-xl px-5 py-4">
+              <div key={report.id} className="bg-[var(--bg-elevated)] border border-[var(--border)] rounded-md px-5 py-4">
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-3">
                     <div className="h-8 w-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: `${config.color}15` }}>
@@ -160,11 +160,11 @@ export default function CitizenReporterDashboard() {
                     <span className="text-xs font-bold px-2.5 py-1 rounded-lg" style={{ backgroundColor: `${config.color}15`, color: config.color }}>
                       {report.status.replace('_', ' ')}
                     </span>
-                    <span className="text-xs text-[#6d758c]">{report.date}</span>
+                    <span className="text-xs text-[var(--text-tertiary)]">{report.date}</span>
                   </div>
                 </div>
-                <p className="text-sm text-[#a3aac4] mb-1">{report.description}</p>
-                <div className="flex items-center gap-3 text-xs text-[#6d758c]">
+                <p className="text-sm text-[var(--text-secondary)] mb-1">{report.description}</p>
+                <div className="flex items-center gap-3 text-xs text-[var(--text-tertiary)]">
                   <span className="flex items-center gap-1">
                     <span className="material-symbols-outlined text-xs">location_on</span>
                     {report.location}
@@ -181,14 +181,14 @@ export default function CitizenReporterDashboard() {
       </div>
 
       {/* Help Section */}
-      <div className="glass-card rounded-2xl p-6">
+      <div className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-lg p-6">
         <div className="flex items-start gap-4">
-          <div className="h-12 w-12 rounded-xl bg-[#69f6b8]/10 flex items-center justify-center shrink-0">
-            <span className="material-symbols-outlined text-[#69f6b8] text-2xl" style={{ fontVariationSettings: "'FILL' 1" }}>help</span>
+          <div className="h-12 w-12 rounded-xl bg-[var(--green-400)]/10 flex items-center justify-center shrink-0">
+            <span className="material-symbols-outlined text-[var(--green-400)] text-2xl" style={{ fontVariationSettings: "'FILL' 1" }}>help</span>
           </div>
           <div>
             <h3 className="text-lg font-bold text-white mb-1">How it works</h3>
-            <p className="text-sm text-[#a3aac4]">
+            <p className="text-sm text-[var(--text-secondary)]">
               Submit a report about heat-related issues in your area. Your ward officer will acknowledge it and take action.
               You can track the status of your reports here. Reports marked as &quot;Resolved&quot; have been addressed by the authorities.
             </p>

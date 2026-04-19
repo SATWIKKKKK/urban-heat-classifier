@@ -18,7 +18,7 @@ export default function MobileNav() {
       {navItems.map((item) => {
         const isActive = pathname === item.href;
         return (
-          <Link key={item.href} href={item.href} className={`flex flex-col items-center gap-0.5 transition-colors ${isActive ? 'text-[#69f6b8]' : 'text-[#6d758c]'}`}>
+          <Link key={item.href} href={item.href} className={`flex flex-col items-center gap-0.5 transition-colors ${isActive ? 'text-[var(--green-400)]' : 'text-[var(--text-tertiary)]'}`}>
             <span className="material-symbols-outlined text-xl" style={isActive ? { fontVariationSettings: "'FILL' 1" } : {}}>{item.icon}</span>
             <span className="text-[10px] font-bold">{item.label}</span>
           </Link>

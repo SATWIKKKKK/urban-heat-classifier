@@ -1,24 +1,24 @@
-'use client';
-
 import Link from 'next/link';
+import { auth } from '@/lib/auth';
+import GlobalNavbar from '@/components/layout/GlobalNavbar';
 
 const liveAlerts = [
-  { level: 'Extreme', title: 'Extreme Heat Warning', desc: 'Heat index expected to reach 115°F in downtown core. Cooling centers activated.', time: '2 hours ago', color: '#ff716c', icon: 'emergency_heat' },
-  { level: 'Advisory', title: 'Air Quality Advisory', desc: 'Ozone levels elevated in industrial corridor. Limit outdoor activity.', time: '5 hours ago', color: '#ff8439', icon: 'air' },
-  { level: 'Info', title: 'New Cool Pavement Project', desc: 'Phase 2 of the Riverside cool pavement initiative begins next week.', time: '1 day ago', color: '#699cff', icon: 'construction' },
+  { level: 'Extreme', title: 'Extreme Heat Warning', desc: 'Heat index expected to reach 115°F in downtown core. Cooling centers activated.', time: '2 hours ago', color: 'var(--critical)', icon: 'emergency_heat' },
+  { level: 'Advisory', title: 'Air Quality Advisory', desc: 'Ozone levels elevated in industrial corridor. Limit outdoor activity.', time: '5 hours ago', color: 'var(--high)', icon: 'air' },
+  { level: 'Info', title: 'New Cool Pavement Project', desc: 'Phase 2 of the Riverside cool pavement initiative begins next week.', time: '1 day ago', color: 'var(--info)', icon: 'construction' },
 ];
 
 const impactStats = [
-  { label: 'Trees Planted', value: '2,847', icon: 'park', color: '#69f6b8' },
-  { label: 'Active Requests', value: '156', icon: 'pending_actions', color: '#699cff' },
-  { label: 'Temp Reduction', value: '3.2°F', icon: 'thermostat', color: '#ff8439' },
+  { label: 'Trees Planted', value: '2,847', icon: 'park', color: 'var(--green-400)' },
+  { label: 'Active Requests', value: '156', icon: 'pending_actions', color: 'var(--info)' },
+  { label: 'Temp Reduction', value: '3.2°F', icon: 'thermostat', color: 'var(--high)' },
   { label: 'Members', value: '12.4K', icon: 'groups', color: '#c084fc' },
 ];
 
 const quickActions = [
-  { title: 'Request a Tree', desc: 'Free tree planting for your property or nearby public space.', href: '/resident/request-tree', icon: 'park', color: '#69f6b8', cta: 'Get Started' },
-  { title: 'My Requests', desc: 'Track status and estimated timelines for your submissions.', href: '/resident/my-requests', icon: 'assignment', color: '#699cff', cta: 'View All' },
-  { title: 'Report Heat Issue', desc: 'Report heat hazards, broken infrastructure, or shade needs.', href: '#', icon: 'report', color: '#ff8439', cta: 'Report Now' },
+  { title: 'Request a Tree', desc: 'Free tree planting for your property or nearby public space.', href: '/resident/request-tree', icon: 'park', color: 'var(--green-400)', cta: 'Get Started' },
+  { title: 'My Requests', desc: 'Track status and estimated timelines for your submissions.', href: '/resident/my-requests', icon: 'assignment', color: 'var(--info)', cta: 'View All' },
+  { title: 'Report Heat Issue', desc: 'Report heat hazards, broken infrastructure, or shade needs.', href: '#', icon: 'report', color: 'var(--high)', cta: 'Report Now' },
   { title: 'Explore Map', desc: 'See heat islands, tree coverage, and planned interventions.', href: '/map', icon: 'map', color: '#c084fc', cta: 'Open Map' },
 ];
 
@@ -29,53 +29,35 @@ const safetyTips = [
   { title: 'Limit Outdoor Activity', desc: 'Avoid strenuous activity between 10 AM and 4 PM.', icon: 'do_not_disturb_on' },
 ];
 
-export default function ResidentPage() {
+export default async function ResidentPage() {
+  const session = await auth();
+  const role = session?.user?.role;
+
   return (
-    <div className="min-h-screen bg-[#060e20] grid-pattern relative overflow-hidden">
+    <div className="min-h-screen bg-[var(--bg-base)] grid-pattern relative overflow-hidden">
       {/* Decorative orbs */}
       <div className="orb orb-primary w-[600px] h-[600px] -top-[200px] -right-[150px] fixed" />
       <div className="orb orb-secondary w-[400px] h-[400px] bottom-[10%] -left-[100px] fixed" />
       <div className="orb w-[300px] h-[300px] top-[60%] right-[10%] fixed" style={{ background: 'radial-gradient(circle, rgba(192,132,252,0.08), transparent 70%)' }} />
 
-      {/* Top Bar */}
-      <header className="fixed top-0 w-full z-50 glass-overlay border-b border-white/5">
-        <div className="max-w-7xl mx-auto px-4 md:px-8 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Link href="/" className="flex items-center gap-2">
-              <span className="material-symbols-outlined text-[#69f6b8]" style={{ fontVariationSettings: "'FILL' 1" }}>eco</span>
-              <span className="font-bold text-white font-[family-name:var(--font-headline)] text-lg">HeatPlan</span>
-            </Link>
-            <span className="hidden sm:block h-5 w-px bg-white/10" />
-            <span className="hidden sm:block text-xs text-[#a3aac4] font-semibold">Resident Portal</span>
-          </div>
-          <nav className="hidden md:flex items-center gap-6">
-            <Link href="/resident" className="text-sm font-semibold text-[#69f6b8]">Home</Link>
-            <Link href="/resident/request-tree" className="text-sm font-semibold text-[#a3aac4] hover:text-white transition-colors">Request Tree</Link>
-            <Link href="/resident/my-requests" className="text-sm font-semibold text-[#a3aac4] hover:text-white transition-colors">My Requests</Link>
-            <Link href="/map" className="text-sm font-semibold text-[#a3aac4] hover:text-white transition-colors">City Map</Link>
-          </nav>
-          <Link href="/login" className="flex items-center gap-2 text-sm text-[#a3aac4] hover:text-white transition-colors">
-            <span className="material-symbols-outlined text-lg">account_circle</span>
-            <span className="hidden sm:block">Sign In</span>
-          </Link>
-        </div>
-      </header>
+      {/* Navbar */}
+      <GlobalNavbar activeHref="/resident" />
 
       {/* Mobile Bottom Nav */}
       <div className="md:hidden fixed bottom-0 left-0 w-full glass-overlay border-t border-white/5 flex justify-around items-center h-16 z-50">
-        <Link href="/resident" className="flex flex-col items-center gap-0.5 text-[#69f6b8]">
+        <Link href="/resident" className="flex flex-col items-center gap-0.5 text-[var(--green-400)]">
           <span className="material-symbols-outlined text-xl" style={{ fontVariationSettings: "'FILL' 1" }}>home</span>
           <span className="text-[10px] font-bold">Home</span>
         </Link>
-        <Link href="/resident/request-tree" className="flex flex-col items-center gap-0.5 text-[#6d758c]">
+        <Link href="/resident/request-tree" className="flex flex-col items-center gap-0.5 text-[var(--text-tertiary)]">
           <span className="material-symbols-outlined text-xl">park</span>
           <span className="text-[10px] font-bold">Request</span>
         </Link>
-        <Link href="/resident/my-requests" className="flex flex-col items-center gap-0.5 text-[#6d758c]">
+        <Link href="/resident/my-requests" className="flex flex-col items-center gap-0.5 text-[var(--text-tertiary)]">
           <span className="material-symbols-outlined text-xl">assignment</span>
           <span className="text-[10px] font-bold">Requests</span>
         </Link>
-        <Link href="/map" className="flex flex-col items-center gap-0.5 text-[#6d758c]">
+        <Link href="/map" className="flex flex-col items-center gap-0.5 text-[var(--text-tertiary)]">
           <span className="material-symbols-outlined text-xl">map</span>
           <span className="text-[10px] font-bold">Map</span>
         </Link>
@@ -88,17 +70,17 @@ export default function ResidentPage() {
           <div className="max-w-6xl mx-auto px-4 md:px-8 py-16 md:py-24">
             <div className="max-w-2xl animate-reveal-up">
               <div className="inline-flex items-center gap-2 glass-card rounded-full px-4 py-2 mb-5">
-                <span className="h-2 w-2 rounded-full bg-[#69f6b8] animate-pulse" />
-                <span className="text-xs font-bold uppercase tracking-widest text-[#69f6b8]">Civic Engagement Portal</span>
+                <span className="h-2 w-2 rounded-full bg-[var(--green-400)] animate-pulse" />
+                <span className="text-xs font-bold uppercase tracking-widest text-[var(--green-400)]">Civic Engagement Portal</span>
               </div>
               <h1 className="text-4xl md:text-5xl lg:text-6xl font-black text-white font-[family-name:var(--font-headline)] tracking-tight leading-[1.1]">
                 Cool Your<br /><span className="text-gradient-primary">Neighborhood</span>
               </h1>
-              <p className="text-[#a3aac4] mt-5 text-lg max-w-xl leading-relaxed">
+              <p className="text-[var(--text-secondary)] mt-5 text-lg max-w-xl leading-relaxed">
                 Request trees, report heat issues, and track how your community fights the urban heat island effect.
               </p>
               <div className="mt-8 flex flex-col sm:flex-row gap-3">
-                <Link href="/resident/request-tree" className="px-8 py-4 bg-gradient-to-r from-[#69f6b8] to-[#06b77f] text-[#002919] font-bold rounded-xl shadow-lg shadow-[#69f6b8]/20 hover:shadow-xl hover:shadow-[#69f6b8]/30 transition-all text-center btn-shine">
+                <Link href="/resident/request-tree" className="px-8 py-4 bg-gradient-to-r from-[var(--green-400)] to-[var(--green-500)] text-[var(--bg-base)] font-bold rounded-xl shadow-lg shadow-[var(--green-400)]/20 hover:shadow-xl hover:shadow-[var(--green-400)]/30 transition-all text-center ">
                   <span className="flex items-center justify-center gap-2">
                     <span className="material-symbols-outlined text-lg" style={{ fontVariationSettings: "'FILL' 1" }}>park</span>
                     Request a Tree
@@ -124,7 +106,7 @@ export default function ResidentPage() {
                   <span className="material-symbols-outlined text-2xl" style={{ color: stat.color, fontVariationSettings: "'FILL' 1" }}>{stat.icon}</span>
                 </div>
                 <div className="text-2xl font-black text-white">{stat.value}</div>
-                <span className="text-[10px] uppercase tracking-widest text-[#6d758c] mt-1 block">{stat.label}</span>
+                <span className="text-[10px] uppercase tracking-widest text-[var(--text-tertiary)] mt-1 block">{stat.label}</span>
               </div>
             ))}
           </div>
@@ -135,10 +117,10 @@ export default function ResidentPage() {
           <div className="glass-card rounded-2xl overflow-hidden">
             <div className="p-4 border-b border-white/5 flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <div className="h-2 w-2 rounded-full bg-[#ff716c] animate-pulse" />
+                <div className="h-2 w-2 rounded-full bg-[var(--critical)] animate-pulse" />
                 <h3 className="font-bold text-white text-sm font-[family-name:var(--font-headline)]">Live Alerts</h3>
               </div>
-              <span className="text-[10px] font-bold text-[#6d758c] uppercase tracking-widest">{liveAlerts.length} Active</span>
+              <span className="text-[10px] font-bold text-[var(--text-tertiary)] uppercase tracking-widest">{liveAlerts.length} Active</span>
             </div>
             <div className="divide-y divide-white/5">
               {liveAlerts.map((alert) => (
@@ -151,9 +133,9 @@ export default function ResidentPage() {
                       <span className="text-[10px] font-bold px-2 py-0.5 rounded-md uppercase tracking-wider" style={{ backgroundColor: `${alert.color}12`, color: alert.color }}>{alert.level}</span>
                       <span className="font-semibold text-white text-sm">{alert.title}</span>
                     </div>
-                    <p className="text-[#a3aac4] text-xs mt-1 leading-relaxed">{alert.desc}</p>
+                    <p className="text-[var(--text-secondary)] text-xs mt-1 leading-relaxed">{alert.desc}</p>
                   </div>
-                  <span className="text-[10px] text-[#40485d] whitespace-nowrap shrink-0">{alert.time}</span>
+                  <span className="text-[10px] text-[var(--border-strong)] whitespace-nowrap shrink-0">{alert.time}</span>
                 </div>
               ))}
             </div>
@@ -175,7 +157,7 @@ export default function ResidentPage() {
                     <span className="material-symbols-outlined text-2xl" style={{ color: action.color, fontVariationSettings: "'FILL' 1" }}>{action.icon}</span>
                   </div>
                   <h3 className="font-bold text-white text-base">{action.title}</h3>
-                  <p className="text-[#6d758c] text-xs mt-1.5 leading-relaxed">{action.desc}</p>
+                  <p className="text-[var(--text-tertiary)] text-xs mt-1.5 leading-relaxed">{action.desc}</p>
                   <span className="text-xs font-bold mt-4 flex items-center gap-1 group-hover:gap-2 transition-all" style={{ color: action.color }}>
                     {action.cta}
                     <span className="material-symbols-outlined text-sm">arrow_forward</span>
@@ -191,27 +173,27 @@ export default function ResidentPage() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Initiative Card */}
             <div className="glass-card rounded-2xl overflow-hidden glow-secondary">
-              <div className="relative h-44 bg-gradient-to-br from-[#699cff]/15 via-[#060e20] to-[#69f6b8]/8 flex items-center justify-center">
+              <div className="relative h-44 bg-gradient-to-br from-[var(--info)]/15 via-[var(--bg-base)] to-[var(--green-400)]/8 flex items-center justify-center">
                 <div className="text-center">
-                  <span className="material-symbols-outlined text-6xl text-[#699cff]/25" style={{ fontVariationSettings: "'FILL' 1" }}>road</span>
-                  <p className="text-xs text-[#40485d] mt-2">Riverside Cool Pavement — Phase 2</p>
+                  <span className="material-symbols-outlined text-6xl text-[var(--info)]/25" style={{ fontVariationSettings: "'FILL' 1" }}>road</span>
+                  <p className="text-xs text-[var(--border-strong)] mt-2">Riverside Cool Pavement — Phase 2</p>
                 </div>
               </div>
               <div className="p-6">
-                <span className="text-[10px] font-bold text-[#699cff] tracking-widest uppercase">Featured Initiative</span>
+                <span className="text-[10px] font-bold text-[var(--info)] tracking-widest uppercase">Featured Initiative</span>
                 <h3 className="font-bold text-white text-xl mt-2 font-[family-name:var(--font-headline)]">Cool Pavement Initiative</h3>
-                <p className="text-[#a3aac4] text-sm mt-2 leading-relaxed">Reflective coatings reduce surface temps by 10-12°F. Phase 2 covers 15 miles of residential streets.</p>
+                <p className="text-[var(--text-secondary)] text-sm mt-2 leading-relaxed">Reflective coatings reduce surface temps by 10-12°F. Phase 2 covers 15 miles of residential streets.</p>
                 <div className="flex items-center gap-4 mt-4">
                   <div className="flex-1">
                     <div className="flex justify-between text-xs mb-1">
-                      <span className="text-[#6d758c]">Progress</span>
-                      <span className="font-bold text-[#699cff]">64%</span>
+                      <span className="text-[var(--text-tertiary)]">Progress</span>
+                      <span className="font-bold text-[var(--info)]">64%</span>
                     </div>
-                    <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
-                      <div className="h-full bg-[#699cff] rounded-full" style={{ width: '64%' }} />
+                    <div className="h-1.5 bg-[var(--bg-elevated)] rounded-full overflow-hidden">
+                      <div className="h-full bg-[var(--info)] rounded-full" style={{ width: '64%' }} />
                     </div>
                   </div>
-                  <button className="px-4 py-2 text-xs font-bold glass-card rounded-lg text-[#699cff] hover:border-[#699cff]/30 transition-all">Learn More</button>
+                  <button className="px-4 py-2 text-xs font-bold glass-card rounded-lg text-[var(--info)] hover:border-[var(--info)]/30 transition-all">Learn More</button>
                 </div>
               </div>
             </div>
@@ -219,16 +201,16 @@ export default function ResidentPage() {
             {/* Safety Tips */}
             <div className="glass-card rounded-2xl p-6">
               <h3 className="font-[family-name:var(--font-headline)] font-bold text-lg text-white mb-4 flex items-center gap-2">
-                <span className="material-symbols-outlined text-[#ff8439]" style={{ fontVariationSettings: "'FILL' 1" }}>health_and_safety</span>
+                <span className="material-symbols-outlined text-[var(--high)]" style={{ fontVariationSettings: "'FILL' 1" }}>health_and_safety</span>
                 Heat Safety Tips
               </h3>
               <div className="flex flex-col gap-3 stagger-children">
                 {safetyTips.map((tip) => (
-                  <div key={tip.title} className="flex items-start gap-3 bg-[#060e20]/40 p-4 rounded-xl border border-white/3 hover:border-white/8 transition-all">
-                    <span className="material-symbols-outlined text-[#69f6b8] text-xl shrink-0 mt-0.5" style={{ fontVariationSettings: "'FILL' 1" }}>{tip.icon}</span>
+                  <div key={tip.title} className="flex items-start gap-3 bg-[var(--bg-base)]/40 p-4 rounded-xl border border-white/3 hover:border-white/8 transition-all">
+                    <span className="material-symbols-outlined text-[var(--green-400)] text-xl shrink-0 mt-0.5" style={{ fontVariationSettings: "'FILL' 1" }}>{tip.icon}</span>
                     <div>
                       <h4 className="text-sm font-bold text-white">{tip.title}</h4>
-                      <p className="text-xs text-[#6d758c] mt-0.5 leading-relaxed">{tip.desc}</p>
+                      <p className="text-xs text-[var(--text-tertiary)] mt-0.5 leading-relaxed">{tip.desc}</p>
                     </div>
                   </div>
                 ))}

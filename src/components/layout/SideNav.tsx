@@ -30,10 +30,10 @@ export default function SideNav({ activeItem }: SideNavProps) {
     <aside className="fixed left-0 top-16 h-[calc(100vh-64px)] w-64 flex-col z-40 glass-overlay border-r border-white/5 font-[family-name:var(--font-headline)] hidden md:flex">
       <div className="p-6">
         <div className="flex items-center gap-3 mb-1">
-          <div className="w-2 h-2 rounded-full bg-[#69f6b8] shadow-[0_0_8px_rgba(105,246,184,0.5)]"></div>
+          <div className="w-2 h-2 rounded-full bg-[var(--green-400)] shadow-[0_0_8px_var(--green-400)]"></div>
           <h2 className="text-lg font-black text-white">Map Context</h2>
         </div>
-        <p className="text-xs text-[#6d758c] font-medium uppercase tracking-widest">
+        <p className="text-xs text-[var(--text-tertiary)] font-medium uppercase tracking-widest">
           Layer Controls &amp; Legend
         </p>
       </div>
@@ -46,8 +46,8 @@ export default function SideNav({ activeItem }: SideNavProps) {
               href={item.href}
               className={`p-3 flex items-center gap-4 cursor-pointer transition-all rounded-xl ${
                 isActive
-                  ? 'bg-[#69f6b8]/10 text-[#69f6b8] shadow-[0_0_12px_rgba(105,246,184,0.08)]'
-                  : 'text-[#6d758c] hover:text-[#69f6b8] hover:bg-white/5'
+                  ? 'bg-[var(--green-400)]/10 text-[var(--green-400)] shadow-[0_0_12px_transparent]'
+                  : 'text-[var(--text-tertiary)] hover:text-[var(--green-400)] hover:bg-[var(--bg-elevated)]'
               }`}
             >
               <span className="material-symbols-outlined" style={{ fontVariationSettings: isActive ? "'FILL' 1" : "'FILL' 0" }}>{item.icon}</span>
@@ -59,17 +59,17 @@ export default function SideNav({ activeItem }: SideNavProps) {
       <div className="p-4 space-y-4">
         <Link
           href="/resident/request-tree"
-          className="w-full py-3 bg-gradient-to-r from-[#69f6b8] to-[#06b77f] text-[#002919] rounded-xl font-bold text-sm tracking-tight flex items-center justify-center gap-2 shadow-lg hover:scale-[1.02] active:scale-95 transition-transform btn-shine"
+          className="w-full py-3 bg-gradient-to-r from-[var(--green-400)] to-[var(--green-500)] text-[var(--bg-base)] rounded-xl font-bold text-sm tracking-tight flex items-center justify-center gap-2 shadow-lg hover:scale-[1.02] active:scale-95 transition-transform "
         >
           <span className="material-symbols-outlined">add</span>
           Add Intervention
         </Link>
         <div className="pt-4 border-t border-white/5">
-          <div className="text-[#6d758c] hover:text-white px-2 py-2 flex items-center gap-3 cursor-pointer text-xs uppercase tracking-widest rounded-lg hover:bg-white/5 transition-all">
+          <div className="text-[var(--text-tertiary)] hover:text-white px-2 py-2 flex items-center gap-3 cursor-pointer text-xs uppercase tracking-widest rounded-lg hover:bg-[var(--bg-elevated)] transition-all">
             <span className="material-symbols-outlined text-sm">help</span>
             Help
           </div>
-          <div className="text-[#6d758c] hover:text-white px-2 py-2 flex items-center gap-3 cursor-pointer text-xs uppercase tracking-widest rounded-lg hover:bg-white/5 transition-all">
+          <div className="text-[var(--text-tertiary)] hover:text-white px-2 py-2 flex items-center gap-3 cursor-pointer text-xs uppercase tracking-widest rounded-lg hover:bg-[var(--bg-elevated)] transition-all">
             <span className="material-symbols-outlined text-sm">chat_bubble</span>
             Feedback
           </div>

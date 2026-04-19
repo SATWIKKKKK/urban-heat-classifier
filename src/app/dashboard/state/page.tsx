@@ -59,13 +59,13 @@ export default function SDMAObserverDashboard() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[50vh]">
-        <span className="material-symbols-outlined animate-spin text-4xl text-[#69f6b8]">progress_activity</span>
+        <span className="material-symbols-outlined animate-spin text-4xl text-[var(--green-400)]">progress_activity</span>
       </div>
     );
   }
 
   const severityColor: Record<string, string> = {
-    LOW: '#69f6b8', MEDIUM: '#699cff', HIGH: '#ff8439', CRITICAL: '#ff716c',
+    LOW: 'var(--green-400)', MEDIUM: 'var(--info)', HIGH: 'var(--high)', CRITICAL: 'var(--critical)',
   };
 
   return (
@@ -75,11 +75,11 @@ export default function SDMAObserverDashboard() {
           <h1 className="font-[family-name:var(--font-headline)] text-3xl font-extrabold tracking-tight text-white">
             SDMA Observer Dashboard
           </h1>
-          <p className="text-[#a3aac4] mt-1">Welcome, {session?.user?.name}. Monitor state-wide heat disaster preparedness.</p>
+          <p className="text-[var(--text-secondary)] mt-1">Welcome, {session?.user?.name}. Monitor state-wide heat disaster preparedness.</p>
         </div>
         <button
           onClick={() => setShowForm(!showForm)}
-          className="px-4 py-2 bg-gradient-to-r from-[#69f6b8] to-[#06b77f] text-[#002919] font-bold rounded-xl btn-shine flex items-center gap-2"
+          className="px-4 py-2 bg-gradient-to-r from-[var(--green-400)] to-[var(--green-500)] text-[var(--bg-base)] font-bold rounded-xl  flex items-center gap-2"
         >
           <span className="material-symbols-outlined text-lg">note_add</span>
           Add Note
@@ -87,38 +87,38 @@ export default function SDMAObserverDashboard() {
       </div>
 
       {/* City Overview Table */}
-      <div className="glass-card rounded-2xl p-6">
+      <div className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-lg p-6">
         <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
-          <span className="material-symbols-outlined text-[#699cff]" style={{ fontVariationSettings: "'FILL' 1" }}>monitoring</span>
+          <span className="material-symbols-outlined text-[var(--info)]" style={{ fontVariationSettings: "'FILL' 1" }}>monitoring</span>
           State-Wide City Overview
         </h2>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-white/5">
-                <th className="text-left py-3 px-4 text-[10px] font-bold uppercase tracking-widest text-[#6d758c]">City</th>
-                <th className="text-left py-3 px-4 text-[10px] font-bold uppercase tracking-widest text-[#6d758c]">Temperature</th>
-                <th className="text-left py-3 px-4 text-[10px] font-bold uppercase tracking-widest text-[#6d758c]">Active Alerts</th>
-                <th className="text-left py-3 px-4 text-[10px] font-bold uppercase tracking-widest text-[#6d758c]">Interventions</th>
-                <th className="text-left py-3 px-4 text-[10px] font-bold uppercase tracking-widest text-[#6d758c]">Status</th>
+              <tr className="border-b border-[var(--border)]">
+                <th className="text-left py-3 px-4 text-[10px] font-bold uppercase tracking-widest text-[var(--text-tertiary)]">City</th>
+                <th className="text-left py-3 px-4 text-[10px] font-bold uppercase tracking-widest text-[var(--text-tertiary)]">Temperature</th>
+                <th className="text-left py-3 px-4 text-[10px] font-bold uppercase tracking-widest text-[var(--text-tertiary)]">Active Alerts</th>
+                <th className="text-left py-3 px-4 text-[10px] font-bold uppercase tracking-widest text-[var(--text-tertiary)]">Interventions</th>
+                <th className="text-left py-3 px-4 text-[10px] font-bold uppercase tracking-widest text-[var(--text-tertiary)]">Status</th>
               </tr>
             </thead>
             <tbody>
               {cities.map((city) => (
-                <tr key={city.name} className="border-b border-white/5 hover:bg-white/[0.02]">
+                <tr key={city.name} className="border-b border-[var(--border)] hover:bg-white/[0.02]">
                   <td className="py-3 px-4 text-white font-bold">{city.name}</td>
                   <td className="py-3 px-4">
-                    <span className={`font-bold ${city.temperature >= 43 ? 'text-[#ff716c]' : city.temperature >= 38 ? 'text-[#ff8439]' : 'text-[#69f6b8]'}`}>
+                    <span className={`font-bold ${city.temperature >= 43 ? 'text-[var(--critical)]' : city.temperature >= 38 ? 'text-[var(--high)]' : 'text-[var(--green-400)]'}`}>
                       {city.temperature}°C
                     </span>
                   </td>
-                  <td className="py-3 px-4 text-[#a3aac4]">{city.alerts}</td>
-                  <td className="py-3 px-4 text-[#a3aac4]">{city.interventions}</td>
+                  <td className="py-3 px-4 text-[var(--text-secondary)]">{city.alerts}</td>
+                  <td className="py-3 px-4 text-[var(--text-secondary)]">{city.interventions}</td>
                   <td className="py-3 px-4">
                     <span className={`text-xs font-bold px-2.5 py-1 rounded-lg ${
-                      city.status === 'Critical' ? 'bg-[#ff716c]/10 text-[#ff716c]' :
-                      city.status === 'Warning' ? 'bg-[#ff8439]/10 text-[#ff8439]' :
-                      'bg-[#69f6b8]/10 text-[#69f6b8]'
+                      city.status === 'Critical' ? 'bg-[var(--critical)]/10 text-[var(--critical)]' :
+                      city.status === 'Warning' ? 'bg-[var(--high)]/10 text-[var(--high)]' :
+                      'bg-[var(--green-400)]/10 text-[var(--green-400)]'
                     }`}>{city.status}</span>
                   </td>
                 </tr>
@@ -130,47 +130,47 @@ export default function SDMAObserverDashboard() {
 
       {/* Add Note Form */}
       {showForm && (
-        <div className="glass-card rounded-2xl p-6">
+        <div className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-lg p-6">
           <h2 className="text-lg font-bold text-white mb-4">Add Observer Note</h2>
           <form onSubmit={handleAddNote} className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-bold uppercase tracking-widest text-[#6d758c] mb-2">Title</label>
-              <input value={newNote.title} onChange={(e) => setNewNote({ ...newNote, title: e.target.value })} className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:border-[#69f6b8]/50 focus:outline-none" placeholder="Heat Advisory Note" required />
+              <label className="block text-xs font-bold uppercase tracking-widest text-[var(--text-tertiary)] mb-2">Title</label>
+              <input value={newNote.title} onChange={(e) => setNewNote({ ...newNote, title: e.target.value })} className="w-full px-4 py-3 bg-[var(--bg-elevated)] border border-[var(--border-strong)] rounded-xl text-white focus:border-[var(--green-400)]/50 focus:outline-none" placeholder="Heat Advisory Note" required />
             </div>
             <div>
-              <label className="block text-xs font-bold uppercase tracking-widest text-[#6d758c] mb-2">City</label>
-              <input value={newNote.city} onChange={(e) => setNewNote({ ...newNote, city: e.target.value })} className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:border-[#69f6b8]/50 focus:outline-none" placeholder="Delhi NCR" required />
+              <label className="block text-xs font-bold uppercase tracking-widest text-[var(--text-tertiary)] mb-2">City</label>
+              <input value={newNote.city} onChange={(e) => setNewNote({ ...newNote, city: e.target.value })} className="w-full px-4 py-3 bg-[var(--bg-elevated)] border border-[var(--border-strong)] rounded-xl text-white focus:border-[var(--green-400)]/50 focus:outline-none" placeholder="Delhi NCR" required />
             </div>
             <div>
-              <label className="block text-xs font-bold uppercase tracking-widest text-[#6d758c] mb-2">Severity</label>
-              <select value={newNote.severity} onChange={(e) => setNewNote({ ...newNote, severity: e.target.value as StateNote['severity'] })} className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:border-[#69f6b8]/50 focus:outline-none appearance-none">
-                <option value="LOW" className="bg-[#0a1628]">Low</option>
-                <option value="MEDIUM" className="bg-[#0a1628]">Medium</option>
-                <option value="HIGH" className="bg-[#0a1628]">High</option>
-                <option value="CRITICAL" className="bg-[#0a1628]">Critical</option>
+              <label className="block text-xs font-bold uppercase tracking-widest text-[var(--text-tertiary)] mb-2">Severity</label>
+              <select value={newNote.severity} onChange={(e) => setNewNote({ ...newNote, severity: e.target.value as StateNote['severity'] })} className="w-full px-4 py-3 bg-[var(--bg-elevated)] border border-[var(--border-strong)] rounded-xl text-white focus:border-[var(--green-400)]/50 focus:outline-none appearance-none">
+                <option value="LOW" className="bg-[var(--bg-base)]">Low</option>
+                <option value="MEDIUM" className="bg-[var(--bg-base)]">Medium</option>
+                <option value="HIGH" className="bg-[var(--bg-base)]">High</option>
+                <option value="CRITICAL" className="bg-[var(--bg-base)]">Critical</option>
               </select>
             </div>
             <div>
-              <label className="block text-xs font-bold uppercase tracking-widest text-[#6d758c] mb-2">Summary</label>
-              <input value={newNote.summary} onChange={(e) => setNewNote({ ...newNote, summary: e.target.value })} className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:border-[#69f6b8]/50 focus:outline-none" placeholder="Brief observation..." />
+              <label className="block text-xs font-bold uppercase tracking-widest text-[var(--text-tertiary)] mb-2">Summary</label>
+              <input value={newNote.summary} onChange={(e) => setNewNote({ ...newNote, summary: e.target.value })} className="w-full px-4 py-3 bg-[var(--bg-elevated)] border border-[var(--border-strong)] rounded-xl text-white focus:border-[var(--green-400)]/50 focus:outline-none" placeholder="Brief observation..." />
             </div>
             <div className="md:col-span-2 flex gap-3">
-              <button type="submit" className="px-6 py-2 bg-gradient-to-r from-[#69f6b8] to-[#06b77f] text-[#002919] font-bold rounded-xl btn-shine">Add Note</button>
-              <button type="button" onClick={() => setShowForm(false)} className="px-6 py-2 glass-card rounded-xl text-[#a3aac4] hover:text-white transition-all">Cancel</button>
+              <button type="submit" className="px-6 py-2 bg-gradient-to-r from-[var(--green-400)] to-[var(--green-500)] text-[var(--bg-base)] font-bold rounded-xl ">Add Note</button>
+              <button type="button" onClick={() => setShowForm(false)} className="px-6 py-2 bg-[var(--bg-elevated)] border border-[var(--border)] rounded-md text-[var(--text-secondary)] hover:text-white transition-all">Cancel</button>
             </div>
           </form>
         </div>
       )}
 
       {/* Observer Notes */}
-      <div className="glass-card rounded-2xl p-6">
+      <div className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-lg p-6">
         <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
-          <span className="material-symbols-outlined text-[#ff8439]" style={{ fontVariationSettings: "'FILL' 1" }}>edit_note</span>
+          <span className="material-symbols-outlined text-[var(--high)]" style={{ fontVariationSettings: "'FILL' 1" }}>edit_note</span>
           Observer Notes
         </h2>
         <div className="space-y-3">
           {notes.map((note) => (
-            <div key={note.id} className="glass-card rounded-xl px-5 py-4">
+            <div key={note.id} className="bg-[var(--bg-elevated)] border border-[var(--border)] rounded-md px-5 py-4">
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-3">
                   <span className="text-xs font-bold px-2.5 py-1 rounded-lg" style={{ backgroundColor: `${severityColor[note.severity]}15`, color: severityColor[note.severity] }}>
@@ -178,10 +178,10 @@ export default function SDMAObserverDashboard() {
                   </span>
                   <span className="text-white font-bold text-sm">{note.title}</span>
                 </div>
-                <span className="text-xs text-[#6d758c]">{note.date}</span>
+                <span className="text-xs text-[var(--text-tertiary)]">{note.date}</span>
               </div>
-              <p className="text-sm text-[#a3aac4]">{note.summary}</p>
-              <span className="text-xs text-[#699cff] mt-2 inline-block">{note.city}</span>
+              <p className="text-sm text-[var(--text-secondary)]">{note.summary}</p>
+              <span className="text-xs text-[var(--info)] mt-2 inline-block">{note.city}</span>
             </div>
           ))}
         </div>

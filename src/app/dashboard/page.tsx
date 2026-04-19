@@ -24,5 +24,5 @@ export default async function DashboardPage() {
     redirect('/dashboard/waiting');
   }
 
-  redirect('/dashboard/map');
+  redirect('/dashboard/neighborhoods');
 }

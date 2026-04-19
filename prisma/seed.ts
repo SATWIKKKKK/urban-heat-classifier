@@ -1,9 +1,11 @@
 import { PrismaClient } from '@prisma/client';
-import { PrismaBetterSqlite3 } from '@prisma/adapter-better-sqlite3';
+import { PrismaPg } from '@prisma/adapter-pg';
+import pg from 'pg';
 import bcrypt from 'bcryptjs';
 import 'dotenv/config';
 
-const adapter = new PrismaBetterSqlite3({ url: process.env.DATABASE_URL! });
+const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
+const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
 
 type SeedNeighborhood = {
@@ -49,6 +51,7 @@ type SeedCity = {
   name: string;
   slug: string;
   state: string;
+  country: string;
   lat: number;
   lng: number;
   admin: { email: string; name: string };
@@ -65,6 +68,7 @@ const cities: SeedCity[] = [
     name: 'Austin, TX',
     slug: 'austin-tx',
     state: 'Texas',
+    country: 'United States',
     lat: 30.2672,
     lng: -97.7431,
     admin: { email: 'mayor@austin.gov', name: 'Jane Martinez' },
@@ -115,6 +119,7 @@ const cities: SeedCity[] = [
     name: 'Phoenix, AZ',
     slug: 'phoenix-az',
     state: 'Arizona',
+    country: 'United States',
     lat: 33.4484,
     lng: -112.074,
     admin: { email: 'mayor@phoenix.gov', name: 'Miguel Ortega' },
@@ -150,6 +155,7 @@ const cities: SeedCity[] = [
     name: 'Houston, TX',
     slug: 'houston-tx',
     state: 'Texas',
+    country: 'United States',
     lat: 29.7604,
     lng: -95.3698,
     admin: { email: 'mayor@houston.gov', name: 'Alicia Gomez' },
@@ -179,6 +185,57 @@ const cities: SeedCity[] = [
     ],
     reports: [
       { title: 'Houston Equity Cooling Brief', type: 'COUNCIL_BRIEF', status: 'COMPLETED', tone: 'ACCESSIBLE', content: 'Houston approved an equity-first cooling package focused on shade and community green space.' },
+    ],
+  },
+  {
+    name: 'Bolpur',
+    slug: 'bolpur-wb',
+    state: 'West Bengal',
+    country: 'India',
+    lat: 23.6693,
+    lng: 87.7214,
+    admin: { email: 'admin@bolpur.gov.in', name: 'Sujoy Mukherjee' },
+    planner: { email: 'planner@bolpur.gov.in', name: 'Ananya Das' },
+    council: { email: 'council@bolpur.gov.in', name: 'Ratan Ghosh' },
+    neighborhoods: [
+      { name: 'Bolpur Town', population: 35000, areaSqkm: 6.2, medianIncome: 18000, pctElderly: 14, pctChildren: 24, avgTempCelsius: 42.5, maxTempCelsius: 45.8, minTempCelsius: 38.2, treeCanopyPct: 18, imperviousSurfacePct: 55 },
+      { name: 'Santiniketan', population: 22000, areaSqkm: 8.4, medianIncome: 24000, pctElderly: 11, pctChildren: 18, avgTempCelsius: 41.0, maxTempCelsius: 44.2, minTempCelsius: 37.0, treeCanopyPct: 32, imperviousSurfacePct: 35 },
+      { name: 'Surul', population: 12000, areaSqkm: 4.8, medianIncome: 14000, pctElderly: 16, pctChildren: 28, avgTempCelsius: 43.2, maxTempCelsius: 46.5, minTempCelsius: 39.0, treeCanopyPct: 10, imperviousSurfacePct: 62 },
+      { name: 'Prantik', population: 8500, areaSqkm: 3.1, medianIncome: 16000, pctElderly: 13, pctChildren: 22, avgTempCelsius: 42.0, maxTempCelsius: 45.0, minTempCelsius: 38.5, treeCanopyPct: 15, imperviousSurfacePct: 50 },
+    ],
+    interventions: [
+      { key: 'surul-trees', name: 'Surul Tree Corridor', neighborhoodName: 'Surul', type: 'TREE_PLANTING', status: 'APPROVED', estimatedCostUsd: 85000, estimatedTempReductionC: 0.9, location: '23.655,87.735' },
+      { key: 'bolpur-roofs', name: 'Bolpur Cool Roof Program', neighborhoodName: 'Bolpur Town', type: 'COOL_ROOF', status: 'APPROVED', estimatedCostUsd: 120000, estimatedTempReductionC: 0.5, location: '23.669,87.721' },
+      { key: 'prantik-gardens', name: 'Prantik Community Garden', neighborhoodName: 'Prantik', type: 'URBAN_GARDEN', status: 'IN_PROGRESS', estimatedCostUsd: 65000, estimatedTempReductionC: 0.4, location: '23.680,87.708' },
+      { key: 'santiniketan-canopy', name: 'Santiniketan Canopy Restoration', neighborhoodName: 'Santiniketan', type: 'TREE_PLANTING', status: 'PROPOSED', estimatedCostUsd: 95000, estimatedTempReductionC: 0.7, location: '23.683,87.685' },
+    ],
+    scenarios: [
+      {
+        name: 'Summer 2025 Bolpur Heat Action Plan',
+        description: 'Targets CRITICAL neighborhoods with tree planting and cool roofs before peak summer.',
+        status: 'APPROVED',
+        priority: 'IMMEDIATE',
+        totalEstimatedCostUsd: 205000,
+        totalProjectedTempReductionC: 1.4,
+        totalProjectedLivesSaved: 18,
+        projectedCo2ReductionTons: 8.2,
+        interventionKeys: ['surul-trees', 'bolpur-roofs'],
+        councilNotes: 'Approved by Municipal Commissioner. AMRUT co-funding applied.',
+      },
+      {
+        name: 'Shantiniketan Heritage Green Belt',
+        description: 'Canopy restoration and community gardens to protect the heritage zone.',
+        status: 'SUBMITTED',
+        priority: 'SHORT_TERM',
+        totalEstimatedCostUsd: 160000,
+        totalProjectedTempReductionC: 1.1,
+        totalProjectedLivesSaved: 10,
+        projectedCo2ReductionTons: 5.5,
+        interventionKeys: ['santiniketan-canopy', 'prantik-gardens'],
+      },
+    ],
+    reports: [
+      { title: 'Bolpur Heat Resilience Plan 2025', type: 'SCENARIO_IMPACT', status: 'COMPLETED', tone: 'TECHNICAL', content: 'Bolpur municipality faces severe UHI intensity in Surul and Bolpur Town wards. This plan projects a 1.4°C reduction through targeted tree planting and cool roof programs, protecting 18 vulnerable residents per summer season.' },
     ],
   },
 ];
@@ -215,7 +272,7 @@ async function seedCity(cityConfig: SeedCity, userPasswordHash: string) {
       name: cityConfig.name,
       slug: cityConfig.slug,
       state: cityConfig.state,
-      country: 'United States',
+      country: cityConfig.country,
       lat: cityConfig.lat,
       lng: cityConfig.lng,
     },
@@ -528,7 +585,7 @@ async function main() {
   });
 
   console.log('✅ Seed complete!');
-  console.log(`   Cities: ${cities.length}`);
+  console.log(`   Cities: ${cities.length} (${cities.map((c) => c.name).join(', ')})`);
   console.log(`   Users: ${1 + cities.length * 9} (admin@heatplan.io / Admin@HeatPlan2024!)`);
   console.log(`   All role passwords: User@HeatPlan2024!`);
   console.log(`   Roles seeded: CITY_ADMIN, URBAN_PLANNER, CITY_COUNCIL, MUNICIPAL_COMMISSIONER, WARD_OFFICER, SDMA_OBSERVER, DATA_ANALYST, CITIZEN_REPORTER, NGO_FIELD_WORKER`);

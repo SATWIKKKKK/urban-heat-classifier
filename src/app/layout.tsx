@@ -33,7 +33,7 @@ export default function RootLayout({
           rel="stylesheet"
         />
       </head>
-      <body className="bg-[#060e20] text-[#dee5ff] antialiased min-h-screen" suppressHydrationWarning>
+      <body className="bg-[var(--bg-base)] text-[var(--text-primary)] antialiased min-h-screen" suppressHydrationWarning>
         <AuthProvider>
           {children}
         </AuthProvider>

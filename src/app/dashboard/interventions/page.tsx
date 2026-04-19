@@ -13,57 +13,59 @@ export default async function InterventionsPage() {
     <div className="flex flex-col gap-8">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
         <div>
-          <div className="inline-flex items-center gap-2 glass-card rounded-full px-3 py-1.5 mb-3">
-            <span className="material-symbols-outlined text-[#ff8439] text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>construction</span>
-            <span className="text-[10px] font-bold uppercase tracking-widest text-[#ff8439]">Interventions</span>
+          <div className="flex items-center gap-1.5 mb-2">
+            <span className="material-symbols-outlined text-[var(--text-tertiary)] text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>construction</span>
+            <span className="text-[10px] font-medium uppercase tracking-[0.06em] text-[var(--text-tertiary)]">Interventions</span>
           </div>
-          <h1 className="font-[family-name:var(--font-headline)] text-3xl font-extrabold tracking-tight text-white">
+          <h1 className="text-2xl font-bold tracking-tight text-[var(--text-primary)]">
             Interventions
           </h1>
-          <p className="text-[#6d758c] mt-1">Manage heat mitigation interventions across your city</p>
+          <p className="text-sm text-[var(--text-secondary)] mt-0.5">Manage heat mitigation interventions across your city</p>
         </div>
       </div>
 
       <AddInterventionForm cityId={session.user.cityId} userId={session.user.id!} />
 
       {interventions.length === 0 ? (
-        <div className="glass-card p-12 rounded-2xl text-center">
-          <span className="material-symbols-outlined text-6xl text-[#a3aac4]/30 mb-4" style={{ fontVariationSettings: "'FILL' 1" }}>construction</span>
-          <h3 className="text-xl font-bold text-white mb-2">No interventions yet</h3>
-          <p className="text-[#a3aac4]">Create your first intervention above to get started.</p>
+        <div className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-lg p-12 text-center">
+          <span className="material-symbols-outlined text-4xl text-[var(--text-tertiary)] mb-3" style={{ fontVariationSettings: "'FILL' 1" }}>construction</span>
+          <h3 className="text-base font-semibold text-[var(--text-primary)] mb-1">No interventions yet</h3>
+          <p className="text-sm text-[var(--text-secondary)]">Create your first intervention above to get started.</p>
         </div>
       ) : (
-        <div className="glass-card rounded-2xl overflow-hidden">
+        <div className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-lg overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead>
-                <tr className="bg-white/5 text-[#6d758c] uppercase text-[10px] tracking-widest font-bold">
-                  <th className="px-6 py-4">Name</th>
-                  <th className="px-6 py-4">Type</th>
-                  <th className="px-6 py-4">Neighborhood</th>
-                  <th className="px-6 py-4">Status</th>
-                  <th className="px-6 py-4">Est. Reduction</th>
-                  <th className="px-6 py-4">Cost</th>
-                  <th className="px-6 py-4">Created By</th>
+                <tr className="border-b border-[var(--border)] text-[var(--text-tertiary)] text-[11px] uppercase tracking-[0.06em] font-medium">
+                  <th className="px-4 py-3">Name</th>
+                  <th className="px-4 py-3">Type</th>
+                  <th className="px-4 py-3">Neighborhood</th>
+                  <th className="px-4 py-3">Status</th>
+                  <th className="px-4 py-3">Est. Reduction</th>
+                  <th className="px-4 py-3">Cost</th>
+                  <th className="px-4 py-3">Created By</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/5">
+              <tbody className="divide-y divide-[var(--border)]">
                 {interventions.map((i) => (
-                  <tr key={i.id} className="hover:bg-white/5 transition-colors">
-                    <td className="px-6 py-4 font-semibold text-[#dee5ff]">{i.name}</td>
-                    <td className="px-6 py-4 text-[#a3aac4] capitalize">{i.type.replace(/_/g, ' ').toLowerCase()}</td>
-                    <td className="px-6 py-4 text-[#a3aac4]">{i.neighborhood?.name ?? 'City-wide'}</td>
-                    <td className="px-6 py-4">
-                      <span className={`text-[10px] font-bold px-2 py-1 rounded ${
-                        i.status === 'COMPLETED' ? 'bg-[#69f6b8]/10 text-[#69f6b8]' :
-                        i.status === 'IN_PROGRESS' ? 'bg-[#699cff]/10 text-[#699cff]' :
-                        i.status === 'APPROVED' ? 'bg-[#dee5ff]/10 text-[#dee5ff]' :
-                        'bg-[#ff8439]/10 text-[#ff8439]'
-                      }`}>{i.status}</span>
+                  <tr key={i.id} className="hover:bg-[var(--bg-elevated)] transition-colors">
+                    <td className="px-4 py-3 font-medium text-[var(--text-primary)]">{i.name}</td>
+                    <td className="px-4 py-3 text-[var(--text-secondary)] capitalize">{i.type.replace(/_/g, ' ').toLowerCase()}</td>
+                    <td className="px-4 py-3 text-[var(--text-secondary)]">{i.neighborhood?.name ?? 'City-wide'}</td>
+                    <td className="px-4 py-3">
+                      <span
+                        className="text-[10px] font-semibold px-2 py-0.5 rounded border uppercase tracking-[0.04em]"
+                        style={{
+                          color: i.status === 'COMPLETED' ? 'var(--low)' : i.status === 'IN_PROGRESS' ? 'var(--info)' : i.status === 'APPROVED' ? 'var(--text-primary)' : 'var(--high)',
+                          borderColor: i.status === 'COMPLETED' ? 'var(--low)' : i.status === 'IN_PROGRESS' ? 'var(--info)' : i.status === 'APPROVED' ? 'var(--border-strong)' : 'var(--high)',
+                          backgroundColor: i.status === 'COMPLETED' ? '#22c55e1a' : i.status === 'IN_PROGRESS' ? '#3b82f61a' : i.status === 'APPROVED' ? 'var(--bg-elevated)' : '#f973161a',
+                        }}
+                      >{i.status.replace('_', ' ')}</span>
                     </td>
-                    <td className="px-6 py-4 text-[#69f6b8]">{i.estimatedTempReductionC ? `${i.estimatedTempReductionC.toFixed(1)}°C` : '—'}</td>
-                    <td className="px-6 py-4 text-[#a3aac4]">{i.estimatedCostUsd ? `$${(i.estimatedCostUsd / 1000).toFixed(0)}k` : '—'}</td>
-                    <td className="px-6 py-4 text-[#a3aac4]">{i.proposedBy?.name ?? '—'}</td>
+                    <td className="px-4 py-3 font-semibold text-[var(--low)]">{i.estimatedTempReductionC ? `-${i.estimatedTempReductionC.toFixed(1)}°C` : '—'}</td>
+                    <td className="px-4 py-3 text-[var(--text-secondary)]">{i.estimatedCostUsd ? `$${(i.estimatedCostUsd / 1000).toFixed(0)}k` : '—'}</td>
+                    <td className="px-4 py-3 text-[var(--text-secondary)]">{i.proposedBy?.name ?? '—'}</td>
                   </tr>
                 ))}
               </tbody>

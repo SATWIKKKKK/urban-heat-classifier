@@ -1,20 +1,31 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import 'leaflet/dist/leaflet.css';
 import { getInterventionStatusColor, type SupportedMapGeometry } from '@/lib/map-utils';
 import type { CityMapPayload, CityMapNeighborhood, CityMapIntervention } from '@/lib/map-data';
+import GlobalNavbar from '@/components/layout/GlobalNavbar';
 
 function geometryToLeafletLatLngs(geometry: SupportedMapGeometry) {
   if (geometry.type === 'Polygon') {
     return geometry.coordinates.map((ring) => ring.map(([lng, lat]) => [lat, lng] as [number, number]));
   }
-
   return geometry.coordinates.map((polygon) =>
     polygon.map((ring) => ring.map(([lng, lat]) => [lat, lng] as [number, number]))
   );
+}
+
+const VULN_COLORS: Record<string, string> = {
+  CRITICAL: '#ef4444',
+  HIGH: '#f97316',
+  MODERATE: '#eab308',
+  LOW: '#22c55e',
+};
+
+function SkeletonLine({ w = 'w-24' }: { w?: string }) {
+  return <div className={`animate-pulse bg-[var(--bg-elevated)] h-4 ${w} rounded`} />;
 }
 
 export default function MapPage() {
@@ -26,43 +37,53 @@ export default function MapPage() {
   const mapInstanceRef = useRef<L.Map | null>(null);
   const neighborhoodsLayerRef = useRef<L.LayerGroup | null>(null);
   const interventionsLayerRef = useRef<L.LayerGroup | null>(null);
+  // Ref keeps event-handler closures from going stale
+  const selectedNeighborhoodRef = useRef<CityMapNeighborhood | null>(null);
+  const [mapReady, setMapReady] = useState(false);
   const [payload, setPayload] = useState<CityMapPayload | null>(null);
   const [selectedNeighborhood, setSelectedNeighborhood] = useState<CityMapNeighborhood | null>(null);
   const [selectedIntervention, setSelectedIntervention] = useState<CityMapIntervention | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [inspectorLoading, setInspectorLoading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showSearch, setShowSearch] = useState(false);
+
+  // Keep ref in sync so Leaflet event handlers always see the current selection
+  useEffect(() => { selectedNeighborhoodRef.current = selectedNeighborhood; }, [selectedNeighborhood]);
+
+  const searchResults = useMemo(() => {
+    if (!searchQuery.trim() || !payload) return [];
+    const q = searchQuery.toLowerCase();
+    return payload.neighborhoods.filter((n) => n.name.toLowerCase().includes(q)).slice(0, 6);
+  }, [searchQuery, payload]);
 
   const cityQuery = useMemo(() => {
-    if (status === 'loading') {
-      return null;
-    }
-
+    if (status === 'loading') return null;
     if (session?.user?.cityId) {
       return `/api/map-data?cityId=${encodeURIComponent(session.user.cityId)}&includeProposed=${canEdit}`;
     }
-
-    return '/api/map-data?citySlug=austin-tx&public=true';
+    // unauthenticated public view — no city to show
+    return null;
   }, [canEdit, session?.user?.cityId, status]);
 
   useEffect(() => {
     if (!cityQuery) {
+      // session loaded but no city assigned — stop showing spinner
+      if (status !== 'loading') setLoading(false);
       return;
     }
-
     const requestUrl = cityQuery;
 
     async function loadPayload() {
       setLoading(true);
       setError('');
-
       try {
         const response = await fetch(requestUrl);
         const json = (await response.json()) as CityMapPayload | { error?: string };
-
         if (!response.ok || 'error' in json || !('neighborhoods' in json)) {
           throw new Error(('error' in json && json.error) || 'Failed to load map data');
         }
-
         setPayload(json);
         setSelectedNeighborhood(json.neighborhoods[0] ?? null);
         setSelectedIntervention(null);
@@ -75,28 +96,32 @@ export default function MapPage() {
     }
 
     void loadPayload();
-  }, [cityQuery]);
+  }, [cityQuery, status]);
 
+  // Initialize Leaflet map ONCE on mount — must NOT depend on payload
+  // (payload effect runs concurrently; we need mapReady state to sequence them correctly)
   useEffect(() => {
-    if (!mapRef.current || mapInstanceRef.current) {
-      return;
-    }
+    if (!mapRef.current || mapInstanceRef.current) return;
 
     void import('leaflet').then((leaflet) => {
-      const map = leaflet.map(mapRef.current!, {
-        center: [30.2672, -97.7431],
-        zoom: 11,
-        zoomControl: false,
+      if (!mapRef.current || mapInstanceRef.current) return;
+
+      const map = leaflet.map(mapRef.current, {
+        center: [20.5937, 78.9629],
+        zoom: 5,
+        zoomControl: false,   // we render custom controls
+        scrollWheelZoom: true,
       });
 
       leaflet
         .tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-          attribution: '© OpenStreetMap © CARTO',
+          attribution: '&copy; OpenStreetMap &copy; CARTO',
           maxZoom: 19,
         })
         .addTo(map);
 
       mapInstanceRef.current = map;
+      setMapReady(true); // triggers polygon rendering when payload is also ready
     });
 
     return () => {
@@ -105,12 +130,18 @@ export default function MapPage() {
         mapInstanceRef.current = null;
       }
     };
-  }, []);
+  }, []); // CRITICAL: empty — runs exactly once on mount
 
+  // Fly to city when we have both map + coordinates
   useEffect(() => {
-    if (!payload || !mapInstanceRef.current) {
-      return;
-    }
+    if (!mapReady || !mapInstanceRef.current || !payload?.city.lat) return;
+    mapInstanceRef.current.setView([payload.city.lat, payload.city.lng], 13);
+  }, [mapReady, payload?.city.lat, payload?.city.lng]);
+
+  // Render neighborhoods and interventions
+  // Depends on BOTH mapReady AND payload — this sequencing is what was broken before
+  useEffect(() => {
+    if (!mapReady || !payload || !mapInstanceRef.current) return;
 
     void import('leaflet').then((leaflet) => {
       const map = mapInstanceRef.current!;
@@ -121,41 +152,49 @@ export default function MapPage() {
       const interventionsLayer = leaflet.layerGroup();
 
       payload.neighborhoods.forEach((neighborhood) => {
+        const color = VULN_COLORS[neighborhood.vulnerabilityLevel] || '#22c55e';
         const polygon = leaflet.polygon(geometryToLeafletLatLngs(neighborhood.geometry) as never, {
-          color:
-            neighborhood.vulnerabilityLevel === 'CRITICAL'
-              ? '#dc2626'
-              : neighborhood.vulnerabilityLevel === 'HIGH'
-                ? '#ea580c'
-                : neighborhood.vulnerabilityLevel === 'MODERATE'
-                  ? '#ca8a04'
-                  : '#16a34a',
+          color: 'transparent',
+          fillColor: color,
           fillOpacity: 0.35,
-          weight: 2,
+          weight: 0,
         });
 
-        polygon.bindTooltip(`${neighborhood.name} · ${neighborhood.vulnerabilityLevel}`);
+        polygon.bindTooltip(`${neighborhood.name} · ${neighborhood.vulnerabilityLevel}`, {
+          className: 'map-tooltip',
+        });
+
+        polygon.on('mouseover', () => {
+          polygon.setStyle({ fillOpacity: 0.55, color: 'rgba(255,255,255,0.15)', weight: 1 });
+        });
+        polygon.on('mouseout', () => {
+          // Use ref to read current selection without stale closure
+          if (selectedNeighborhoodRef.current?.id !== neighborhood.id) {
+            polygon.setStyle({ fillOpacity: 0.35, color: 'transparent', weight: 0 });
+          }
+        });
         polygon.on('click', () => {
+          setInspectorLoading(true);
           setSelectedNeighborhood(neighborhood);
           setSelectedIntervention(null);
+          setTimeout(() => setInspectorLoading(false), 50);
         });
         polygon.addTo(neighborhoodsLayer);
       });
 
       payload.interventions.forEach((intervention) => {
         const marker = leaflet.circleMarker(intervention.point, {
-          radius: 8,
+          radius: 5,
           color: getInterventionStatusColor(intervention.status),
           fillColor: getInterventionStatusColor(intervention.status),
           fillOpacity: 0.85,
-          weight: 2,
+          weight: 1,
         });
-
-        marker.bindTooltip(intervention.name);
+        marker.bindTooltip(intervention.name, { className: 'map-tooltip' });
         marker.on('click', () => {
           setSelectedIntervention(intervention);
           setSelectedNeighborhood(
-            payload.neighborhoods.find((neighborhood) => neighborhood.id === intervention.neighborhoodId) || null
+            payload.neighborhoods.find((n) => n.id === intervention.neighborhoodId) || null
           );
         });
         marker.addTo(interventionsLayer);
@@ -166,209 +205,348 @@ export default function MapPage() {
       neighborhoodsLayerRef.current = neighborhoodsLayer;
       interventionsLayerRef.current = interventionsLayer;
 
-      const bounds = leaflet.featureGroup([...payload.neighborhoods.map((neighborhood) =>
-        leaflet.polygon(geometryToLeafletLatLngs(neighborhood.geometry) as never)
-      )]);
-      map.fitBounds(bounds.getBounds(), { padding: [30, 30] });
+      if (payload.neighborhoods.length > 0) {
+        const bounds = leaflet.featureGroup([...payload.neighborhoods.map((n) =>
+          leaflet.polygon(geometryToLeafletLatLngs(n.geometry) as never)
+        )]);
+        map.fitBounds(bounds.getBounds(), { padding: [30, 30] });
+      }
     });
-  }, [payload]);
+  }, [mapReady, payload]);
 
-  const inspectorNeighborhood =
-    selectedNeighborhood || payload?.neighborhoods[0] || null;
+  // Fly to a neighborhood and select it (used by search + sidebar list)
+  const flyToNeighborhood = useCallback((neighborhood: CityMapNeighborhood) => {
+    if (!mapInstanceRef.current) return;
+    void import('leaflet').then((L) => {
+      const poly = L.polygon(geometryToLeafletLatLngs(neighborhood.geometry) as never);
+      mapInstanceRef.current?.fitBounds(poly.getBounds(), { padding: [40, 40], maxZoom: 15 });
+    });
+    setSelectedNeighborhood(neighborhood);
+    setSelectedIntervention(null);
+    setSearchQuery('');
+    setShowSearch(false);
+  }, []);
+
+  const zoomIn = useCallback(() => mapInstanceRef.current?.zoomIn(), []);
+  const zoomOut = useCallback(() => mapInstanceRef.current?.zoomOut(), []);
+
+  const inspectorNeighborhood = selectedNeighborhood || payload?.neighborhoods[0] || null;
+  const hasHeatData = inspectorNeighborhood && inspectorNeighborhood.avgTemp != null;
 
   return (
-    <div className="min-h-screen bg-[#060e20] relative overflow-hidden">
-      {/* Background effects */}
-      <div className="fixed inset-0 grid-pattern opacity-40 pointer-events-none"></div>
-      <div className="fixed top-[-20%] right-[-10%] w-[500px] h-[500px] orb orb-primary opacity-20 pointer-events-none"></div>
-      <div className="fixed bottom-[-20%] left-[-10%] w-[400px] h-[400px] orb orb-secondary opacity-15 pointer-events-none"></div>
+    <div className="bg-[var(--bg-base)] flex flex-col" style={{ height: '100dvh' }}>
+      {/* Global Navbar */}
+      <GlobalNavbar activeHref="/map" />
 
-      {/* Header */}
-      <header className="relative z-20 glass-overlay border-b border-white/5 px-6 py-4">
-        <div className="mx-auto flex max-w-[1800px] flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div className="flex items-center gap-3">
-            <span className="material-symbols-outlined text-[#69f6b8] text-2xl" style={{ fontVariationSettings: "'FILL' 1" }}>eco</span>
-            <div>
-              <div className="text-xs font-bold uppercase tracking-[0.2em] text-[#69f6b8] font-[family-name:var(--font-headline)]">HeatPlan</div>
-              <h1 className="text-xl font-extrabold tracking-tight text-white font-[family-name:var(--font-headline)]">
-                {payload?.city.name || 'Austin, TX'} Heat Map
-              </h1>
+      {/* Floating search bar over the map */}
+      <div className="fixed top-[68px] left-1/2 -translate-x-1/2 z-40 w-full max-w-xs px-4 pointer-events-none">
+        <div className="relative pointer-events-auto">
+          <span className="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-sm text-[var(--text-tertiary)] pointer-events-none">search</span>
+          <input
+            type="text"
+            placeholder="Search neighborhoods…"
+            value={searchQuery}
+            onChange={(e) => { setSearchQuery(e.target.value); setShowSearch(true); }}
+            onFocus={() => setShowSearch(true)}
+            onBlur={() => setTimeout(() => setShowSearch(false), 150)}
+            className="w-full h-9 pl-8 pr-3 text-xs glass-overlay border border-white/10 rounded-xl text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:border-white/20 transition-colors shadow-xl"
+          />
+          {showSearch && searchResults.length > 0 && (
+            <div className="absolute top-full mt-1 left-0 right-0 z-50 glass-overlay border border-white/10 rounded-xl shadow-2xl overflow-hidden">
+              {searchResults.map((n) => (
+                <button
+                  key={n.id}
+                  type="button"
+                  onMouseDown={() => flyToNeighborhood(n)}
+                  className="w-full flex items-center justify-between px-3 py-2 text-xs hover:bg-white/5 transition-colors text-left"
+                >
+                  <span className="font-medium text-[var(--text-primary)]">{n.name}</span>
+                  <span
+                    className="text-[10px] font-semibold px-1.5 py-0.5 rounded"
+                    style={{
+                      color: VULN_COLORS[n.vulnerabilityLevel] || '#22c55e',
+                      backgroundColor: `${VULN_COLORS[n.vulnerabilityLevel] || '#22c55e'}1a`,
+                    }}
+                  >
+                    {n.vulnerabilityLevel}
+                  </span>
+                </button>
+              ))}
             </div>
-          </div>
-          <div className="flex flex-wrap items-center gap-3 text-sm">
-            {isAuthenticated ? (
-              <>
-                <span className="rounded-full bg-[#69f6b8]/10 border border-[#69f6b8]/20 px-3 py-1.5 text-xs font-bold text-[#69f6b8]">{role?.replace('_', ' ')}</span>
-                <Link href="/dashboard" className="rounded-xl bg-white/5 border border-white/10 px-4 py-2 font-semibold text-white hover:bg-white/10 transition-all">
-                  Dashboard
-                </Link>
-              </>
-            ) : (
-              <>
-                <span className="rounded-full bg-[#ff716c]/10 border border-[#ff716c]/20 px-3 py-1.5 text-xs font-bold text-[#ff716c]">Public View</span>
-                <Link href="/login" className="rounded-xl border border-white/10 px-4 py-2 font-semibold text-white hover:bg-white/10 transition-all">
-                  Sign In
-                </Link>
-              </>
-            )}
-          </div>
+          )}
         </div>
-      </header>
+      </div>
 
-      <main className="relative z-10 mx-auto grid max-w-[1800px] gap-4 px-4 py-4 lg:grid-cols-[280px_minmax(0,1fr)_320px] h-[calc(100vh-73px)]">
-        {/* Left sidebar - Stats */}
-        <section className="glass-card rounded-2xl p-5 overflow-y-auto">
-          <div className="flex items-center gap-2 mb-4">
-            <span className="material-symbols-outlined text-[#69f6b8]" style={{ fontVariationSettings: "'FILL' 1" }}>monitoring</span>
-            <h2 className="text-lg font-bold text-white font-[family-name:var(--font-headline)]">Quick Stats</h2>
-          </div>
-          <div className="grid gap-3">
-            <div className="rounded-xl bg-[#ff716c]/10 border border-[#ff716c]/20 p-4">
-              <div className="text-[10px] font-bold uppercase tracking-widest text-[#ff716c]">Critical</div>
-              <div className="mt-2 text-3xl font-black text-white">{payload?.stats.criticalCount ?? 0}</div>
+      <main className="relative z-10 mx-auto grid max-w-[1800px] w-full gap-px px-0 lg:grid-cols-[220px_minmax(0,1fr)_280px] flex-1 min-h-0 pt-[64px]">
+        {/* Left sidebar — Stats */}
+        <section className="bg-[var(--bg-surface)] border-r border-[var(--border)] p-4 overflow-y-auto hidden lg:flex lg:flex-col gap-4">
+          <div>
+            <div className="flex items-center gap-1.5 mb-3">
+              <span className="material-symbols-outlined text-[var(--green-400)] text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>monitoring</span>
+              <h2 className="text-[11px] font-medium uppercase tracking-[0.06em] text-[var(--text-tertiary)]">Quick Stats</h2>
             </div>
-            <div className="rounded-xl bg-[#ff8439]/10 border border-[#ff8439]/20 p-4">
-              <div className="text-[10px] font-bold uppercase tracking-widest text-[#ff8439]">High Risk</div>
-              <div className="mt-2 text-3xl font-black text-white">{payload?.stats.highCount ?? 0}</div>
-            </div>
-            <div className="rounded-xl bg-[#699cff]/10 border border-[#699cff]/20 p-4">
-              <div className="text-[10px] font-bold uppercase tracking-widest text-[#699cff]">Interventions</div>
-              <div className="mt-2 text-3xl font-black text-white">{payload?.stats.interventionCount ?? 0}</div>
+
+            <div className="border border-[var(--border)] rounded-md divide-y divide-[var(--border)]">
+              <div className="flex items-center justify-between px-3 py-2.5">
+                <span className="text-[10px] font-semibold uppercase tracking-[0.04em] text-[var(--critical)]">Critical</span>
+                <span className="text-xl font-bold tabular-nums text-[var(--text-primary)]">{payload?.stats.criticalCount ?? 0}</span>
+              </div>
+              <div className="flex items-center justify-between px-3 py-2.5">
+                <span className="text-[10px] font-semibold uppercase tracking-[0.04em] text-[var(--high)]">High Risk</span>
+                <span className="text-xl font-bold tabular-nums text-[var(--text-primary)]">{payload?.stats.highCount ?? 0}</span>
+              </div>
+              <div className="flex items-center justify-between px-3 py-2.5">
+                <span className="text-[10px] font-semibold uppercase tracking-[0.04em] text-[var(--info)]">Interventions</span>
+                <span className="text-xl font-bold tabular-nums text-[var(--text-primary)]">{payload?.stats.interventionCount ?? 0}</span>
+              </div>
             </div>
           </div>
 
           {canEdit && (
-            <div className="mt-6 space-y-3">
-              <Link href="/dashboard/interventions" className="block rounded-xl bg-gradient-to-r from-[#69f6b8] to-[#06b77f] px-4 py-3 text-center text-sm font-bold text-[#002919] btn-shine">
-                <span className="flex items-center justify-center gap-2"><span className="material-symbols-outlined text-lg">add</span> Add Intervention</span>
+            <div className="space-y-2">
+              <Link href="/dashboard/interventions" className="flex items-center justify-center gap-1.5 h-[30px] w-full text-xs font-medium bg-[var(--green-500)] text-white rounded-md hover:bg-[var(--green-400)] transition-colors">
+                <span className="material-symbols-outlined text-xs">add</span> Add Intervention
               </Link>
-              <Link href="/dashboard/scenarios/new" className="block rounded-xl border border-white/10 px-4 py-3 text-center text-sm font-semibold text-white hover:bg-white/5 transition-all">
+              <Link href="/dashboard/scenarios/new" className="flex items-center justify-center h-[30px] w-full text-xs font-medium text-[var(--text-secondary)] border border-[var(--border-strong)] rounded-md hover:bg-[var(--bg-overlay)] transition-colors">
                 Build Scenario
               </Link>
             </div>
           )}
 
           {/* Legend */}
-          <div className="mt-6 pt-4 border-t border-white/10">
-            <h3 className="text-[10px] font-bold uppercase tracking-widest text-[#6d758c] mb-3">Vulnerability Legend</h3>
-            <div className="space-y-2">
-              {[
-                { label: 'Critical', color: '#dc2626' },
-                { label: 'High', color: '#ea580c' },
-                { label: 'Moderate', color: '#ca8a04' },
-                { label: 'Low', color: '#16a34a' },
-              ].map((item) => (
-                <div key={item.label} className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: item.color }}></div>
-                  <span className="text-xs text-[#a3aac4]">{item.label}</span>
+          <div className="border-t border-[var(--border)] pt-3">
+            <h3 className="text-[10px] font-medium uppercase tracking-[0.06em] text-[var(--text-tertiary)] mb-2">Vulnerability</h3>
+            <div className="space-y-1.5">
+              {(['CRITICAL', 'HIGH', 'MODERATE', 'LOW'] as const).map((level) => (
+                <div key={level} className="flex items-center gap-2">
+                  <div className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: VULN_COLORS[level] }}></div>
+                  <span className="text-[11px] text-[var(--text-secondary)] capitalize">{level.toLowerCase()}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Clickable neighborhood list */}
+          {payload && payload.neighborhoods.length > 0 && (
+            <div className="border-t border-[var(--border)] pt-3 flex-1 flex flex-col min-h-0">
+              <h3 className="text-[10px] font-medium uppercase tracking-[0.06em] text-[var(--text-tertiary)] mb-2 shrink-0">
+                Areas ({payload.neighborhoods.length})
+              </h3>
+              <div className="flex-1 overflow-y-auto space-y-0.5">
+                {payload.neighborhoods.map((n) => (
+                  <button
+                    key={n.id}
+                    type="button"
+                    onClick={() => flyToNeighborhood(n)}
+                    className={`w-full flex items-center justify-between px-2 py-1.5 rounded hover:bg-[var(--bg-elevated)] transition-colors text-left ${selectedNeighborhood?.id === n.id ? 'bg-[var(--bg-elevated)]' : ''}`}
+                  >
+                    <span className="text-[11px] text-[var(--text-secondary)] truncate">{n.name}</span>
+                    <span className="w-1.5 h-1.5 rounded-full shrink-0 ml-1" style={{ backgroundColor: VULN_COLORS[n.vulnerabilityLevel] || '#22c55e' }} />
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </section>
+
+        {/* Map */}
+        <section className="relative min-h-0">
+          {loading && (
+            <div className="absolute inset-0 z-10 grid place-items-center bg-[var(--bg-base)]/80 backdrop-blur-sm">
+              <div className="flex flex-col items-center gap-2">
+                <div className="w-5 h-5 border-2 border-[var(--green-400)]/30 border-t-[var(--green-400)] rounded-full animate-spin" />
+                <span className="text-xs font-medium text-[var(--text-secondary)]">Loading map data…</span>
+              </div>
+            </div>
+          )}
+          {error && (
+            <div className="absolute inset-0 z-10 grid place-items-center bg-[var(--bg-base)]/90 px-6">
+              <div className="bg-[var(--bg-elevated)] border border-[var(--border-strong)] rounded-lg p-5 text-center max-w-sm">
+                <span className="material-symbols-outlined text-xl text-[var(--critical)]">error</span>
+                <p className="mt-2 text-xs text-[var(--critical)]">{error}</p>
+              </div>
+            </div>
+          )}
+          {!loading && !error && !payload && status !== 'loading' && (
+            <div className="absolute inset-0 z-10 grid place-items-center bg-[var(--bg-base)]/90 px-6">
+              <div className="bg-[var(--bg-elevated)] border border-[var(--border-strong)] rounded-lg p-6 text-center max-w-sm">
+                <span className="material-symbols-outlined text-2xl text-[var(--text-tertiary)] mb-2" style={{ fontVariationSettings: "'FILL' 1" }}>map</span>
+                <p className="mt-2 text-sm font-medium text-[var(--text-primary)]">No city data yet</p>
+                <p className="mt-1 text-xs text-[var(--text-tertiary)]">Complete onboarding and add neighbourhoods to see your city on the map.</p>
+                {isAuthenticated && (
+                  <Link href="/dashboard/onboarding" className="mt-4 inline-flex items-center gap-1 h-8 px-4 text-xs font-medium bg-[var(--green-500)] text-white rounded-md hover:bg-[var(--green-400)] transition-colors">
+                    Go to Onboarding
+                  </Link>
+                )}
+              </div>
+            </div>
+          )}
+          <div ref={mapRef} className="h-full w-full" />
+
+          {/* Custom zoom controls — z-[400] puts them above Leaflet tiles (z-[250]) */}
+          <div className="absolute bottom-4 right-4 z-[400] flex flex-col gap-1">
+            <button type="button" onClick={zoomIn} aria-label="Zoom in" className="w-8 h-8 bg-[var(--bg-surface)] border border-[var(--border)] rounded-md flex items-center justify-center text-[var(--text-secondary)] hover:bg-[var(--bg-elevated)] hover:text-[var(--text-primary)] transition-colors shadow-lg">
+              <span className="material-symbols-outlined text-sm">add</span>
+            </button>
+            <button type="button" onClick={zoomOut} aria-label="Zoom out" className="w-8 h-8 bg-[var(--bg-surface)] border border-[var(--border)] rounded-md flex items-center justify-center text-[var(--text-secondary)] hover:bg-[var(--bg-elevated)] hover:text-[var(--text-primary)] transition-colors shadow-lg">
+              <span className="material-symbols-outlined text-sm">remove</span>
+            </button>
+          </div>
+
+          {/* Mobile vulnerability legend */}
+          <div className="absolute bottom-4 left-4 z-[400] lg:hidden bg-[var(--bg-surface)]/90 backdrop-blur-sm border border-[var(--border)] rounded-md p-2">
+            <div className="flex flex-col gap-1">
+              {(['CRITICAL', 'HIGH', 'MODERATE', 'LOW'] as const).map((level) => (
+                <div key={level} className="flex items-center gap-1.5">
+                  <div className="w-2 h-2 rounded-sm" style={{ backgroundColor: VULN_COLORS[level] }} />
+                  <span className="text-[10px] text-[var(--text-secondary)] capitalize">{level.toLowerCase()}</span>
                 </div>
               ))}
             </div>
           </div>
         </section>
 
-        {/* Map */}
-        <section className="relative min-h-0 overflow-hidden rounded-2xl glass-card">
-          {loading && (
-            <div className="absolute inset-0 z-10 grid place-items-center bg-[#060e20]/80 backdrop-blur-sm">
-              <div className="flex flex-col items-center gap-3">
-                <div className="w-8 h-8 border-2 border-[#69f6b8]/30 border-t-[#69f6b8] rounded-full animate-spin"></div>
-                <span className="text-sm font-semibold text-white">Loading map…</span>
-              </div>
-            </div>
-          )}
-          {error && (
-            <div className="absolute inset-0 z-10 grid place-items-center bg-[#060e20]/90 px-6">
-              <div className="glass-card rounded-2xl p-6 text-center max-w-md">
-                <span className="material-symbols-outlined text-3xl text-[#ff716c]">error</span>
-                <p className="mt-2 text-sm text-[#ff716c]">{error}</p>
-              </div>
-            </div>
-          )}
-          <div ref={mapRef} className="h-full w-full" />
-        </section>
-
-        {/* Right sidebar - Inspector */}
-        <section className="glass-card rounded-2xl p-5 overflow-y-auto">
+        {/* Right sidebar — Inspector */}
+        <section className="bg-[var(--bg-surface)] border-l border-[var(--border)] p-4 overflow-y-auto">
           {selectedIntervention ? (
             <>
-              <div className="flex items-center justify-between gap-3">
-                <h2 className="text-lg font-bold text-white font-[family-name:var(--font-headline)]">{selectedIntervention.name}</h2>
-                <button
-                  type="button"
-                  onClick={() => setSelectedIntervention(null)}
-                  className="text-xs font-semibold text-[#6d758c] hover:text-white transition-colors rounded-lg p-1"
-                >
-                  <span className="material-symbols-outlined text-lg">close</span>
+              <div className="flex items-center justify-between gap-2">
+                <h2 className="text-sm font-semibold text-[var(--text-primary)]">{selectedIntervention.name}</h2>
+                <button type="button" onClick={() => setSelectedIntervention(null)} className="text-[var(--text-tertiary)] hover:text-[var(--text-primary)] transition-colors p-0.5">
+                  <span className="material-symbols-outlined text-base">close</span>
                 </button>
               </div>
-              <div className="mt-4 space-y-3 text-sm">
-                <div className="flex justify-between items-center py-2 border-b border-white/5">
-                  <span className="text-[#6d758c]">Status</span>
-                  <span className="font-semibold text-white text-xs px-2 py-0.5 rounded-full bg-[#69f6b8]/10 text-[#69f6b8]">{selectedIntervention.status.replace('_', ' ')}</span>
+              <div className="mt-3 border border-[var(--border)] rounded-md divide-y divide-[var(--border)] text-xs">
+                <div className="flex justify-between items-center px-3 py-2">
+                  <span className="text-[var(--text-tertiary)]">Status</span>
+                  <span className="font-medium text-[var(--text-primary)]">{selectedIntervention.status.replace(/_/g, ' ')}</span>
                 </div>
-                <div className="flex justify-between items-center py-2 border-b border-white/5">
-                  <span className="text-[#6d758c]">Neighborhood</span>
-                  <span className="font-semibold text-white">{selectedIntervention.neighborhoodName || 'City-wide'}</span>
+                <div className="flex justify-between items-center px-3 py-2">
+                  <span className="text-[var(--text-tertiary)]">Neighborhood</span>
+                  <span className="font-medium text-[var(--text-primary)]">{selectedIntervention.neighborhoodName || 'City-wide'}</span>
                 </div>
-                <div className="flex justify-between items-center py-2 border-b border-white/5">
-                  <span className="text-[#6d758c]">Cooling</span>
-                  <span className="font-bold text-[#69f6b8]">{selectedIntervention.estimatedTempReductionC != null ? `-${selectedIntervention.estimatedTempReductionC.toFixed(1)}°C` : '—'}</span>
+                <div className="flex justify-between items-center px-3 py-2">
+                  <span className="text-[var(--text-tertiary)]">Cooling</span>
+                  <span className="font-semibold text-[var(--green-400)]">{selectedIntervention.estimatedTempReductionC != null ? `-${selectedIntervention.estimatedTempReductionC.toFixed(1)}°C` : '—'}</span>
                 </div>
-                <div className="flex justify-between items-center py-2">
-                  <span className="text-[#6d758c]">Budget</span>
-                  <span className="font-semibold text-white">{selectedIntervention.estimatedCostUsd != null ? `$${Math.round(selectedIntervention.estimatedCostUsd).toLocaleString()}` : 'Pending'}</span>
+                <div className="flex justify-between items-center px-3 py-2">
+                  <span className="text-[var(--text-tertiary)]">Budget</span>
+                  <span className="font-medium text-[var(--text-primary)]">{selectedIntervention.estimatedCostUsd != null ? `$${Math.round(selectedIntervention.estimatedCostUsd).toLocaleString()}` : 'Pending'}</span>
                 </div>
               </div>
             </>
           ) : inspectorNeighborhood ? (
             <>
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <h2 className="text-lg font-bold text-white font-[family-name:var(--font-headline)]">{inspectorNeighborhood.name}</h2>
-                  <div className="mt-1 text-xs font-bold uppercase tracking-wider text-[#ff716c]">
-                    {inspectorNeighborhood.vulnerabilityLevel} · Score {inspectorNeighborhood.vulnerabilityScore}
-                  </div>
-                </div>
-              </div>
-              <div className="mt-5 space-y-3 text-sm">
-                <div className="flex justify-between items-center py-2 border-b border-white/5">
-                  <span className="text-[#6d758c]">Population</span>
-                  <span className="font-semibold text-white">{inspectorNeighborhood.population?.toLocaleString() || '—'}</span>
-                </div>
-                <div className="flex justify-between items-center py-2 border-b border-white/5">
-                  <span className="text-[#6d758c]">Avg temp</span>
-                  <span className="font-semibold text-white">{inspectorNeighborhood.avgTemp != null ? `${inspectorNeighborhood.avgTemp.toFixed(1)}°C` : '—'}</span>
-                </div>
-                <div className="flex justify-between items-center py-2 border-b border-white/5">
-                  <span className="text-[#6d758c]">Max temp</span>
-                  <span className="font-bold text-[#ff8439]">{inspectorNeighborhood.maxTemp != null ? `${inspectorNeighborhood.maxTemp.toFixed(1)}°C` : '—'}</span>
-                </div>
-                <div className="flex justify-between items-center py-2">
-                  <span className="text-[#6d758c]">Tree canopy</span>
-                  <span className="font-semibold text-[#69f6b8]">{inspectorNeighborhood.treeCanopyPct != null ? `${inspectorNeighborhood.treeCanopyPct.toFixed(0)}%` : '—'}</span>
+              <div>
+                <h2 className="text-sm font-semibold text-[var(--text-primary)]">{inspectorNeighborhood.name}</h2>
+                <div className="mt-1.5">
+                  <span
+                    className="inline-flex items-center text-[10px] font-semibold uppercase tracking-[0.05em] rounded px-2 py-0.5"
+                    style={{
+                      backgroundColor: `${VULN_COLORS[inspectorNeighborhood.vulnerabilityLevel] || '#22c55e'}1a`,
+                      borderColor: `${VULN_COLORS[inspectorNeighborhood.vulnerabilityLevel] || '#22c55e'}4d`,
+                      borderWidth: '1px',
+                      color: VULN_COLORS[inspectorNeighborhood.vulnerabilityLevel] || '#22c55e',
+                    }}
+                  >
+                  {inspectorNeighborhood.vulnerabilityLevel} &middot; Score {inspectorNeighborhood.vulnerabilityScore}
+                  </span>
                 </div>
               </div>
 
-              <div className="mt-6 pt-4 border-t border-white/10">
-                <h3 className="text-[10px] font-bold uppercase tracking-widest text-[#6d758c]">Interventions in this area</h3>
+              {inspectorLoading ? (
+                <div className="mt-4 space-y-3">
+                  <SkeletonLine w="w-full" />
+                  <SkeletonLine w="w-3/4" />
+                  <SkeletonLine w="w-full" />
+                  <SkeletonLine w="w-2/3" />
+                </div>
+              ) : hasHeatData ? (
+                <>
+                  <div className="mt-3 border border-[var(--border)] rounded-md divide-y divide-[var(--border)] text-xs">
+                    <div className="flex justify-between items-center px-3 py-2">
+                      <span className="text-[var(--text-tertiary)]">Population</span>
+                      <span className="font-medium text-[var(--text-primary)]">{inspectorNeighborhood.population?.toLocaleString() || '—'}</span>
+                    </div>
+                    <div className="flex justify-between items-center px-3 py-2">
+                      <span className="text-[var(--text-tertiary)]">Avg temp</span>
+                      <span className="font-medium text-[var(--text-primary)]">{inspectorNeighborhood.avgTemp!.toFixed(1)}°C</span>
+                    </div>
+                    <div className="flex justify-between items-center px-3 py-2">
+                      <span className="text-[var(--text-tertiary)]">Max temp</span>
+                      <span className="font-semibold text-[var(--high)]">{inspectorNeighborhood.maxTemp != null ? `${inspectorNeighborhood.maxTemp.toFixed(1)}°C` : '—'}</span>
+                    </div>
+                    <div className="flex justify-between items-center px-3 py-2">
+                      <span className="text-[var(--text-tertiary)]">Tree canopy</span>
+                      <span className="font-medium text-[var(--green-400)]">{inspectorNeighborhood.treeCanopyPct != null ? `${inspectorNeighborhood.treeCanopyPct.toFixed(0)}%` : '—'}</span>
+                    </div>
+                    {inspectorNeighborhood.imperviousSurfacePct != null && (
+                      <div className="flex justify-between items-center px-3 py-2">
+                        <span className="text-[var(--text-tertiary)]">Impervious surface</span>
+                        <span className="font-medium text-[var(--text-primary)]">{inspectorNeighborhood.imperviousSurfacePct.toFixed(0)}%</span>
+                      </div>
+                    )}
+                  </div>
+                  {/* Heat intensity bar */}
+                  <div className="mt-3 p-3 bg-[var(--bg-elevated)] border border-[var(--border)] rounded-md">
+                    <div className="flex justify-between text-[10px] text-[var(--text-tertiary)] mb-1.5">
+                      <span>Heat Intensity</span>
+                      <span>{inspectorNeighborhood.avgTemp!.toFixed(1)}°C avg</span>
+                    </div>
+                    <div className="h-1.5 bg-[var(--bg-base)] rounded-full overflow-hidden">
+                      <div
+                        className="h-full rounded-full transition-all"
+                        style={{
+                          width: `${Math.min(100, Math.max(8, ((inspectorNeighborhood.avgTemp! - 20) / 25) * 100))}%`,
+                          backgroundColor: VULN_COLORS[inspectorNeighborhood.vulnerabilityLevel] || '#22c55e',
+                        }}
+                      />
+                    </div>
+                  </div>
+                </>
+              ) : (
+                /* A2: Empty state when no heat data */
+                <div className="mt-4 border border-[var(--border)] rounded-lg p-4">
+                  <p className="text-xs font-medium text-[var(--text-primary)]">
+                    No heat data for {inspectorNeighborhood.name} yet.
+                  </p>
+                  <p className="mt-2 text-[11px] text-[var(--text-tertiary)] leading-relaxed">
+                    Add measurements to see temperature trends, vulnerability score, and intervention impact.
+                  </p>
+                  <Link
+                    href="/dashboard/data"
+                    className="mt-3 inline-flex items-center gap-1 h-[28px] px-3 text-[11px] font-medium bg-[var(--green-500)] text-white rounded-md hover:bg-[var(--green-400)] transition-colors"
+                  >
+                    <span className="material-symbols-outlined text-xs">add</span>
+                    Add Heat Data
+                  </Link>
+                </div>
+              )}
+
+              <div className="mt-4 pt-3 border-t border-[var(--border)]">
+                <h3 className="text-[10px] font-medium uppercase tracking-[0.06em] text-[var(--text-tertiary)] pb-2 border-b border-[var(--border)]">
+                  Interventions in this area
+                </h3>
                 {inspectorNeighborhood.interventions.length === 0 ? (
-                  <p className="mt-3 text-sm text-[#6d758c]">No visible interventions yet.</p>
+                  <p className="mt-2 text-[11px] text-[var(--text-tertiary)]">No interventions yet.</p>
                 ) : (
-                  <div className="mt-3 space-y-3">
+                  <div className="mt-2 space-y-1.5">
                     {inspectorNeighborhood.interventions.map((intervention) => (
                       <button
                         key={intervention.id}
                         type="button"
                         onClick={() => {
-                          const fullIntervention = payload?.interventions.find((item) => item.id === intervention.id) || null;
-                          setSelectedIntervention(fullIntervention);
+                          const full = payload?.interventions.find((i) => i.id === intervention.id) || null;
+                          setSelectedIntervention(full);
                         }}
-                        className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-left hover:bg-white/10 transition-all"
+                        className="w-full border border-[var(--border)] bg-[var(--bg-elevated)] px-3 py-2 text-left rounded-md hover:bg-[var(--bg-overlay)] transition-colors"
                       >
-                        <div className="font-semibold text-white text-sm">{intervention.name}</div>
-                        <div className="mt-1 text-xs text-[#6d758c]">
-                          {intervention.status.replace('_', ' ')} · {intervention.estimatedTempReductionC != null ? `-${intervention.estimatedTempReductionC.toFixed(1)}°C` : 'Cooling pending'}
+                        <div className="font-medium text-[var(--text-primary)] text-xs">{intervention.name}</div>
+                        <div className="mt-0.5 text-[10px] text-[var(--text-tertiary)]">
+                          {intervention.status.replace(/_/g, ' ')} ·{' '}
+                          {intervention.estimatedTempReductionC != null
+                            ? `-${intervention.estimatedTempReductionC.toFixed(1)}°C`
+                            : 'Pending'}
                         </div>
                       </button>
                     ))}
@@ -377,9 +555,9 @@ export default function MapPage() {
               </div>
             </>
           ) : (
-            <div className="flex flex-col items-center justify-center h-full text-center py-12">
-              <span className="material-symbols-outlined text-4xl text-[#6d758c] mb-3">touch_app</span>
-              <p className="text-sm text-[#6d758c]">Select a neighborhood or intervention on the map.</p>
+            <div className="flex flex-col items-center justify-center h-full text-center py-8">
+              <span className="material-symbols-outlined text-2xl text-[var(--text-tertiary)] mb-2">touch_app</span>
+              <p className="text-xs text-[var(--text-tertiary)]">Select a neighborhood on the map.</p>
             </div>
           )}
         </section>
