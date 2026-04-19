@@ -19,7 +19,7 @@ interface Neighborhood {
   name: string;
 }
 
-export default function AddInterventionForm({ cityId, userId }: { cityId: string; userId: string }) {
+export default function AddInterventionForm({ cityId }: { cityId: string }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -44,8 +44,6 @@ export default function AddInterventionForm({ cityId, userId }: { cityId: string
 
     try {
       await addInterventionAction({
-        cityId,
-        proposedById: userId,
         name: fd.get('name') as string,
         type: fd.get('type') as string,
         neighborhoodId: (fd.get('neighborhoodId') as string) || undefined,

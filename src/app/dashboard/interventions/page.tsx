@@ -24,7 +24,7 @@ export default async function InterventionsPage() {
         </div>
       </div>
 
-      <AddInterventionForm cityId={session.user.cityId} userId={session.user.id!} />
+      <AddInterventionForm cityId={session.user.cityId} />
 
       {interventions.length === 0 ? (
         <div className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-lg p-12 text-center">

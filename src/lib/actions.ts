@@ -2,6 +2,7 @@
 
 import { hash } from 'bcryptjs';
 import { prisma } from '@/lib/db';
+import { auth } from '@/lib/auth';
 import { computeVulnerabilityScore } from '@/lib/compute/vulnerability';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
@@ -138,21 +139,36 @@ export async function addHeatMeasurementAction(data: z.infer<typeof addHeatMeasu
 // ── Intervention Actions ──
 
 const addInterventionSchema = z.object({
-  cityId: z.string().min(1),
   neighborhoodId: z.string().optional(),
   type: z.string().min(1),
   name: z.string().min(1).max(200),
   description: z.string().optional(),
   location: z.string().optional(),
-  estimatedCostUsd: z.number().positive().optional(),
+  estimatedCostUsd: z.number().nonnegative().optional(),
   estimatedTempReductionC: z.number().optional(),
-  status: z.string().optional().default('PROPOSED'),
-  proposedById: z.string().min(1),
 });
 
 export async function addInterventionAction(data: z.input<typeof addInterventionSchema>) {
+  const session = await auth();
+  if (!session?.user?.id) throw new Error('Unauthorized');
+
+  // Always look up the current user from DB — never trust the client-provided cityId,
+  // because a stale JWT could carry an old cityId that no longer exists.
+  const dbUser = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { cityId: true },
+  });
+  if (!dbUser?.cityId) throw new Error('No city assigned to your account');
+
   const parsed = addInterventionSchema.parse(data);
-  const intervention = await prisma.intervention.create({ data: parsed });
+  const intervention = await prisma.intervention.create({
+    data: {
+      ...parsed,
+      cityId: dbUser.cityId,
+      proposedById: session.user.id,
+      status: 'PROPOSED',
+    },
+  });
   revalidatePath('/map');
   revalidatePath('/dashboard/interventions');
   revalidatePath('/dashboard/scenarios');

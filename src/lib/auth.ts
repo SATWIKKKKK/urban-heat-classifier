@@ -205,6 +205,30 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           (user as typeof user & { onboardingComplete?: boolean }).onboardingComplete ?? false;
       }
 
+      // Always refresh role/cityId/onboardingComplete from DB so stale JWTs
+      // (e.g. after a reseed or city change) pick up the latest values.
+      // Runs on every auth() call for both credentials and Google users.
+      if (!user && token.userId) {
+        try {
+          const dbUser = await prisma.user.findUnique({
+            where: { id: token.userId as string },
+            select: {
+              id: true,
+              role: true,
+              cityId: true,
+              city: { select: { onboardingState: { select: { isComplete: true } } } },
+            },
+          });
+          if (dbUser) {
+            token.role = dbUser.role;
+            token.cityId = dbUser.cityId;
+            token.onboardingComplete = dbUser.city?.onboardingState?.isComplete ?? false;
+          }
+        } catch (error) {
+          console.error('[Auth] jwt DB refresh error:', error);
+        }
+      }
+
       // On initial Google sign-in: fetch the DB user to get role, cityId, onboardingComplete.
       // token.email is now reliably set above (and normalized to lowercase).
       if (account?.provider === 'google') {
