@@ -14,6 +14,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Missing required fields: placeName, lat, lng' }, { status: 400 });
   }
 
-  const report = await generatePlaceAnalysis(body);
-  return NextResponse.json({ report });
+  try {
+    const report = await generatePlaceAnalysis(body);
+    return NextResponse.json({ report });
+  } catch (err) {
+    console.error('place-analysis route error:', err);
+    return NextResponse.json({ error: 'Internal server error during analysis.' }, { status: 500 });
+  }
 }

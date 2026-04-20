@@ -58,11 +58,11 @@ export default function SideNav({ activeItem }: SideNavProps) {
       </nav>
       <div className="p-4 space-y-4">
         <Link
-          href="/resident/request-tree"
+          href="/dashboard/scenarios/new"
           className="w-full py-3 bg-gradient-to-r from-[var(--green-400)] to-[var(--green-500)] text-[var(--bg-base)] rounded-xl font-bold text-sm tracking-tight flex items-center justify-center gap-2 shadow-lg hover:scale-[1.02] active:scale-95 transition-transform "
         >
-          <span className="material-symbols-outlined">add</span>
-          Add Intervention
+          <span className="material-symbols-outlined">auto_awesome</span>
+          Build Scenario
         </Link>
         <div className="pt-4 border-t border-white/5">
           <div className="text-[var(--text-tertiary)] hover:text-white px-2 py-2 flex items-center gap-3 cursor-pointer text-xs uppercase tracking-widest rounded-lg hover:bg-[var(--bg-elevated)] transition-all">

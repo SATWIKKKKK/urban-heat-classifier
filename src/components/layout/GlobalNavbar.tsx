@@ -8,8 +8,7 @@ import { useState, useRef, useEffect } from 'react';
 const ALL_NAV_ITEMS = [
   { label: 'My Data', href: '/dashboard/mydata', icon: 'person', roles: ['CITY_ADMIN', 'URBAN_PLANNER', 'SUPER_ADMIN', 'CITY_COUNCIL', 'MUNICIPAL_COMMISSIONER', 'WARD_OFFICER', 'SDMA_OBSERVER', 'NGO_FIELD_WORKER', 'DATA_ANALYST', 'CITIZEN_REPORTER'] },
   { label: 'Map', href: '/dashboard/map', icon: 'map', roles: ['CITY_ADMIN', 'URBAN_PLANNER', 'SUPER_ADMIN', 'CITY_COUNCIL', 'SDMA_OBSERVER', 'DATA_ANALYST', 'CITIZEN_REPORTER'] },
-  { label: 'Interventions', href: '/dashboard/interventions', icon: 'construction', roles: ['CITY_ADMIN', 'URBAN_PLANNER', 'SUPER_ADMIN'] },
-  { label: 'Scenarios', href: '/dashboard/scenarios', icon: 'compare_arrows', roles: ['CITY_ADMIN', 'URBAN_PLANNER', 'SUPER_ADMIN', 'CITY_COUNCIL', 'MUNICIPAL_COMMISSIONER'] },
+  { label: 'Scenarios', href: '/dashboard/scenarios', icon: 'compare_arrows', roles: ['CITY_ADMIN', 'URBAN_PLANNER', 'SUPER_ADMIN', 'CITY_COUNCIL', 'MUNICIPAL_COMMISSIONER', 'SDMA_OBSERVER', 'DATA_ANALYST', 'CITIZEN_REPORTER'] },
   { label: 'Reports', href: '/dashboard/reports', icon: 'assessment', roles: ['CITY_ADMIN', 'URBAN_PLANNER', 'SUPER_ADMIN', 'CITY_COUNCIL', 'MUNICIPAL_COMMISSIONER', 'SDMA_OBSERVER', 'DATA_ANALYST'] },
   { label: 'Data Management', href: '/dashboard/data', icon: 'storage', roles: ['CITY_ADMIN', 'SUPER_ADMIN', 'DATA_ANALYST'] },
   { label: 'Settings', href: '/dashboard/settings', icon: 'settings', roles: ['CITY_ADMIN', 'URBAN_PLANNER', 'SUPER_ADMIN', 'CITY_COUNCIL', 'MUNICIPAL_COMMISSIONER', 'WARD_OFFICER', 'SDMA_OBSERVER', 'NGO_FIELD_WORKER', 'DATA_ANALYST', 'CITIZEN_REPORTER'] },

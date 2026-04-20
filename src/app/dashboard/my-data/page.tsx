@@ -13,7 +13,7 @@ export default async function MyDataPage() {
   const role = session.user.role;
 
   // Fetch all user-specific data in parallel
-  const [myScenarios, myInterventions, myReports, cityPlaces, cityStats] =
+  const [myScenarios, _unused, myReports, cityPlaces, cityStats] =
     await Promise.all([
       // Scenarios created by this user
       cityId
@@ -68,7 +68,7 @@ export default async function MyDataPage() {
         : Promise.resolve([0, 0, 0] as [number, number, number]),
     ]);
 
-  const [totalScenarios, totalInterventions, totalPlaces] = cityStats as [
+  const [totalScenarios, , totalPlaces] = cityStats as [
     number,
     number,
     number,
@@ -128,7 +128,7 @@ export default async function MyDataPage() {
             {session.user.name ?? 'Your Dashboard'}
           </h1>
           <p className="mt-0.5 text-sm text-[var(--text-secondary)]">
-            All your scenarios, interventions, reports, and city overview in one place.
+            Your scenarios, reports, and city overview in one place.
           </p>
         </div>
           <div className="flex items-center gap-2">
@@ -180,10 +180,10 @@ export default async function MyDataPage() {
             color: 'var(--info)',
           },
           {
-            label: 'My Interventions',
-            value: myInterventions.length,
-            total: totalInterventions,
-            icon: 'construction',
+            label: 'My Reports',
+            value: myReports.length,
+            total: totalScenarios,
+            icon: 'assessment',
             color: 'var(--high)',
           },
           {
@@ -365,7 +365,7 @@ export default async function MyDataPage() {
                       <div className="min-w-0 flex-1">
                         <div className="text-xs font-medium text-[var(--text-primary)] truncate">{s.name}</div>
                         <div className="text-[10px] text-[var(--text-tertiary)] mt-0.5">
-                          {s.scenarioInterventions.length} interventions
+                          {s.scenarioInterventions.length} strategies
                           {s.totalProjectedTempReductionC != null &&
                             ` · -${s.totalProjectedTempReductionC.toFixed(1)}°C`}
                         </div>
@@ -384,79 +384,7 @@ export default async function MyDataPage() {
           )}
         </div>
 
-        {/* My Interventions */}
-        <div>
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-1.5">
-              <span
-                className="material-symbols-outlined text-[var(--text-tertiary)] text-sm"
-                style={{ fontVariationSettings: "'FILL' 1" }}
-              >
-                construction
-              </span>
-              <h2 className="text-[11px] font-medium uppercase tracking-[0.06em] text-[var(--text-tertiary)]">
-                My Interventions
-              </h2>
-            </div>
-            <Link
-              href="/dashboard/interventions"
-              className="text-[11px] text-[var(--text-tertiary)] hover:text-[var(--text-primary)] transition-colors"
-            >
-              View all →
-            </Link>
-          </div>
-
-          {myInterventions.length === 0 ? (
-            <div className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-lg p-6 text-center">
-              <span
-                className="material-symbols-outlined text-2xl text-[var(--text-tertiary)]"
-                style={{ fontVariationSettings: "'FILL' 1" }}
-              >
-                construction
-              </span>
-              <p className="mt-2 text-xs text-[var(--text-secondary)]">No interventions proposed yet.</p>
-              <Link
-                href="/dashboard/interventions"
-                className="mt-3 inline-flex items-center gap-1 h-8 px-3 text-xs font-medium bg-[var(--green-500)] text-white rounded-md hover:bg-[var(--green-400)] transition-colors"
-              >
-                <span className="material-symbols-outlined text-xs">add</span> Add Intervention
-              </Link>
-            </div>
-          ) : (
-            <div className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-lg overflow-hidden">
-              <div className="divide-y divide-[var(--border)]">
-                {myInterventions.map((inv) => {
-                  const sc = statusColor(inv.status);
-                  return (
-                    <div key={inv.id} className="flex items-center justify-between px-4 py-3">
-                      <div className="min-w-0 flex-1">
-                        <div className="text-xs font-medium text-[var(--text-primary)] truncate">{inv.name}</div>
-                        <div className="text-[10px] text-[var(--text-tertiary)] mt-0.5">
-                          {inv.place?.name ?? 'City-wide'} ·{' '}
-                          {inv.estimatedTempReductionC != null
-                            ? `-${inv.estimatedTempReductionC.toFixed(1)}°C`
-                            : 'Pending'}{' '}
-                          {inv.estimatedCostUsd != null &&
-                            `· $${Math.round(inv.estimatedCostUsd).toLocaleString()}`}
-                        </div>
-                      </div>
-                      <span
-                        className="ml-3 shrink-0 text-[10px] font-semibold uppercase tracking-[0.05em] border rounded px-1.5 py-0.5"
-                        style={{ color: sc.color, backgroundColor: sc.bg, borderColor: sc.border }}
-                      >
-                        {inv.status.replace(/_/g, ' ')}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* My Reports */}
-      {myReports.length > 0 && (
+        {/* My Reports */}
         <div>
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-1.5">
@@ -467,7 +395,7 @@ export default async function MyDataPage() {
                 assessment
               </span>
               <h2 className="text-[11px] font-medium uppercase tracking-[0.06em] text-[var(--text-tertiary)]">
-                My Reports
+                Generated Reports
               </h2>
             </div>
             <Link
@@ -477,22 +405,42 @@ export default async function MyDataPage() {
               View all →
             </Link>
           </div>
-          <div className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-lg overflow-hidden">
-            <div className="divide-y divide-[var(--border)]">
-              {myReports.map((r) => (
-                <div key={r.id} className="flex items-center justify-between px-4 py-3">
-                  <div className="min-w-0 flex-1">
-                    <div className="text-xs font-medium text-[var(--text-primary)] truncate">{r.title}</div>
-                    <div className="text-[10px] text-[var(--text-tertiary)] mt-0.5">
-                      {r.type} · {new Date(r.generatedAt).toLocaleDateString()}
+
+          {myReports.length === 0 ? (
+            <div className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-lg p-6 text-center">
+              <span
+                className="material-symbols-outlined text-2xl text-[var(--text-tertiary)]"
+                style={{ fontVariationSettings: "'FILL' 1" }}
+              >
+                assessment
+              </span>
+              <p className="mt-2 text-xs text-[var(--text-secondary)]">No reports generated yet. Build a scenario to generate your first report.</p>
+              <Link
+                href="/dashboard/scenarios/new"
+                className="mt-3 inline-flex items-center gap-1 h-8 px-3 text-xs font-medium bg-[var(--green-500)] text-white rounded-md hover:bg-[var(--green-400)] transition-colors"
+              >
+                <span className="material-symbols-outlined text-xs">auto_awesome</span> Build Scenario
+              </Link>
+            </div>
+          ) : (
+            <div className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-lg overflow-hidden">
+              <div className="divide-y divide-[var(--border)]">
+                {myReports.map((r) => (
+                  <div key={r.id} className="flex items-center justify-between px-4 py-3">
+                    <div className="min-w-0 flex-1">
+                      <div className="text-xs font-medium text-[var(--text-primary)] truncate">{r.title}</div>
+                      <div className="text-[10px] text-[var(--text-tertiary)] mt-0.5">
+                        {r.type} · {new Date(r.generatedAt).toLocaleDateString()}
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          </div>
+          )}
         </div>
-      )}
+      </div>
+
       </GSAPWrapper>
 
       {/* Quick actions */}
@@ -513,7 +461,7 @@ export default async function MyDataPage() {
           {[
             { label: 'Open Map', href: '/map', icon: 'map', desc: 'Explore city heat zones' },
             { label: 'Places', href: '/dashboard/places', icon: 'location_city', desc: 'View & manage areas' },
-            { label: 'New Scenario', href: '/dashboard/scenarios/new', icon: 'add_circle', desc: 'Plan interventions' },
+            { label: 'New Scenario', href: '/dashboard/scenarios/new', icon: 'auto_awesome', desc: 'Build a heat mitigation plan' },
             { label: 'Reports', href: '/dashboard/reports', icon: 'assessment', desc: 'Download council briefs' },
           ].map((action) => (
             <Link

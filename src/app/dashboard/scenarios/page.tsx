@@ -35,7 +35,7 @@ export default async function DashboardScenariosPage() {
           </div>
           <h1 className="text-2xl font-bold tracking-tight text-[var(--text-primary)]">Scenarios</h1>
           <p className="mt-0.5 text-sm text-[var(--text-secondary)]">
-            Review mitigation plans, simulation impact, and approval status for your city.
+            Review your heat mitigation plans, simulation results, and scenario reports.
           </p>
         </div>
         {session.user.role !== 'CITY_COUNCIL' && (
@@ -64,7 +64,7 @@ export default async function DashboardScenariosPage() {
             return (
               <Link
                 key={scenario.id}
-                href={`/dashboard/scenarios/${scenario.id}`}
+                href={`/dashboard/scenarios/${scenario.id}/report`}
                 className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-lg p-5 hover:border-[var(--border-strong)] hover:bg-[var(--bg-elevated)] transition-colors group"
               >
                 <div className="flex items-start justify-between gap-3">
@@ -82,7 +82,7 @@ export default async function DashboardScenariosPage() {
 
                 <div className="mt-4 grid grid-cols-2 gap-2 text-sm">
                   <div className="bg-[var(--bg-elevated)] border border-[var(--border)] rounded-md px-3 py-2.5">
-                    <div className="text-[10px] uppercase tracking-[0.06em] text-[var(--text-tertiary)]">Interventions</div>
+                    <div className="text-[10px] uppercase tracking-[0.06em] text-[var(--text-tertiary)]">Strategies</div>
                     <div className="mt-1 text-xl font-bold text-[var(--text-primary)]">{interventionsCount}</div>
                   </div>
                   <div className="bg-[var(--bg-elevated)] border border-[var(--border)] rounded-md px-3 py-2.5">

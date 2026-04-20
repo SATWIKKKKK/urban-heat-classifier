@@ -3,9 +3,12 @@
  * Takes live weather, AQI, and forecast data and generates an AI report.
  */
 
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY ?? '';
 const GEMINI_URL =
-  'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
+  'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
+
+function getGeminiKey() {
+  return process.env.GEMINI_API_KEY ?? '';
+}
 
 export interface PlaceAnalysisInput {
   placeName: string;
@@ -29,6 +32,7 @@ export interface PlaceAnalysisInput {
 }
 
 export async function generatePlaceAnalysis(input: PlaceAnalysisInput): Promise<string> {
+  const GEMINI_API_KEY = getGeminiKey();
   if (!GEMINI_API_KEY) {
     return 'Gemini API key not configured. Set GEMINI_API_KEY in your environment variables.';
   }
@@ -72,24 +76,40 @@ Provide a concise analysis (300-500 words) covering:
 
 Use bullet points and keep the language professional but accessible. Do NOT use markdown headers larger than ###.`;
 
-  const res = await fetch(`${GEMINI_URL}?key=${GEMINI_API_KEY}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: { temperature: 0.7, maxOutputTokens: 1500 },
-    }),
-  });
-
-  if (!res.ok) {
-    const err = await res.text();
-    console.error('Gemini API error:', err);
-    return 'Failed to generate analysis. Please check your API key and try again.';
+  let res: Response;
+  try {
+    res = await fetch(`${GEMINI_URL}?key=${GEMINI_API_KEY}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { temperature: 0.7, maxOutputTokens: 1500 },
+      }),
+    });
+  } catch (fetchErr) {
+    console.error('Gemini fetch error:', fetchErr);
+    return 'Network error reaching Gemini API. Please check your connection.';
   }
 
-  const data = await res.json();
+  if (!res.ok) {
+    let errBody = '';
+    try { errBody = await res.text(); } catch { /* ignore */ }
+    console.error('Gemini API error:', res.status, errBody);
+    if (res.status === 429) {
+      return 'Gemini API quota exceeded. Please get a new API key at https://ai.google.dev or try again tomorrow.';
+    }
+    if (res.status === 404) {
+      return 'Gemini model not found. The API key may need to be regenerated at https://ai.google.dev';
+    }
+    return `Gemini API error (${res.status}). Please check your GEMINI_API_KEY.`;
+  }
+
+  let data: unknown;
+  try { data = await res.json(); } catch {
+    return 'Gemini returned an unreadable response.';
+  }
   return (
-    data?.candidates?.[0]?.content?.parts?.[0]?.text ??
+    (data as { candidates?: { content?: { parts?: { text?: string }[] } }[] })?.candidates?.[0]?.content?.parts?.[0]?.text ??
     'No analysis generated. The model returned an empty response.'
   );
 }
