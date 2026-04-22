@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { generatePlaceAnalysis, type PlaceAnalysisInput } from '@/lib/ai/placeAnalysis';
 
+export const maxDuration = 120; // allow slow free-tier AI models
+
 export async function POST(request: Request) {
   const session = await auth();
   if (!session?.user) {

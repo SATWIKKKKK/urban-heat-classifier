@@ -3,11 +3,11 @@
  * Takes live weather, AQI, and forecast data and generates an AI report.
  */
 
-const GEMINI_URL =
-  'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
+const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
+const OPENROUTER_MODEL = 'nvidia/nemotron-3-nano-30b-a3b:free';
 
 function getGeminiKey() {
-  return process.env.GEMINI_API_KEY ?? '';
+  return process.env.OPENROUTER_API_KEY ?? '';
 }
 
 export interface PlaceAnalysisInput {
@@ -34,7 +34,7 @@ export interface PlaceAnalysisInput {
 export async function generatePlaceAnalysis(input: PlaceAnalysisInput): Promise<string> {
   const GEMINI_API_KEY = getGeminiKey();
   if (!GEMINI_API_KEY) {
-    return 'Gemini API key not configured. Set GEMINI_API_KEY in your environment variables.';
+    return 'OpenRouter API key not configured. Set OPENROUTER_API_KEY in your environment variables.';
   }
 
   const weatherSection = input.weather
@@ -78,12 +78,19 @@ Use bullet points and keep the language professional but accessible. Do NOT use 
 
   let res: Response;
   try {
-    res = await fetch(`${GEMINI_URL}?key=${GEMINI_API_KEY}`, {
+    res = await fetch(OPENROUTER_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${GEMINI_API_KEY}`,
+        'HTTP-Referer': 'https://urban-heat-mitigator.vercel.app',
+        'X-Title': 'Urban Heat Mitigator',
+      },
       body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { temperature: 0.7, maxOutputTokens: 1500 },
+        model: OPENROUTER_MODEL,
+        messages: [{ role: 'user', content: prompt }],
+        temperature: 0.7,
+        max_tokens: 1500,
       }),
     });
   } catch (fetchErr) {
@@ -96,12 +103,12 @@ Use bullet points and keep the language professional but accessible. Do NOT use 
     try { errBody = await res.text(); } catch { /* ignore */ }
     console.error('Gemini API error:', res.status, errBody);
     if (res.status === 429) {
-      return 'Gemini API quota exceeded. Please get a new API key at https://ai.google.dev or try again tomorrow.';
+      return 'OpenRouter API quota exceeded. Please check your plan at https://openrouter.ai';
     }
     if (res.status === 404) {
-      return 'Gemini model not found. The API key may need to be regenerated at https://ai.google.dev';
+      return 'OpenRouter model not found. Check your OPENROUTER_API_KEY.';
     }
-    return `Gemini API error (${res.status}). Please check your GEMINI_API_KEY.`;
+    return `OpenRouter API error (${res.status}). Please check your OPENROUTER_API_KEY.`;
   }
 
   let data: unknown;
@@ -109,7 +116,7 @@ Use bullet points and keep the language professional but accessible. Do NOT use 
     return 'Gemini returned an unreadable response.';
   }
   return (
-    (data as { candidates?: { content?: { parts?: { text?: string }[] } }[] })?.candidates?.[0]?.content?.parts?.[0]?.text ??
+    (data as { choices?: { message?: { content?: string } }[] })?.choices?.[0]?.message?.content ??
     'No analysis generated. The model returned an empty response.'
   );
 }

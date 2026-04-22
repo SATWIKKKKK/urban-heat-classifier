@@ -4,6 +4,8 @@ import prisma from '@/lib/db';
 import { PdfBuilder } from '@/lib/pdf';
 import { generateReportNarrative } from '@/lib/gemini';
 
+export const maxDuration = 120; // allow slow free-tier AI models
+
 function fmt$(n: number | null | undefined): string {
   return n != null ? `$${Math.round(n).toLocaleString()}` : 'N/A';
 }

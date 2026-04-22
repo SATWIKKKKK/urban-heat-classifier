@@ -3,9 +3,9 @@
  * Generates a dual-scenario A/B analysis for urban heat mitigation planning.
  */
 
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY ?? '';
-const GEMINI_URL =
-  'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
+const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY ?? '';
+const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
+const OPENROUTER_MODEL = 'nvidia/nemotron-3-nano-30b-a3b:free';
 
 export interface ScenarioSummary {
   name: string;
@@ -30,7 +30,7 @@ export interface DualScenarioInput {
 }
 
 export async function generateDualScenarioReport(input: DualScenarioInput): Promise<string> {
-  if (!GEMINI_API_KEY) {
+  if (!OPENROUTER_API_KEY) {
     return 'Gemini API key not configured.';
   }
 
@@ -65,23 +65,30 @@ Provide a structured comparison report (400-600 words) covering:
 
 Use bullet points and concise language. This will be included in a PDF report for city planners.`;
 
-  const res = await fetch(`${GEMINI_URL}?key=${GEMINI_API_KEY}`, {
+  const res = await fetch(OPENROUTER_URL, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+      'HTTP-Referer': 'https://urban-heat-mitigator.vercel.app',
+      'X-Title': 'Urban Heat Mitigator',
+    },
     body: JSON.stringify({
-      contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: { temperature: 0.7, maxOutputTokens: 2000 },
+      model: OPENROUTER_MODEL,
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0.7,
+      max_tokens: 2000,
     }),
   });
 
   if (!res.ok) {
-    console.error('Gemini scenario report error:', await res.text());
+    console.error('OpenRouter scenario report error:', await res.text());
     return 'Failed to generate scenario comparison report.';
   }
 
   const data = await res.json();
   return (
-    data?.candidates?.[0]?.content?.parts?.[0]?.text ??
+    data?.choices?.[0]?.message?.content ??
     'No report generated.'
   );
 }

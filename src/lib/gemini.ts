@@ -1,11 +1,11 @@
 /**
- * Gemini 1.5 Flash — report narrative generation.
- * Uses the REST API directly — no SDK needed.
+ * AI report narrative generation via OpenRouter.
+ * Uses the OpenAI-compatible REST API — no SDK needed.
  */
 
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY ?? '';
-const GEMINI_URL =
-  'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
+const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY ?? '';
+const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
+const OPENROUTER_MODEL = 'nvidia/nemotron-3-nano-30b-a3b:free';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -82,35 +82,41 @@ function buildFallback(ctx: ScenarioReportContext): ReportNarrative {
   };
 }
 
-// ── Gemini REST call ──────────────────────────────────────────────────────────
+// ── OpenRouter REST call ──────────────────────────────────────────────────────
 
 async function callGemini(prompt: string): Promise<string> {
-  if (!GEMINI_API_KEY) return '';
+  if (!OPENROUTER_API_KEY) return '';
 
   try {
-    const res = await fetch(`${GEMINI_URL}?key=${GEMINI_API_KEY}`, {
+    const res = await fetch(OPENROUTER_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+        'HTTP-Referer': 'https://urban-heat-mitigator.vercel.app',
+        'X-Title': 'Urban Heat Mitigator',
+      },
       body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: {
-          temperature: 0.7,
-          maxOutputTokens: 2000,
-        },
+        model: OPENROUTER_MODEL,
+        messages: [{ role: 'user', content: prompt }],
+        temperature: 0.7,
+        max_tokens: 2000,
       }),
+      signal: AbortSignal.timeout(25_000),
     });
 
     if (!res.ok) {
-      console.error('[gemini] API error', res.status);
+      const errText = await res.text();
+      console.error('[openrouter] API error', res.status, errText);
       return '';
     }
 
     const data = (await res.json()) as {
-      candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
+      choices?: Array<{ message?: { content?: string } }>;
     };
-    return data?.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
+    return data?.choices?.[0]?.message?.content ?? '';
   } catch (err) {
-    console.error('[gemini] fetch error', err);
+    console.error('[openrouter] fetch error', err);
     return '';
   }
 }

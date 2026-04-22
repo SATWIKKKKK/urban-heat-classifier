@@ -256,13 +256,35 @@ export default function DashboardMapPage() {
     if (worldView) {
       mapRef.current.setZoom(2);
       mapRef.current.setCenter({ lat: 20, lng: 0 });
-    } else if (payload?.city.lat) {
-      const bounds = new google.maps.LatLngBounds();
-      if (payload.places.length > 0) payload.places.forEach(p => extendBoundsWithGeometry(bounds, p.geometry));
-      else bounds.extend({ lat: payload.city.lat!, lng: payload.city.lng! });
-      mapRef.current.fitBounds(bounds, 40);
+      return;
     }
-  }, [worldView, isLoaded, payload]);
+
+    // When returning from world view, prefer the currently selected place (inspector),
+    // then any searched place, then fall back to the city payload bounds.
+    if (selectedPlace) {
+      const bounds = new google.maps.LatLngBounds();
+      extendBoundsWithGeometry(bounds, selectedPlace.geometry);
+      mapRef.current.fitBounds(bounds, { top: 60, right: 60, bottom: 60, left: 60 });
+      return;
+    }
+
+    if (searchedMarkerPos) {
+      mapRef.current.setCenter(searchedMarkerPos);
+      mapRef.current.setZoom(14);
+      return;
+    }
+
+    if (payload?.city?.lat) {
+      const bounds = new google.maps.LatLngBounds();
+      if (payload.places && payload.places.length > 0) {
+        payload.places.forEach(p => extendBoundsWithGeometry(bounds, p.geometry));
+        mapRef.current.fitBounds(bounds, 40);
+      } else {
+        mapRef.current.setCenter({ lat: payload.city.lat, lng: payload.city.lng });
+        mapRef.current.setZoom(13);
+      }
+    }
+  }, [worldView, isLoaded, payload, selectedPlace, searchedMarkerPos]);
 
   /* â”€â”€ Map callbacks â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
@@ -539,12 +561,32 @@ export default function DashboardMapPage() {
         {/* Action buttons */}
         {canEdit && (
           <div className="space-y-2">
-            <Link href={selectedPlace ? `/dashboard/scenarios/new?placeId=${selectedPlace.id}` : '/dashboard/scenarios/new'}
+            <Link
+              href={
+                selectedPlace
+                  ? `/dashboard/scenarios/new?placeId=${selectedPlace.id}`
+                  : searchedPlace
+                    ? `/dashboard/scenarios/new?placeName=${encodeURIComponent(searchedPlace.name)}&cityName=${encodeURIComponent(searchedPlace.name)}&countryName=${encodeURIComponent(searchedPlace.countryLongName ?? '')}&countryCode=${encodeURIComponent(searchedPlace.countryCode ?? '')}&lat=${searchedPlace.lat}&lng=${searchedPlace.lng}${searchedPlace.weather ? `&baselineTempC=${searchedPlace.weather.temp.toFixed(1)}` : ''}`
+                    : '/dashboard/scenarios/new'
+              }
               className="flex items-center justify-center gap-2 h-11 w-full text-sm font-semibold bg-[#22c55e] text-white rounded-xl hover:bg-[#16a34a] transition-colors shadow-lg shadow-[#22c55e]/20">
               <span className="material-symbols-outlined text-base">auto_awesome</span>Build Scenario
             </Link>
           </div>
         )}
+
+        {/* Map type toggle */}
+        <GlassCard className="flex flex-col overflow-hidden">
+          <p className="text-[9px] font-medium uppercase tracking-wider text-neutral-500 px-3 pt-2 pb-1">Map Style</p>
+          {MAP_TYPE_OPTIONS.map(({ id, label }) => (
+            <button key={id} onClick={() => setMapType(id)}
+              className={`px-3 py-2 text-[10px] font-semibold uppercase tracking-wider transition-colors ${
+                mapType === id ? 'bg-[#22c55e] text-white' : 'text-neutral-500 hover:text-neutral-200 hover:bg-white/[0.04]'
+              }`}>
+              {label}
+            </button>
+          ))}
+        </GlassCard>
 
         {/* Place list */}
         {payload && payload.places.length > 0 && (
@@ -679,6 +721,15 @@ export default function DashboardMapPage() {
                     </div>
                   )}
 
+                  {/* Build Scenario from searched place */}
+                  {canEdit && (
+                    <Link
+                      href={`/dashboard/scenarios/new?placeName=${encodeURIComponent(searchedPlace.name)}&cityName=${encodeURIComponent(searchedPlace.name)}&countryName=${encodeURIComponent(searchedPlace.countryLongName ?? '')}&countryCode=${encodeURIComponent(searchedPlace.countryCode ?? '')}&lat=${searchedPlace.lat}&lng=${searchedPlace.lng}${searchedPlace.weather ? `&baselineTempC=${searchedPlace.weather.temp.toFixed(1)}` : ''}`}
+                      className="w-full flex items-center justify-center gap-2 h-10 text-xs font-semibold bg-[#22c55e] text-white rounded-xl hover:bg-[#16a34a] transition-colors shadow-lg shadow-[#22c55e]/20">
+                      <span className="material-symbols-outlined text-sm">auto_awesome</span>Build Scenario
+                    </Link>
+                  )}
+
                   {/* Save City CTA */}
                   {session?.user && !citySaved && (
                     <button onClick={saveCity} disabled={savingCity}
@@ -791,14 +842,7 @@ export default function DashboardMapPage() {
       {/* â”€â”€â”€ MAP CONTROLS (bottom-right) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <div className="absolute bottom-6 right-6 z-20 flex flex-col gap-2 items-end">
         <GlassCard className="flex flex-col overflow-hidden">
-          {MAP_TYPE_OPTIONS.map(({ id, label }) => (
-            <button key={id} onClick={() => setMapType(id)}
-              className={`px-3 py-2 text-[10px] font-semibold uppercase tracking-wider transition-colors ${mapType === id ? 'bg-[#22c55e] text-white' : 'text-neutral-500 hover:text-neutral-200 hover:bg-white/[0.04]'}`}>
-              {label}
-            </button>
-          ))}
-        </GlassCard>
-        <GlassCard className="flex flex-col overflow-hidden">
+
           <button type="button" onClick={zoomIn} className="w-9 h-9 flex items-center justify-center text-neutral-400 hover:text-white hover:bg-white/[0.04] transition-colors">
             <span className="material-symbols-outlined text-sm">add</span>
           </button>
