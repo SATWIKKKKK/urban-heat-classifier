@@ -71,7 +71,20 @@ export async function GET(
   });
 
   if (!scenario) return NextResponse.json({ error: 'Scenario not found' }, { status: 404 });
-  if (session.user.role !== 'SUPER_ADMIN' && session.user.cityId !== scenario.cityId) {
+
+  // Roles allowed to view reports (mirrors PERMISSION_MAP.view_reports)
+  const VIEW_REPORT_ROLES = [
+    'CITY_COUNCIL', 'URBAN_PLANNER', 'CITY_ADMIN', 'SUPER_ADMIN',
+    'MUNICIPAL_COMMISSIONER', 'SDMA_OBSERVER', 'DATA_ANALYST',
+  ];
+  // State-level roles that are not scoped to a single city
+  const STATE_LEVEL_ROLES = ['SUPER_ADMIN', 'SDMA_OBSERVER'];
+  const role = session.user.role ?? '';
+
+  if (!VIEW_REPORT_ROLES.includes(role)) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
+  if (!STATE_LEVEL_ROLES.includes(role) && session.user.cityId !== scenario.cityId) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
@@ -206,6 +219,7 @@ export async function GET(
   pdf
     .addH1('Executive Summary')
     .addParagraph(
+      detailed.executiveSummary ||
       reportContent.executiveSummary ||
       `The "${scenario.name}" scenario proposes ${strategies.length} urban heat mitigation interventions for ${placeName}, ${scenario.city.name}. Projected to reduce temperatures by ${tempReduction.toFixed(1)}\xb0C and protect ${livesSaved.toLocaleString()} lives each summer, with a total investment of ${fmtCurrency(totalCostLocal, currencySymbol)}.`,
     );

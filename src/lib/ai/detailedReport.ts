@@ -31,6 +31,7 @@ export interface ComparisonCity {
 }
 
 export interface DetailedReportSections {
+  executiveSummary: string;
   placeVulnerabilityBreakdown: string;
   keyRiskFactors: string[];
   seasonalContext: string;
@@ -81,6 +82,9 @@ function buildFallback(input: DetailedReportInput): DetailedReportSections {
     .reduce((sum, s) => sum + (s.quantity ?? 0), 0);
 
   return {
+    executiveSummary:
+      `${input.placeName} faces sustained urban heat stress driven by limited canopy cover, high impervious surface exposure, and dense residential activity in heat-retaining streets and public spaces. This mitigation package combines ${input.strategies.length} targeted interventions to cool priority zones, improve pedestrian comfort, and reduce avoidable summer health risk. At full deployment, the scenario is projected to lower local temperatures by ${input.projectedTempReductionC.toFixed(1)}\u00b0C, protect ${input.projectedLivesSaved.toLocaleString()} people during peak heat periods, and deliver ${input.projectedCo2ReductionTons.toFixed(1)} tons of annual carbon benefit. The proposal is structured to give the city a practical, council-ready path from pilot deployment to ward-scale expansion within a 12-month implementation cycle.`,
+
     placeVulnerabilityBreakdown:
       `${input.placeName} is rated ${input.vulnerabilityLevel ?? 'HIGH'} vulnerability due to a combination of high impervious surface coverage (${input.imperviousSurfacePct ?? 50}%), low tree canopy (${input.treeCanopyPct ?? 15}%), and dense residential population exposed to urban heat island conditions. The area scores ${input.vulnerabilityScore ?? 7}/10 on the composite heat risk index, placing it among the highest-priority zones for intervention.`,
 
@@ -195,7 +199,9 @@ function buildPrompt(input: DetailedReportInput): string {
     .map(s => `${s.type}:${s.name}(qty:${s.quantity},cost:${s.totalCostLocal},cooling:${s.tempReductionC}C)`)
     .join('; ');
 
-  return `Expert urban heat planner. Return ONLY valid JSON for a detailed mitigation report. No markdown.
+  return `You are a senior urban heat resilience consultant preparing a council-ready mitigation brief.
+Return ONLY valid JSON. No markdown, no code fences, no commentary outside JSON.
+Write concrete, specific, decision-useful content. Prefer quantified outcomes, local implementation detail, and practical public-sector language over generic sustainability claims.
 
 Location: ${input.placeName}, ${input.cityName}, ${input.countryName} (${input.countryCode})
 Vulnerability: ${input.vulnerabilityLevel ?? 'HIGH'} (${input.vulnerabilityScore ?? 7}/10)
@@ -204,12 +210,19 @@ Population: ${input.population ?? 50000} | Tree canopy: ${input.treeCanopyPct ??
 Lives saved: ${input.projectedLivesSaved} | CO2 offset: ${input.projectedCo2ReductionTons} tons/yr
 Strategies: ${stratList}
 
-JSON schema (keep all string values SHORT, single-line, no nested quotes):
+JSON schema and content rules:
+- Keep every value valid JSON.
+- Keep paragraphs single-line strings, but make them substantive.
+- Avoid vague phrases like "game changer" or "transformative".
+- Use realistic civic actions, funding sources, and delivery timelines.
+- Make the summary persuasive enough for a city council approval packet.
+
 {
-  "placeVulnerabilityBreakdown": "2-3 sentence explanation of why this place is vulnerable",
-  "keyRiskFactors": ["factor 1","factor 2","factor 3","factor 4"],
-  "seasonalContext": "1-2 sentences on peak heat season and optimal planting/construction window for ${input.countryName}",
-  "combinedImpactNarrative": "3-4 sentences on synergistic effect of all strategies together",
+  "executiveSummary": "4-6 sentence executive summary covering the current heat problem, intervention package, quantified outcomes, investment case, and why this plan should be approved now",
+  "placeVulnerabilityBreakdown": "3-5 sentence explanation of why this place is vulnerable, with physical drivers and population exposure",
+  "keyRiskFactors": ["factor 1","factor 2","factor 3","factor 4","factor 5"],
+  "seasonalContext": "2-3 sentences on peak heat season, operational constraints, and the best delivery window in ${input.countryName}",
+  "combinedImpactNarrative": "4-6 sentences on how the strategies work together, where cooling compounds, and what results should be visible in year 1 versus later years",
   "beforeAfterTable": [
     {"metric":"Average Temperature","before":"${baseline}C","after":"${afterTemp}C"},
     {"metric":"Vulnerability Level","before":"${input.vulnerabilityLevel ?? 'HIGH'}","after":"projected level after interventions"},
@@ -218,7 +231,7 @@ JSON schema (keep all string values SHORT, single-line, no nested quotes):
     {"metric":"Heat Risk Days/Year","before":"est. current days","after":"projected reduced days"}
   ],
   "totalTreesPlanted": ${input.strategies.filter(s => s.type === 'TREE_PLANTING').reduce((sum, s) => sum + s.quantity, 0) || 200},
-  "livesSavedCitation": "Short citation: WHO heat-mortality model + calculation showing ${input.projectedLivesSaved} lives",
+  "livesSavedCitation": "2-3 sentence citation-style explanation referencing a heat-mortality model and showing why ${input.projectedLivesSaved} lives protected is plausible",
   "strategyExtras": [${input.strategies.map(s => `
     {
       "type": "${s.type}",
@@ -231,20 +244,20 @@ JSON schema (keep all string values SHORT, single-line, no nested quotes):
     }`).join(',')}
   ],
   "roadmap": [
-    {"period":"Month 1-2","milestone":"Site assessment and procurement","responsible":"Municipal Ward Office","tasks":["task1","task2","task3"]},
-    {"period":"Month 3-4","milestone":"Phase 1: highest-impact deployment","responsible":"Works Department","tasks":["task1","task2"]},
-    {"period":"Month 5-6","milestone":"Monitoring setup","responsible":"Environment Cell","tasks":["task1","task2"]},
-    {"period":"Month 7-9","milestone":"Phase 2: infrastructure works","responsible":"PWD / Contractor","tasks":["task1","task2"]},
-    {"period":"Month 10-11","milestone":"Impact assessment","responsible":"Urban Planning Dept","tasks":["task1"]},
-    {"period":"Month 12","milestone":"Review and scale-up plan","responsible":"Mayor's Office","tasks":["task1","task2"]}
+    {"period":"Month 1-2","milestone":"Site assessment and procurement","responsible":"Municipal Ward Office","tasks":["specific task 1","specific task 2","specific task 3"]},
+    {"period":"Month 3-4","milestone":"Phase 1: highest-impact deployment","responsible":"Works Department","tasks":["specific task 1","specific task 2","specific task 3"]},
+    {"period":"Month 5-6","milestone":"Monitoring setup","responsible":"Environment Cell","tasks":["specific task 1","specific task 2","specific task 3"]},
+    {"period":"Month 7-9","milestone":"Phase 2: infrastructure works","responsible":"PWD / Contractor","tasks":["specific task 1","specific task 2","specific task 3"]},
+    {"period":"Month 10-11","milestone":"Impact assessment","responsible":"Urban Planning Dept","tasks":["specific task 1","specific task 2"]},
+    {"period":"Month 12","milestone":"Review and scale-up plan","responsible":"Mayor's Office","tasks":["specific task 1","specific task 2","specific task 3"]}
   ],
   "comparisonCities": [
-    {"name":"city1","country":"country","context":"1 sentence why comparable","whatTheyDid":"2 sentences specific actions","results":"quantified results"},
-    {"name":"city2","country":"country","context":"1 sentence","whatTheyDid":"2 sentences","results":"quantified results"}
+    {"name":"city1","country":"country","context":"1-2 sentence reason this city is comparable","whatTheyDid":"2-3 sentence description of specific actions","results":"quantified results with at least one number"},
+    {"name":"city2","country":"country","context":"1-2 sentence reason this city is comparable","whatTheyDid":"2-3 sentence description of specific actions","results":"quantified results with at least one number"}
   ],
-  "contacts": ["contact1 with role","contact2","contact3"],
-  "fundingApplications": ["fund1 with application details","fund2","fund3"],
-  "immediateActions": ["action1 in next 30 days","action2","action3","action4"]
+  "contacts": ["contact1 with role","contact2","contact3","contact4"],
+  "fundingApplications": ["fund1 with application details","fund2","fund3","fund4"],
+  "immediateActions": ["action1 in next 30 days","action2","action3","action4","action5"]
 }`;
 }
 
@@ -263,12 +276,19 @@ export async function generateDetailedReportSections(
   if (!hasKey) return fallback;
 
   try {
+    const reportModel = process.env.AI_REPORT_MODEL ?? 'anthropic/claude-sonnet-4-20250514';
     const text = await aiChat({
-      messages: [{ role: 'user', content: buildPrompt(input) }],
-      model: process.env.AI_PREFERRED_MODEL ?? 'gpt-4o-mini',
-      temperature: 0.4,
-      maxTokens: 3500,
-      timeoutMs: 60_000,
+      messages: [
+        {
+          role: 'system',
+          content: 'You write council-ready urban climate reports. Return only valid JSON that matches the requested schema.',
+        },
+        { role: 'user', content: buildPrompt(input) },
+      ],
+      model: reportModel,
+      temperature: 0.35,
+      maxTokens: 5000,
+      timeoutMs: 90_000,
     });
 
     if (!text) return fallback;
@@ -288,6 +308,7 @@ export async function generateDetailedReportSections(
     const str = (v: unknown, fb: string): string => (typeof v === 'string' && v.trim() ? v.trim() : fb);
 
     return {
+      executiveSummary: str(raw.executiveSummary, fallback.executiveSummary),
       placeVulnerabilityBreakdown: str(raw.placeVulnerabilityBreakdown, fallback.placeVulnerabilityBreakdown),
       keyRiskFactors: arr(raw.keyRiskFactors, fallback.keyRiskFactors).map(String),
       seasonalContext: str(raw.seasonalContext, fallback.seasonalContext),

@@ -143,12 +143,12 @@ export default function ScenarioReportPage() {
                   View Alternative
                 </button>
               )}
-              <button
-                onClick={() => window.print()}
-                className="px-4 h-8 text-xs font-semibold bg-[#22c55e] text-white rounded-lg hover:bg-[#16a34a] transition-colors flex items-center gap-1.5"
+              <a
+                href={`/api/scenarios/${scenario.id}/council-brief`}
+                className="px-4 h-8 text-xs font-semibold bg-[#22c55e] text-white rounded-lg hover:bg-[#16a34a] transition-colors inline-flex items-center gap-1.5"
               >
                 <span className="material-symbols-outlined text-sm">download</span>Download PDF
-              </button>
+              </a>
             </div>
           </div>
         </div>
