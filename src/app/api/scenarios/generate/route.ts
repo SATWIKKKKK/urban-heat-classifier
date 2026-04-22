@@ -16,6 +16,33 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    // Verify the user in the DB (the JWT might reference a stale/deleted user ID).
+    // Always resolve the real DB user to prevent FK violations.
+    let resolvedUserId = session.user.id;
+    {
+      const dbUser = await prisma.user.findUnique({
+        where: { id: resolvedUserId },
+        select: { id: true },
+      });
+      if (!dbUser) {
+        // Session token has a stale user ID (e.g. after a DB reseed). Try by email.
+        const email = session.user.email?.toLowerCase().trim();
+        if (email) {
+          const userByEmail = await prisma.user.findUnique({
+            where: { email },
+            select: { id: true },
+          });
+          if (userByEmail) {
+            resolvedUserId = userByEmail.id;
+          } else {
+            return NextResponse.json({ error: 'User account not found. Please sign in again.' }, { status: 401 });
+          }
+        } else {
+          return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+      }
+    }
+
     const body = await request.json();
     const {
       placeId,
@@ -161,7 +188,7 @@ export async function POST(request: Request) {
           totalProjectedTempReductionC: scenario.projectedTempReductionC,
           totalProjectedLivesSaved: Math.round(scenario.projectedLivesSaved),
           projectedCo2ReductionTons: scenario.projectedCo2ReductionTons,
-          createdById: session.user.id,
+          createdById: resolvedUserId,
         },
       });
 
@@ -185,7 +212,7 @@ export async function POST(request: Request) {
               currencyCode: currency.code,
               currencySymbol: currency.symbol,
             }),
-            proposedById: session.user.id,
+            proposedById: resolvedUserId,
           },
         });
 
@@ -253,7 +280,7 @@ export async function POST(request: Request) {
             },
             variant: key,
           }),
-          generatedById: session.user.id,
+          generatedById: resolvedUserId,
         },
       });
 

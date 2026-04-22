@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 
 export async function GET(request: Request) {
@@ -26,12 +27,26 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Resolve the real DB user (JWT can have stale IDs after a DB reseed)
+    let resolvedUserId = session.user.id;
+    const dbUser = await prisma.user.findUnique({ where: { id: resolvedUserId }, select: { id: true } });
+    if (!dbUser) {
+      const email = session.user.email?.toLowerCase().trim();
+      const userByEmail = email ? await prisma.user.findUnique({ where: { email }, select: { id: true } }) : null;
+      if (!userByEmail) return NextResponse.json({ error: 'User account not found. Please sign in again.' }, { status: 401 });
+      resolvedUserId = userByEmail.id;
+    }
+
     const body = await request.json();
     const {
       cityId,
       name,
       description,
-      createdById,
       interventionIds,
       priority,
       totalEstimatedCostUsd,
@@ -41,8 +56,8 @@ export async function POST(request: Request) {
       simulationSummary,
       placeResults,
     } = body;
-    if (!cityId || !name || !createdById) {
-      return NextResponse.json({ error: 'cityId, name and createdById required' }, { status: 400 });
+    if (!cityId || !name) {
+      return NextResponse.json({ error: 'cityId and name are required' }, { status: 400 });
     }
 
     const scenario = await prisma.scenario.create({
@@ -56,7 +71,7 @@ export async function POST(request: Request) {
         totalProjectedTempReductionC: totalProjectedTempReductionC ?? null,
         totalProjectedLivesSaved: totalProjectedLivesSaved ?? null,
         projectedCo2ReductionTons: projectedCo2ReductionTons ?? null,
-        createdById,
+        createdById: resolvedUserId,
       },
     });
 
