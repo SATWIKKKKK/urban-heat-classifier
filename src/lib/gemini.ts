@@ -3,7 +3,10 @@
  * Uses the OpenAI-compatible REST API — no SDK needed.
  */
 
+import { aiChat } from '@/lib/ai/client';
+
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY ?? '';
+// OPENROUTER constants retained for backwards compatibility if needed by envs
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
 const OPENROUTER_MODEL = 'nvidia/nemotron-3-nano-30b-a3b:free';
 
@@ -85,40 +88,9 @@ function buildFallback(ctx: ScenarioReportContext): ReportNarrative {
 // ── OpenRouter REST call ──────────────────────────────────────────────────────
 
 async function callGemini(prompt: string): Promise<string> {
-  if (!OPENROUTER_API_KEY) return '';
-
-  try {
-    const res = await fetch(OPENROUTER_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
-        'HTTP-Referer': 'https://urban-heat-mitigator.vercel.app',
-        'X-Title': 'Urban Heat Mitigator',
-      },
-      body: JSON.stringify({
-        model: OPENROUTER_MODEL,
-        messages: [{ role: 'user', content: prompt }],
-        temperature: 0.7,
-        max_tokens: 2000,
-      }),
-      signal: AbortSignal.timeout(25_000),
-    });
-
-    if (!res.ok) {
-      const errText = await res.text();
-      console.error('[openrouter] API error', res.status, errText);
-      return '';
-    }
-
-    const data = (await res.json()) as {
-      choices?: Array<{ message?: { content?: string } }>;
-    };
-    return data?.choices?.[0]?.message?.content ?? '';
-  } catch (err) {
-    console.error('[openrouter] fetch error', err);
-    return '';
-  }
+  // Use the aiChat wrapper which prefers AICREDITS/OPENAI then falls back to OpenRouter.
+  const text = await aiChat({ messages: [{ role: 'user', content: prompt }], model: process.env.AI_PREFERRED_MODEL, temperature: 0.7, maxTokens: 2000, timeoutMs: 25_000 });
+  return text ?? '';
 }
 
 // ── Prompt builder ────────────────────────────────────────────────────────────

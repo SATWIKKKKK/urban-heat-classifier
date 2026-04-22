@@ -3,9 +3,9 @@
  * Generates a dual-scenario A/B analysis for urban heat mitigation planning.
  */
 
-const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY ?? '';
-const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
-const OPENROUTER_MODEL = 'nvidia/nemotron-3-nano-30b-a3b:free';
+import { aiChat } from '@/lib/ai/client';
+
+const OPENROUTER_MODEL = process.env.AI_PREFERRED_MODEL ?? 'gpt-3.5-turbo';
 
 export interface ScenarioSummary {
   name: string;
@@ -30,9 +30,8 @@ export interface DualScenarioInput {
 }
 
 export async function generateDualScenarioReport(input: DualScenarioInput): Promise<string> {
-  if (!OPENROUTER_API_KEY) {
-    return 'Gemini API key not configured.';
-  }
+  const hasKey = Boolean(process.env.AICREDITS_API_KEY || process.env.OPENAI_API_KEY || process.env.OPENROUTER_API_KEY);
+  if (!hasKey) return 'AI API key not configured.';
 
   const formatScenario = (s: ScenarioSummary, label: string) => `
 ${label}: "${s.name}"
@@ -65,30 +64,11 @@ Provide a structured comparison report (400-600 words) covering:
 
 Use bullet points and concise language. This will be included in a PDF report for city planners.`;
 
-  const res = await fetch(OPENROUTER_URL, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
-      'HTTP-Referer': 'https://urban-heat-mitigator.vercel.app',
-      'X-Title': 'Urban Heat Mitigator',
-    },
-    body: JSON.stringify({
-      model: OPENROUTER_MODEL,
-      messages: [{ role: 'user', content: prompt }],
-      temperature: 0.7,
-      max_tokens: 2000,
-    }),
-  });
-
-  if (!res.ok) {
-    console.error('OpenRouter scenario report error:', await res.text());
+  try {
+    const text = await aiChat({ messages: [{ role: 'user', content: prompt }], model: OPENROUTER_MODEL, temperature: 0.7, maxTokens: 2000, timeoutMs: 25_000 });
+    return text || 'No report generated.';
+  } catch (err) {
+    console.error('generateDualScenarioReport error:', err);
     return 'Failed to generate scenario comparison report.';
   }
-
-  const data = await res.json();
-  return (
-    data?.choices?.[0]?.message?.content ??
-    'No report generated.'
-  );
 }

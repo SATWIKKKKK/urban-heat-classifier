@@ -4,12 +4,9 @@
  * in a single API call, with full cost breakdown in local currency.
  */
 
-const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
-const OPENROUTER_MODEL = 'nvidia/nemotron-3-nano-30b-a3b:free';
+import { aiChat } from '@/lib/ai/client';
 
-function getKey() {
-  return process.env.OPENROUTER_API_KEY ?? '';
-}
+// Note: the aiChat helper will prefer AICREDITS/OPENAI keys then fallback to OpenRouter.
 
 // ── Input / Output types ──────────────────────────────────────────────────────
 
@@ -310,32 +307,9 @@ function parseJsonWithRepair(raw: string): Record<string, unknown> {
 
 // ── Single scenario API call ──────────────────────────────────────────────────
 
-async function callOnce(prompt: string, key: string): Promise<GeneratedScenario> {
-  const res = await fetch(OPENROUTER_URL, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${key}`,
-      'HTTP-Referer': 'https://urban-heat-mitigator.vercel.app',
-      'X-Title': 'Urban Heat Mitigator',
-    },
-    body: JSON.stringify({
-      model: OPENROUTER_MODEL,
-      messages: [{ role: 'user', content: prompt }],
-      temperature: 0.3,
-      max_tokens: 4096,
-    }),
-    signal: AbortSignal.timeout(120_000),
-  });
-
-  if (!res.ok) {
-    const body = await res.text();
-    throw new Error(`OpenRouter API error ${res.status}: ${body.slice(0, 400)}`);
-  }
-
-  const json = await res.json();
-  const text: string = json?.choices?.[0]?.message?.content ?? '';
-  if (!text) throw new Error('OpenRouter returned empty response');
+async function callOnce(prompt: string): Promise<GeneratedScenario> {
+  const text = await aiChat({ messages: [{ role: 'user', content: prompt }], model: process.env.AI_PREFERRED_MODEL, temperature: 0.3, maxTokens: 4096, timeoutMs: 120_000 });
+  if (!text) throw new Error('AI returned empty response');
 
   let parsed: GeneratedScenario;
   try {
@@ -380,7 +354,7 @@ async function callOnce(prompt: string, key: string): Promise<GeneratedScenario>
       monitoringPlan: typeof unwrapped.monitoringPlan === 'string' ? unwrapped.monitoringPlan : '',
     } as GeneratedScenario;
   } catch (e) {
-    console.error('[scenarioGen] parse error. Text snippet:\n', text.slice(0, 600));
+    console.error('[scenarioGen] parse error. Text snippet:\n', (text || '').slice(0, 600));
     throw new Error(`Failed to parse AI response: ${(e as Error).message}`);
   }
 
@@ -393,12 +367,12 @@ async function callOnce(prompt: string, key: string): Promise<GeneratedScenario>
 export async function generateScenarios(
   input: ScenarioGenerationInput,
 ): Promise<ScenarioGenerationResult> {
-  const key = getKey();
-  if (!key) throw new Error('OPENROUTER_API_KEY is not configured');
+  const hasKey = Boolean(process.env.AICREDITS_API_KEY || process.env.OPENAI_API_KEY || process.env.OPENROUTER_API_KEY);
+  if (!hasKey) throw new Error('AI API key not configured (AICREDITS/OPENAI/OPENROUTER)');
 
   // Call A first, then B (sequential to avoid rate limits)
-  const scenarioA = await callOnce(buildSinglePrompt(input, 'A'), key);
-  const scenarioB = await callOnce(buildSinglePrompt(input, 'B', scenarioA.name), key);
+  const scenarioA = await callOnce(buildSinglePrompt(input, 'A'));
+  const scenarioB = await callOnce(buildSinglePrompt(input, 'B', scenarioA.name));
 
   return { scenarioA, scenarioB };
 }

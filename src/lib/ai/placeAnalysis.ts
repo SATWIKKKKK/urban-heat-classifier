@@ -3,12 +3,9 @@
  * Takes live weather, AQI, and forecast data and generates an AI report.
  */
 
-const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
-const OPENROUTER_MODEL = 'nvidia/nemotron-3-nano-30b-a3b:free';
+import { aiChat } from '@/lib/ai/client';
 
-function getGeminiKey() {
-  return process.env.OPENROUTER_API_KEY ?? '';
-}
+const OPENROUTER_MODEL = process.env.AI_PREFERRED_MODEL ?? 'gpt-3.5-turbo';
 
 export interface PlaceAnalysisInput {
   placeName: string;
@@ -32,9 +29,9 @@ export interface PlaceAnalysisInput {
 }
 
 export async function generatePlaceAnalysis(input: PlaceAnalysisInput): Promise<string> {
-  const GEMINI_API_KEY = getGeminiKey();
-  if (!GEMINI_API_KEY) {
-    return 'OpenRouter API key not configured. Set OPENROUTER_API_KEY in your environment variables.';
+  const hasKey = Boolean(process.env.AICREDITS_API_KEY || process.env.OPENAI_API_KEY || process.env.OPENROUTER_API_KEY);
+  if (!hasKey) {
+    return 'AI API key not configured. Set AICREDITS_API_KEY, OPENAI_API_KEY, or OPENROUTER_API_KEY in your environment variables.';
   }
 
   const weatherSection = input.weather
@@ -76,47 +73,11 @@ Provide a concise analysis (300-500 words) covering:
 
 Use bullet points and keep the language professional but accessible. Do NOT use markdown headers larger than ###.`;
 
-  let res: Response;
   try {
-    res = await fetch(OPENROUTER_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${GEMINI_API_KEY}`,
-        'HTTP-Referer': 'https://urban-heat-mitigator.vercel.app',
-        'X-Title': 'Urban Heat Mitigator',
-      },
-      body: JSON.stringify({
-        model: OPENROUTER_MODEL,
-        messages: [{ role: 'user', content: prompt }],
-        temperature: 0.7,
-        max_tokens: 1500,
-      }),
-    });
-  } catch (fetchErr) {
-    console.error('Gemini fetch error:', fetchErr);
-    return 'Network error reaching Gemini API. Please check your connection.';
+    const text = await aiChat({ messages: [{ role: 'user', content: prompt }], model: OPENROUTER_MODEL, temperature: 0.7, maxTokens: 1500, timeoutMs: 25_000 });
+    return text || 'No analysis generated. The model returned an empty response.';
+  } catch (err) {
+    console.error('generatePlaceAnalysis error:', err);
+    return 'Failed to generate place analysis.';
   }
-
-  if (!res.ok) {
-    let errBody = '';
-    try { errBody = await res.text(); } catch { /* ignore */ }
-    console.error('Gemini API error:', res.status, errBody);
-    if (res.status === 429) {
-      return 'OpenRouter API quota exceeded. Please check your plan at https://openrouter.ai';
-    }
-    if (res.status === 404) {
-      return 'OpenRouter model not found. Check your OPENROUTER_API_KEY.';
-    }
-    return `OpenRouter API error (${res.status}). Please check your OPENROUTER_API_KEY.`;
-  }
-
-  let data: unknown;
-  try { data = await res.json(); } catch {
-    return 'Gemini returned an unreadable response.';
-  }
-  return (
-    (data as { choices?: { message?: { content?: string } }[] })?.choices?.[0]?.message?.content ??
-    'No analysis generated. The model returned an empty response.'
-  );
 }
