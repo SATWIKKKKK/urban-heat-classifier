@@ -136,11 +136,11 @@ export class PdfBuilder {
     const lines = wrapText(text, sz, CW - 10);
     const h = lines.length * (sz + 6) + 36;
     this._need(h);
-    // top accent bar — drawn above text, separated to avoid overlap with ascenders
+    // top accent bar
     this._fillRect(ML, this.pg.y - 4, CW, 4, 0.09, 0.56, 0.40);
     this.pg.y -= 24;
     for (const ln of lines) {
-      this._text(ML, this.pg.y, ln, sz, true, 0.06, 0.09, 0.16);
+      this._text(ML, this.pg.y, ln, sz, true, 0, 0, 0);
       this.pg.y -= sz + 6;
     }
     this.pg.y -= 6;
@@ -156,24 +156,24 @@ export class PdfBuilder {
     return this;
   }
 
-  /** Section heading (green, uppercase, underline) */
+  /** Section heading (black bold, green underline) */
   addH1(text: string): this {
-    const sz = 11;
-    this._need(sz + 22);
-    this.pg.y -= 8;
-    this._text(ML, this.pg.y, text.toUpperCase(), sz, true, 0.09, 0.56, 0.40);
+    const sz = 12;
+    this._need(sz + 24);
+    this.pg.y -= 10;
+    this._text(ML, this.pg.y, text.toUpperCase(), sz, true, 0, 0, 0);
     this.pg.y -= sz + 5;
-    this._hline(ML, this.pg.y, ML + CW, 0.09, 0.56, 0.40, 0.75);
-    this.pg.y -= 8;
+    this._hline(ML, this.pg.y, ML + CW, 0.09, 0.56, 0.40, 1);
+    this.pg.y -= 9;
     return this;
   }
 
-  /** Sub-heading (dark, normal case) */
+  /** Sub-heading (green, normal case) */
   addH2(text: string): this {
     const sz = 10;
     this._need(sz + 14);
     this.pg.y -= 4;
-    this._text(ML, this.pg.y, text, sz, true, 0.12, 0.14, 0.20);
+    this._text(ML, this.pg.y, text, sz, true, 0.09, 0.56, 0.40);
     this.pg.y -= sz + 10;
     return this;
   }
@@ -182,14 +182,14 @@ export class PdfBuilder {
   addParagraph(text: string, small = false): this {
     if (!text.trim()) return this;
     const sz = small ? 9 : 10;
-    const lh = sz + 4;
+    const lh = sz + 5;
     const lines = wrapText(text, sz, CW);
     const firstChunk = Math.min(lines.length, 8);
     this._need(firstChunk * lh + 8);
     for (const ln of lines) {
       if (this.pg.y - lh < MB) this._newPage();
       if (!ln) { this.pg.y -= 6; continue; }
-      this._text(ML, this.pg.y, ln, sz, false, 0.12, 0.14, 0.20);
+      this._text(ML, this.pg.y, ln, sz, false, 0, 0, 0);
       this.pg.y -= lh;
     }
     this.pg.y -= 8;
@@ -208,8 +208,8 @@ export class PdfBuilder {
     for (let i = 0; i < n; i++) {
       const x = ML + i * colW + 8;
       const { label, value, accent = false } = stats[i];
-      this._text(x, this.pg.y - 15, label.toUpperCase(), 7, false, 0.45, 0.48, 0.55);
-      const [vr, vg, vb] = accent ? [0.09, 0.56, 0.40] : [0.06, 0.09, 0.16];
+      this._text(x, this.pg.y - 15, label.toUpperCase(), 7, false, 0.35, 0.38, 0.42);
+      const [vr, vg, vb] = accent ? [0.09, 0.56, 0.40] : [0, 0, 0];
       this._text(x, this.pg.y - 36, value, 14, true, vr, vg, vb);
       if (i < n - 1) {
         this._vline(ML + (i + 1) * colW, this.pg.y, this.pg.y - h, 0.87, 0.89, 0.93);
@@ -256,7 +256,7 @@ export class PdfBuilder {
         const maxChars = Math.max(4, Math.floor((colWs[c] - 12) / (9 * 0.45)));
         const cell = String(rows[r][c] ?? '');
         const display = cell.length > maxChars ? cell.slice(0, maxChars - 2) + '..' : cell;
-        this._text(x + 6, this.pg.y - ROW_H + 4, display, 9, false, 0.12, 0.14, 0.20);
+        this._text(x + 6, this.pg.y - ROW_H + 4, display, 9, false, 0, 0, 0);
         x += colWs[c];
       }
       this.pg.y -= ROW_H;
@@ -279,7 +279,7 @@ export class PdfBuilder {
     this._fillRect(ML, this.pg.y - h, 3, h, cr, cg, cb);
     let ty = this.pg.y - 11;
     for (const ln of lines) {
-      if (ln) this._text(ML + 12, ty, ln, sz, false, 0.06, 0.20, 0.14);
+      if (ln) this._text(ML + 12, ty, ln, sz, false, 0.02, 0.12, 0.06);
       ty -= sz + 3;
     }
     this.pg.y -= h + 10;
@@ -300,7 +300,7 @@ export class PdfBuilder {
     return this;
   }
 
-  /** Full-page dark cover (must be called FIRST before any other content method) */
+  /** Clean professional cover page — white background with dark text */
   addCoverPage(opts: {
     placeName: string;
     cityCountry: string;
@@ -308,57 +308,57 @@ export class PdfBuilder {
     date: string;
     scenarioName?: string;
   }): this {
-    // Fill entire page with dark navy background
-    this._fillRect(0, 0, PAGE_W, PAGE_H, 0.06, 0.09, 0.16);
-    // Top accent band
-    this._fillRect(0, PAGE_H - 10, PAGE_W, 10, 0.09, 0.56, 0.40);
-    // Side accent strip
-    this._fillRect(0, 0, 5, PAGE_H, 0.09, 0.56, 0.40);
+    // White background
+    this._fillRect(0, 0, PAGE_W, PAGE_H, 1, 1, 1);
 
-    // Title block
-    this._text(ML + 5, PAGE_H - 60, 'URBAN HEAT MITIGATION', 20, true, 1, 1, 1);
-    this._text(ML + 5, PAGE_H - 85, 'SCENARIO REPORT', 15, false, 0.09, 0.56, 0.40);
+    // Top green header band (thick)
+    this._fillRect(0, PAGE_H - 70, PAGE_W, 70, 0.09, 0.56, 0.40);
 
-    // Thin divider below title
-    this._hline(ML + 5, PAGE_H - 100, PAGE_W - MR, 0.20, 0.28, 0.38, 0.5);
+    // Header text on green band
+    this._text(ML, PAGE_H - 38, 'URBAN HEAT MITIGATION SCENARIO REPORT', 14, true, 1, 1, 1);
+    this._text(ML, PAGE_H - 58, 'HeatPlan AI  \u2014  Official Council Brief', 9, false, 0.85, 0.97, 0.90);
 
-    // Place name (large)
-    const placeLines = wrapText(opts.placeName, 28, CW - 10);
-    let py = PAGE_H - 160;
+    // Horizontal rule below header
+    this._hline(ML, PAGE_H - 80, PAGE_W - MR, 0.80, 0.85, 0.85, 0.5);
+
+    // Place name block
+    const placeLines = wrapText(opts.placeName, 30, CW - 10);
+    let py = PAGE_H - 130;
     for (const ln of placeLines) {
-      this._text(ML + 5, py, ln, 28, true, 1, 1, 1);
-      py -= 38;
+      this._text(ML, py, ln, 30, true, 0, 0, 0);
+      py -= 40;
     }
 
-    // City/Country
-    this._text(ML + 5, py - 4, opts.cityCountry, 13, false, 0.65, 0.70, 0.80);
-    py -= 32;
+    // City/Country below place name
+    this._text(ML, py - 4, opts.cityCountry, 13, false, 0.25, 0.28, 0.32);
+    py -= 30;
 
-    // Scenario name (if provided)
+    // Scenario name
     if (opts.scenarioName) {
-      this._text(ML + 5, py, opts.scenarioName, 11, false, 0.55, 0.80, 0.65);
+      this._text(ML, py, `Scenario: ${opts.scenarioName}`, 11, false, 0.09, 0.56, 0.40);
       py -= 28;
     }
 
-    // Vulnerability badge
-    const [br, bg, bb] = opts.vulnLevel === 'CRITICAL' ? [0.78, 0.12, 0.12]
-      : opts.vulnLevel === 'HIGH' ? [0.85, 0.38, 0.09]
-      : opts.vulnLevel === 'MEDIUM' ? [0.80, 0.60, 0.09]
+    // Thin divider
+    this._hline(ML, py, ML + CW, 0.75, 0.80, 0.80, 0.5);
+    py -= 30;
+
+    // Vulnerability badge (outlined box, no full fill)
+    const [br, bg, bb] = opts.vulnLevel === 'CRITICAL' ? [0.75, 0.10, 0.10]
+      : opts.vulnLevel === 'HIGH' ? [0.80, 0.32, 0.06]
+      : opts.vulnLevel === 'MEDIUM' ? [0.75, 0.52, 0.06]
       : [0.09, 0.50, 0.25];
-    this._fillRect(ML + 5, py - 26, 160, 26, br, bg, bb);
-    const badgeText = `VULNERABILITY: ${opts.vulnLevel.toUpperCase()}`;
-    this._text(ML + 12, py - 18, badgeText, 9, true, 1, 1, 1);
-    py -= 46;
+    this._fillRect(ML, py - 28, 200, 28, br, bg, bb);
+    this._text(ML + 10, py - 19, `HEAT VULNERABILITY: ${opts.vulnLevel.toUpperCase()}`, 10, true, 1, 1, 1);
+    py -= 50;
 
-    // Date + branding
-    this._text(ML + 5, py, `Generated: ${opts.date}`, 10, false, 0.65, 0.70, 0.80);
-    py -= 22;
-    this._text(ML + 5, py, 'Prepared using HeatPlan AI', 9, false, 0.40, 0.44, 0.52);
+    // Date
+    this._text(ML, py, `Report Date: ${opts.date}`, 10, false, 0.20, 0.22, 0.26);
+    py -= 20;
+    this._text(ML, py, 'Prepared using HeatPlan AI  \u2014  Confidential, for official use only', 9, false, 0.40, 0.43, 0.48);
 
-    // Bottom bar
-    this._fillRect(0, 0, PAGE_W, 30, 0.04, 0.06, 0.12);
-    this._text(ML + 5, 10, 'CONFIDENTIAL \u2014 FOR OFFICIAL USE ONLY', 8, false, 0.40, 0.44, 0.52);
-    this._text(PAGE_W - MR - 95, 10, 'HeatPlan AI \u00a9 2026', 8, false, 0.40, 0.44, 0.52);
+    // Bottom green rule
+    this._fillRect(0, 0, PAGE_W, 6, 0.09, 0.56, 0.40);
 
     // Start fresh page for content
     this._newPage();
@@ -377,7 +377,7 @@ export class PdfBuilder {
       this._text(ML + 2, this.pg.y, '\u2022', sz, true, 0.09, 0.56, 0.40);
       for (let i = 0; i < lines.length; i++) {
         if (this.pg.y - lh < MB) this._newPage();
-        this._text(ML + indent, this.pg.y, lines[i], sz, false, 0.12, 0.14, 0.20);
+        this._text(ML + indent, this.pg.y, lines[i], sz, false, 0, 0, 0);
         this.pg.y -= lh;
       }
       this.pg.y -= 2;
@@ -406,9 +406,9 @@ export class PdfBuilder {
       if (r % 2 === 1) this._fillRect(ML, this.pg.y - ROW_H, CW, ROW_H, 0.96, 0.97, 0.99);
       // Green tint on "after" column
       this._fillRect(ML + c0 + c1, this.pg.y - ROW_H, c2, ROW_H, 0.88, 0.97, 0.91);
-      this._text(ML + 6, this.pg.y - ROW_H + 5, rows[r].metric, 9, true, 0.12, 0.14, 0.20);
-      this._text(ML + c0 + 6, this.pg.y - ROW_H + 5, rows[r].before, 9, false, 0.45, 0.48, 0.55);
-      this._text(ML + c0 + c1 + 6, this.pg.y - ROW_H + 5, rows[r].after, 9, true, 0.06, 0.40, 0.20);
+      this._text(ML + 6, this.pg.y - ROW_H + 5, rows[r].metric, 9, true, 0, 0, 0);
+      this._text(ML + c0 + 6, this.pg.y - ROW_H + 5, rows[r].before, 9, false, 0.30, 0.33, 0.38);
+      this._text(ML + c0 + c1 + 6, this.pg.y - ROW_H + 5, rows[r].after, 9, true, 0.04, 0.35, 0.15);
       this.pg.y -= ROW_H;
     }
     this._hline(ML, this.pg.y, ML + CW, 0.87, 0.89, 0.93);
@@ -447,9 +447,9 @@ export class PdfBuilder {
       } else if (winnerA === false) {
         this._fillRect(ML + c0 + c1, this.pg.y - ROW_H, c2, ROW_H, 0.85, 0.97, 0.88);
       }
-      this._text(ML + 6, this.pg.y - ROW_H + 5, label, 9, true, 0.12, 0.14, 0.20);
-      this._text(ML + c0 + 6, this.pg.y - ROW_H + 5, valueA, 9, winnerA === true, winnerA === true ? 0.06 : 0.12, winnerA === true ? 0.38 : 0.14, winnerA === true ? 0.18 : 0.20);
-      this._text(ML + c0 + c1 + 6, this.pg.y - ROW_H + 5, valueB, 9, winnerA === false, winnerA === false ? 0.06 : 0.12, winnerA === false ? 0.38 : 0.14, winnerA === false ? 0.18 : 0.20);
+      this._text(ML + 6, this.pg.y - ROW_H + 5, label, 9, true, 0, 0, 0);
+      this._text(ML + c0 + 6, this.pg.y - ROW_H + 5, valueA, 9, winnerA === true, winnerA === true ? 0.04 : 0, winnerA === true ? 0.35 : 0, winnerA === true ? 0.15 : 0);
+      this._text(ML + c0 + c1 + 6, this.pg.y - ROW_H + 5, valueB, 9, winnerA === false, winnerA === false ? 0.04 : 0, winnerA === false ? 0.35 : 0, winnerA === false ? 0.15 : 0);
       this.pg.y -= ROW_H;
     }
     this._hline(ML, this.pg.y, ML + CW, 0.87, 0.89, 0.93);
