@@ -300,6 +300,163 @@ export class PdfBuilder {
     return this;
   }
 
+  /** Full-page dark cover (must be called FIRST before any other content method) */
+  addCoverPage(opts: {
+    placeName: string;
+    cityCountry: string;
+    vulnLevel: string;
+    date: string;
+    scenarioName?: string;
+  }): this {
+    // Fill entire page with dark navy background
+    this._fillRect(0, 0, PAGE_W, PAGE_H, 0.06, 0.09, 0.16);
+    // Top accent band
+    this._fillRect(0, PAGE_H - 10, PAGE_W, 10, 0.09, 0.56, 0.40);
+    // Side accent strip
+    this._fillRect(0, 0, 5, PAGE_H, 0.09, 0.56, 0.40);
+
+    // Title block
+    this._text(ML + 5, PAGE_H - 60, 'URBAN HEAT MITIGATION', 20, true, 1, 1, 1);
+    this._text(ML + 5, PAGE_H - 85, 'SCENARIO REPORT', 15, false, 0.09, 0.56, 0.40);
+
+    // Thin divider below title
+    this._hline(ML + 5, PAGE_H - 100, PAGE_W - MR, 0.20, 0.28, 0.38, 0.5);
+
+    // Place name (large)
+    const placeLines = wrapText(opts.placeName, 28, CW - 10);
+    let py = PAGE_H - 160;
+    for (const ln of placeLines) {
+      this._text(ML + 5, py, ln, 28, true, 1, 1, 1);
+      py -= 38;
+    }
+
+    // City/Country
+    this._text(ML + 5, py - 4, opts.cityCountry, 13, false, 0.65, 0.70, 0.80);
+    py -= 32;
+
+    // Scenario name (if provided)
+    if (opts.scenarioName) {
+      this._text(ML + 5, py, opts.scenarioName, 11, false, 0.55, 0.80, 0.65);
+      py -= 28;
+    }
+
+    // Vulnerability badge
+    const [br, bg, bb] = opts.vulnLevel === 'CRITICAL' ? [0.78, 0.12, 0.12]
+      : opts.vulnLevel === 'HIGH' ? [0.85, 0.38, 0.09]
+      : opts.vulnLevel === 'MEDIUM' ? [0.80, 0.60, 0.09]
+      : [0.09, 0.50, 0.25];
+    this._fillRect(ML + 5, py - 26, 160, 26, br, bg, bb);
+    const badgeText = `VULNERABILITY: ${opts.vulnLevel.toUpperCase()}`;
+    this._text(ML + 12, py - 18, badgeText, 9, true, 1, 1, 1);
+    py -= 46;
+
+    // Date + branding
+    this._text(ML + 5, py, `Generated: ${opts.date}`, 10, false, 0.65, 0.70, 0.80);
+    py -= 22;
+    this._text(ML + 5, py, 'Prepared using HeatPlan AI', 9, false, 0.40, 0.44, 0.52);
+
+    // Bottom bar
+    this._fillRect(0, 0, PAGE_W, 30, 0.04, 0.06, 0.12);
+    this._text(ML + 5, 10, 'CONFIDENTIAL \u2014 FOR OFFICIAL USE ONLY', 8, false, 0.40, 0.44, 0.52);
+    this._text(PAGE_W - MR - 95, 10, 'HeatPlan AI \u00a9 2026', 8, false, 0.40, 0.44, 0.52);
+
+    // Start fresh page for content
+    this._newPage();
+    return this;
+  }
+
+  /** Bullet list with green dot markers */
+  addBulletList(items: string[], small = false): this {
+    const sz = small ? 9 : 10;
+    const lh = sz + 4;
+    const indent = 14;
+    for (const item of items) {
+      if (!item?.trim()) continue;
+      const lines = wrapText(item.trim(), sz, CW - indent - 2);
+      this._need(lines.length * lh + 6);
+      this._text(ML + 2, this.pg.y, '\u2022', sz, true, 0.09, 0.56, 0.40);
+      for (let i = 0; i < lines.length; i++) {
+        if (this.pg.y - lh < MB) this._newPage();
+        this._text(ML + indent, this.pg.y, lines[i], sz, false, 0.12, 0.14, 0.20);
+        this.pg.y -= lh;
+      }
+      this.pg.y -= 2;
+    }
+    this.pg.y -= 6;
+    return this;
+  }
+
+  /** 3-column before/after table with green-highlighted "after" column */
+  addBeforeAfterTable(rows: Array<{ metric: string; before: string; after: string }>): this {
+    if (rows.length === 0) return this;
+    const HEADER_H = 20;
+    const ROW_H = 18;
+    const c0 = CW * 0.38; const c1 = CW * 0.31; const c2 = CW * 0.31;
+
+    this._need(HEADER_H + ROW_H * 2);
+    // Header
+    this._fillRect(ML, this.pg.y - HEADER_H, CW, HEADER_H, 0.06, 0.09, 0.16);
+    this._text(ML + 6, this.pg.y - 14, 'METRIC', 7, true, 1, 1, 1);
+    this._text(ML + c0 + 6, this.pg.y - 14, 'BEFORE', 7, true, 0.80, 0.82, 0.90);
+    this._text(ML + c0 + c1 + 6, this.pg.y - 14, 'AFTER (PROJECTED)', 7, true, 0.09, 0.80, 0.50);
+    this.pg.y -= HEADER_H;
+
+    for (let r = 0; r < rows.length; r++) {
+      if (this.pg.y - ROW_H < MB) this._newPage();
+      if (r % 2 === 1) this._fillRect(ML, this.pg.y - ROW_H, CW, ROW_H, 0.96, 0.97, 0.99);
+      // Green tint on "after" column
+      this._fillRect(ML + c0 + c1, this.pg.y - ROW_H, c2, ROW_H, 0.88, 0.97, 0.91);
+      this._text(ML + 6, this.pg.y - ROW_H + 5, rows[r].metric, 9, true, 0.12, 0.14, 0.20);
+      this._text(ML + c0 + 6, this.pg.y - ROW_H + 5, rows[r].before, 9, false, 0.45, 0.48, 0.55);
+      this._text(ML + c0 + c1 + 6, this.pg.y - ROW_H + 5, rows[r].after, 9, true, 0.06, 0.40, 0.20);
+      this.pg.y -= ROW_H;
+    }
+    this._hline(ML, this.pg.y, ML + CW, 0.87, 0.89, 0.93);
+    this.pg.y -= 12;
+    return this;
+  }
+
+  /** Side-by-side Scenario A vs B comparison table. winnerA=true means A wins, false means B wins, undefined = neutral */
+  addABCompareTable(metrics: Array<{ label: string; valueA: string; valueB: string; winnerA?: boolean }>): this {
+    if (metrics.length === 0) return this;
+    const HEADER_H = 28;
+    const ROW_H = 18;
+    const c0 = CW * 0.34; const c1 = CW * 0.33; const c2 = CW * 0.33;
+
+    this._need(HEADER_H + ROW_H * 2);
+    // Header background
+    this._fillRect(ML, this.pg.y - HEADER_H, CW, HEADER_H, 0.06, 0.09, 0.16);
+    // Scenario A column header (blue tint)
+    this._fillRect(ML + c0, this.pg.y - HEADER_H, c1, HEADER_H, 0.15, 0.30, 0.60);
+    // Scenario B column header (green tint)
+    this._fillRect(ML + c0 + c1, this.pg.y - HEADER_H, c2, HEADER_H, 0.09, 0.38, 0.22);
+    this._text(ML + 6, this.pg.y - 18, 'METRIC', 8, true, 1, 1, 1);
+    this._text(ML + c0 + 6, this.pg.y - 11, 'SCENARIO A', 8, true, 1, 1, 1);
+    this._text(ML + c0 + 6, this.pg.y - 22, 'Recommended', 7, false, 0.75, 0.82, 1);
+    this._text(ML + c0 + c1 + 6, this.pg.y - 11, 'SCENARIO B', 8, true, 1, 1, 1);
+    this._text(ML + c0 + c1 + 6, this.pg.y - 22, 'Alternative', 7, false, 0.75, 1, 0.85);
+    this.pg.y -= HEADER_H;
+
+    for (let r = 0; r < metrics.length; r++) {
+      if (this.pg.y - ROW_H < MB) this._newPage();
+      const { label, valueA, valueB, winnerA } = metrics[r];
+      if (r % 2 === 1) this._fillRect(ML, this.pg.y - ROW_H, CW, ROW_H, 0.96, 0.97, 0.99);
+      // Highlight winner
+      if (winnerA === true) {
+        this._fillRect(ML + c0, this.pg.y - ROW_H, c1, ROW_H, 0.85, 0.97, 0.88);
+      } else if (winnerA === false) {
+        this._fillRect(ML + c0 + c1, this.pg.y - ROW_H, c2, ROW_H, 0.85, 0.97, 0.88);
+      }
+      this._text(ML + 6, this.pg.y - ROW_H + 5, label, 9, true, 0.12, 0.14, 0.20);
+      this._text(ML + c0 + 6, this.pg.y - ROW_H + 5, valueA, 9, winnerA === true, winnerA === true ? 0.06 : 0.12, winnerA === true ? 0.38 : 0.14, winnerA === true ? 0.18 : 0.20);
+      this._text(ML + c0 + c1 + 6, this.pg.y - ROW_H + 5, valueB, 9, winnerA === false, winnerA === false ? 0.06 : 0.12, winnerA === false ? 0.38 : 0.14, winnerA === false ? 0.18 : 0.20);
+      this.pg.y -= ROW_H;
+    }
+    this._hline(ML, this.pg.y, ML + CW, 0.87, 0.89, 0.93);
+    this.pg.y -= 12;
+    return this;
+  }
+
   /** Set persistent footer text (rendered when build() is called) */
   setFooter(cityName: string): this {
     this.footerCity = cityName;

@@ -2,19 +2,37 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import prisma from '@/lib/db';
 import { PdfBuilder } from '@/lib/pdf';
-import { generateReportNarrative } from '@/lib/gemini';
+import { generateDetailedReportSections } from '@/lib/ai/detailedReport';
 
-export const maxDuration = 120; // allow slow free-tier AI models
+export const maxDuration = 120;
 
-function fmt$(n: number | null | undefined): string {
-  return n != null ? `$${Math.round(n).toLocaleString()}` : 'N/A';
+// ── Formatting helpers ────────────────────────────────────────────────────────
+
+function fmtCurrency(n: number | null | undefined, sym: string): string {
+  return n != null ? `${sym}${Math.round(n).toLocaleString()}` : 'N/A';
 }
 function fmtC(n: number | null | undefined): string {
   return n != null ? `-${n.toFixed(1)}\xb0C` : 'N/A';
 }
-function fmtN(n: number | null | undefined, unit = ''): string {
-  return n != null ? `${n.toLocaleString()}${unit}` : 'N/A';
+function fmtN(n: number | null | undefined, suffix = ''): string {
+  return n != null ? `${n.toLocaleString()}${suffix}` : 'N/A';
 }
+
+function safeJson<T>(raw: string | null | undefined, fallback: T): T {
+  if (!raw) return fallback;
+  try { return JSON.parse(raw) as T; } catch { return fallback; }
+}
+
+const CURRENCY_SYMBOLS: Record<string, string> = {
+  INR: '\u20b9', USD: '$', GBP: '\xa3', EUR: '\u20ac',
+  JPY: '\xa5', CNY: '\xa5', KRW: '\u20a9', AUD: 'A$', CAD: 'C$',
+  BRL: 'R$', MXN: 'MX$', ZAR: 'R', NGN: '\u20a6', KES: 'KSh',
+  AED: 'AED', SGD: 'S$', THB: '\u0e3f', IDR: 'Rp', MYR: 'RM',
+  PHP: '\u20b1', PKR: 'Rs', BDT: '\u09f3', EGP: 'E\xa3',
+  TRY: '\u20ba', RUB: '\u20bd', CHF: 'CHF', NZD: 'NZ$',
+};
+
+// ── Route handler ─────────────────────────────────────────────────────────────
 
 export async function GET(
   _request: Request,
@@ -36,280 +54,363 @@ export async function GET(
       scenarioInterventions: {
         include: {
           intervention: {
-            include: { place: { select: { name: true, vulnerabilityLevel: true } } },
+            include: {
+              place: {
+                select: {
+                  name: true, vulnerabilityLevel: true,
+                  vulnerabilityScore: true, population: true,
+                },
+              },
+            },
           },
         },
       },
       simulationResults: { orderBy: { runAt: 'desc' }, take: 1 },
+      reports: { orderBy: { generatedAt: 'desc' }, take: 1 },
     },
   });
 
-  if (!scenario) {
-    return NextResponse.json({ error: 'Scenario not found' }, { status: 404 });
-  }
-
+  if (!scenario) return NextResponse.json({ error: 'Scenario not found' }, { status: 404 });
   if (session.user.role !== 'SUPER_ADMIN' && session.user.cityId !== scenario.cityId) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
-  // ── Parse simulation data ─────────────────────────────────────────────────
+  // ── Parse stored content ──────────────────────────────────────────────────
 
-  type SimSummary = {
-    averageTempReductionCelsius?: number;
-    livesProtectedPerSummer?: number;
-    projectedCo2ReductionTons?: number;
-    energySavingsKwhPerYear?: number;
-    costBenefitRatio?: number;
-    costPerLifeProtected?: number;
+  type Strategy = {
+    type: string; name: string; description?: string;
+    quantity: number; unitCostLocal: number; totalCostLocal: number;
+    tempReductionC: number; co2ReductionTons: number; placementNotes?: string;
   };
-  type NeighResult = { place: string; reductionCelsius: number; livesSaved: number };
+  type ReportContent = {
+    executiveSummary?: string; impactAnalysis?: string;
+    implementationPlan?: string; recommendations?: string;
+    riskFactors?: string[]; monitoringPlan?: string;
+    strategies?: Strategy[];
+    stats?: { totalCostLocal?: number; currencyCode?: string; currencySymbol?: string };
+  };
+  type SimSummary = {
+    tempReductionC?: number; livesSaved?: number; co2ReductionTons?: number;
+    energySavingsKwh?: number; costBenefitRatio?: number;
+    totalCostLocal?: number; currencyCode?: string;
+  };
+  type InputState = {
+    placeName?: string; countryCode?: string; baselineTempC?: number;
+    budgetLocal?: number; timelineMonths?: number; priority?: string;
+    treeCanopyPct?: number; imperviousSurfacePct?: number; vulnerabilityScore?: number;
+  };
 
-  const latestResult = scenario.simulationResults[0];
-  let simSummary: SimSummary | null = null;
-  let placeResults: NeighResult[] = [];
+  const reportContent = safeJson<ReportContent>(scenario.reports[0]?.content, {});
+  const simSummary = safeJson<SimSummary>(scenario.simulationResults[0]?.outputSummary, {});
+  const inputState = safeJson<InputState>(scenario.simulationResults[0]?.inputState, {});
 
-  try {
-    if (latestResult?.outputSummary) simSummary = JSON.parse(latestResult.outputSummary) as SimSummary;
-    if (latestResult?.placeResults) placeResults = JSON.parse(latestResult.placeResults) as NeighResult[];
-  } catch { /* ignore parse errors */ }
+  // Strategies: from report content, else reconstruct from interventions
+  const strategies: Strategy[] = reportContent.strategies?.length
+    ? reportContent.strategies
+    : scenario.scenarioInterventions.map(({ intervention: inv }) => {
+        const p = safeJson<Record<string, unknown>>(inv.parameters, {});
+        return {
+          type: inv.type, name: inv.name, description: inv.description ?? '',
+          quantity: Number(p.quantity ?? 1),
+          unitCostLocal: Number(p.unitCostLocal ?? inv.estimatedCostUsd ?? 0),
+          totalCostLocal: Number(inv.estimatedCostUsd ?? 0),
+          tempReductionC: inv.estimatedTempReductionC ?? 0,
+          co2ReductionTons: Number(p.co2ReductionTons ?? 0),
+          placementNotes: String(p.placementNotes ?? inv.place?.name ?? ''),
+        };
+      });
 
-  // Merge: prefer simulation result over stored scenario fields
-  const cooling = simSummary?.averageTempReductionCelsius ?? scenario.totalProjectedTempReductionC;
-  const lives = simSummary?.livesProtectedPerSummer ?? scenario.totalProjectedLivesSaved;
-  const co2 = simSummary?.projectedCo2ReductionTons ?? scenario.projectedCo2ReductionTons;
-  const energyKwh = simSummary?.energySavingsKwhPerYear ?? null;
-  const cbr = simSummary?.costBenefitRatio ?? null;
+  const currencyCode = simSummary.currencyCode ?? reportContent.stats?.currencyCode ?? 'INR';
+  const currencySymbol = CURRENCY_SYMBOLS[currencyCode] ?? '\u20b9';
+  const totalCostLocal = simSummary.totalCostLocal ?? reportContent.stats?.totalCostLocal ?? scenario.totalEstimatedCostUsd ?? 0;
+  const tempReduction = simSummary.tempReductionC ?? scenario.totalProjectedTempReductionC ?? 0;
+  const livesSaved = simSummary.livesSaved ?? scenario.totalProjectedLivesSaved ?? 0;
+  const co2Tons = simSummary.co2ReductionTons ?? scenario.projectedCo2ReductionTons ?? 0;
+  const energyKwh = simSummary.energySavingsKwh ?? null;
+  const cbr = simSummary.costBenefitRatio ?? null;
+  const timeline = inputState.timelineMonths ?? 12;
+  const placeName = inputState.placeName ?? scenario.scenarioInterventions[0]?.intervention.place?.name ?? scenario.city.name;
+  const countryCode = inputState.countryCode ?? 'in';
 
-  const interventions = scenario.scenarioInterventions.map(({ intervention: inv }) => ({
-    name: inv.name,
-    type: inv.type,
-    place: inv.place?.name ?? 'City-wide',
-    cost: inv.estimatedCostUsd,
-    coolingC: inv.estimatedTempReductionC,
-    status: inv.status,
-  }));
+  const firstPlace = scenario.scenarioInterventions[0]?.intervention.place;
+  const vulnLevel = (firstPlace?.vulnerabilityLevel ?? 'HIGH').toUpperCase();
+  const vulnScore = firstPlace?.vulnerabilityScore ?? inputState.vulnerabilityScore ?? 7;
+  const population = firstPlace?.population ?? null;
 
-  // ── Generate Gemini narrative ─────────────────────────────────────────────
+  // ── Find sibling scenario (created within 60s, same city) ────────────────
 
-  const narrative = await generateReportNarrative({
-    scenarioName: scenario.name,
+  const sibling = await prisma.scenario.findFirst({
+    where: {
+      cityId: scenario.cityId,
+      id: { not: scenario.id },
+      createdAt: {
+        gte: new Date(scenario.createdAt.getTime() - 60_000),
+        lte: new Date(scenario.createdAt.getTime() + 60_000),
+      },
+    },
+    include: { simulationResults: { orderBy: { runAt: 'desc' }, take: 1 } },
+  });
+  const sibSim = safeJson<SimSummary>(sibling?.simulationResults[0]?.outputSummary, {});
+
+  // ── Generate detailed AI sections ─────────────────────────────────────────
+
+  const detailed = await generateDetailedReportSections({
+    placeName,
     cityName: scenario.city.name,
-    cityState: scenario.city.state,
-    description: scenario.description,
-    budget: scenario.totalEstimatedCostUsd,
-    livesProtected: lives,
-    coolingCelsius: cooling,
-    co2Tons: co2,
-    energySavingsKwh: energyKwh,
-    costBenefitRatio: cbr,
-    priority: scenario.priority,
-    tone: 'ACCESSIBLE',
-    reportType: 'COUNCIL_BRIEF',
-    interventions,
-    placeResults: placeResults.length > 0 ? placeResults : undefined,
-    councilNotes: scenario.councilNotes,
-    createdBy: scenario.createdBy?.name,
-    approvedBy: scenario.approvedBy?.name,
+    countryName: scenario.city.country,
+    countryCode,
+    vulnerabilityLevel: vulnLevel,
+    vulnerabilityScore: typeof vulnScore === 'number' ? vulnScore : null,
+    baselineTempC: inputState.baselineTempC ?? null,
+    population,
+    treeCanopyPct: inputState.treeCanopyPct ?? null,
+    imperviousSurfacePct: inputState.imperviousSurfacePct ?? null,
+    projectedTempReductionC: tempReduction,
+    projectedLivesSaved: livesSaved,
+    projectedCo2ReductionTons: co2Tons,
+    strategies: strategies.map(s => ({
+      type: s.type, name: s.name, quantity: s.quantity,
+      totalCostLocal: s.totalCostLocal, tempReductionC: s.tempReductionC,
+      co2ReductionTons: s.co2ReductionTons, placementNotes: s.placementNotes,
+    })),
   });
 
   // ── Build PDF ─────────────────────────────────────────────────────────────
 
-  const approvedDate = scenario.approvedAt
-    ? scenario.approvedAt.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
-    : new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+  const dateStr = new Date().toLocaleDateString('en-GB', {
+    day: 'numeric', month: 'long', year: 'numeric',
+  });
+  const cityCountry = `${scenario.city.name}${scenario.city.state ? ', ' + scenario.city.state : ''}, ${scenario.city.country}`;
 
-  const pdf = new PdfBuilder()
-    .setFooter(scenario.city.name)
+  const pdf = new PdfBuilder().setFooter(scenario.city.name);
 
-    // ── Cover block ──
-    .addTitle(`Council Brief: ${scenario.name}`)
+  // COVER
+  pdf.addCoverPage({ placeName, cityCountry, vulnLevel, date: dateStr, scenarioName: scenario.name });
+
+  // TITLE + KEY METRICS
+  pdf
+    .addTitle('Urban Heat Mitigation \u2014 Scenario Report')
     .addMeta(
-      `${scenario.city.name}${scenario.city.state ? ', ' + scenario.city.state : ''} · APPROVED · ${approvedDate}` +
-      (scenario.approvedBy?.name ? ` · Approved by ${scenario.approvedBy.name}` : ''),
+      `${cityCountry} \u00b7 ${scenario.status} \u00b7 ${dateStr}` +
+      (scenario.createdBy?.name ? ` \u00b7 By ${scenario.createdBy.name}` : ''),
     )
-
-    // ── Top-line metrics ──
+    .addSpace(4)
     .addStatRow([
-      { label: 'Total Budget', value: fmt$(scenario.totalEstimatedCostUsd) },
-      { label: 'Lives Protected / Summer', value: fmtN(lives), accent: true },
-      { label: 'Avg. Cooling', value: fmtC(cooling), accent: true },
-      { label: 'CO\xb2 Reduction', value: co2 != null ? `${co2} t/yr` : 'N/A' },
-    ])
+      { label: 'Total Investment', value: fmtCurrency(totalCostLocal, currencySymbol) },
+      { label: 'Temp Reduction', value: fmtC(tempReduction), accent: true },
+      { label: 'Lives Protected / Summer', value: fmtN(livesSaved), accent: true },
+      { label: cbr != null ? 'Cost-Benefit Ratio' : 'Timeline', value: cbr != null ? `${cbr.toFixed(1)}x ROI` : `${timeline} months` },
+    ]);
 
-    // ── Executive Summary ──
+  // EXECUTIVE SUMMARY
+  pdf
     .addH1('Executive Summary')
-    .addParagraph(narrative.executiveSummary)
-
-    // ── Additional metrics row ──
-    .addStatRow([
-      {
-        label: 'Interventions',
-        value: String(interventions.length),
-      },
-      {
-        label: 'Places',
-        value: String(new Set(interventions.map((i) => i.place)).size),
-      },
-      { label: 'Energy Savings', value: energyKwh != null ? `${Math.round(energyKwh / 1000)}k kWh/yr` : 'N/A' },
-      { label: 'Cost-Benefit Ratio', value: cbr != null ? cbr.toFixed(2) + 'x' : 'N/A', accent: cbr != null && cbr >= 1 },
-    ])
-
-    // ── Interventions Plan ──
-    .addH1('Interventions Plan')
-    .addTable(
-      ['Intervention', 'Type', 'Place', 'Est. Cost', 'Est. Cooling'],
-      interventions.map((inv) => [
-        inv.name,
-        inv.type.replace(/_/g, ' '),
-        inv.place,
-        fmt$(inv.cost),
-        inv.coolingC != null ? `-${inv.coolingC.toFixed(1)}\xb0C` : 'N/A',
-      ]),
-      [3, 2, 2, 1.5, 1.5],
+    .addParagraph(
+      reportContent.executiveSummary ||
+      `The "${scenario.name}" scenario proposes ${strategies.length} urban heat mitigation interventions for ${placeName}, ${scenario.city.name}. Projected to reduce temperatures by ${tempReduction.toFixed(1)}\xb0C and protect ${livesSaved.toLocaleString()} lives each summer, with a total investment of ${fmtCurrency(totalCostLocal, currencySymbol)}.`,
     );
 
-  // ── Place Breakdown (if simulation data available) ──
-  if (placeResults.length > 0) {
-    pdf
-      .addH1('Place-Level Impact')
-      .addTable(
-        ['Place', 'Temperature Reduction', 'Lives Protected'],
-        placeResults.map((r) => [
-          r.place,
-          `-${r.reductionCelsius.toFixed(2)}\xb0C`,
-          String(r.livesSaved),
-        ]),
-        [3, 2, 2],
-      );
+  if (reportContent.impactAnalysis) {
+    pdf.addH2('Impact Analysis').addParagraph(reportContent.impactAnalysis);
   }
 
-  // ── Impact Analysis ──
+  // THE PLACE
   pdf
-    .addH1('Impact Analysis')
-    .addParagraph(narrative.impactAnalysis);
+    .addH1(`The Place: ${placeName}`)
+    .addStatRow([
+      { label: 'Vulnerability Score', value: `${vulnScore}/10`, accent: vulnLevel === 'HIGH' || vulnLevel === 'CRITICAL' },
+      { label: 'Vulnerability Level', value: vulnLevel, accent: true },
+      { label: 'Population', value: population ? population.toLocaleString() : 'N/A' },
+      { label: 'Strategies Proposed', value: String(strategies.length) },
+    ])
+    .addH2('Vulnerability Breakdown')
+    .addParagraph(detailed.placeVulnerabilityBreakdown)
+    .addH2('Key Risk Factors')
+    .addBulletList(detailed.keyRiskFactors)
+    .addH2('Seasonal & Climate Context')
+    .addParagraph(detailed.seasonalContext);
 
-  // ── Council notes, if any ──
-  if (scenario.councilNotes) {
+  // PROPOSED STRATEGIES
+  pdf.addH1('Proposed Strategies');
+
+  for (const s of strategies) {
+    const extra = detailed.strategyExtras.find(e => e.type === s.type);
     pdf
-      .addH2('City Council Notes')
-      .addCallout(scenario.councilNotes, 'info');
+      .addH2(
+        `${s.name}` +
+        (extra?.localName && extra.localName !== s.name ? ` \u2014 ${extra.localName}` : ''),
+      )
+      .addStatRow([
+        { label: 'Quantity', value: s.quantity > 0 ? `${s.quantity.toLocaleString()} units` : 'As surveyed' },
+        { label: 'Unit Cost', value: s.unitCostLocal > 0 ? fmtCurrency(s.unitCostLocal, currencySymbol) : 'As tendered' },
+        { label: 'Total Cost', value: fmtCurrency(s.totalCostLocal, currencySymbol), accent: true },
+        { label: 'Cooling Impact', value: fmtC(s.tempReductionC), accent: true },
+      ]);
+
+    if (s.description) pdf.addParagraph(s.description, true);
+
+    const bullets: string[] = [];
+    if (extra?.specificLocation) bullets.push(`Location within ${placeName}: ${extra.specificLocation}`);
+    if (extra?.speciesOrMaterials) bullets.push(`Species / Materials: ${extra.speciesOrMaterials}`);
+    if (s.co2ReductionTons) bullets.push(`CO\u2082 offset: ${s.co2ReductionTons.toFixed(1)} tons/yr (\u2248${(extra?.treesEquivalent ?? Math.round(s.co2ReductionTons * 45)).toLocaleString()} trees equiv.)`);
+    if (extra?.bestSeason) bullets.push(`Best season: ${extra.bestSeason}`);
+    if (extra?.fundingSource) bullets.push(`Funding source: ${extra.fundingSource}`);
+    if (s.placementNotes) bullets.push(`Placement notes: ${s.placementNotes}`);
+    if (bullets.length) pdf.addBulletList(bullets, true);
+    pdf.addSpace(4);
   }
 
-  // ── Recommendations ──
+  // COMBINED IMPACT
   pdf
-    .addH1('Recommendations')
-    .addParagraph(narrative.recommendations);
+    .addH1('Combined Impact')
+    .addParagraph(detailed.combinedImpactNarrative)
+    .addH2('Before / After Projection')
+    .addBeforeAfterTable(detailed.beforeAfterTable)
+    .addStatRow([
+      { label: 'Total Trees Planted', value: fmtN(detailed.totalTreesPlanted), accent: true },
+      { label: 'CO\u2082 Reduction / Year', value: `${co2Tons.toFixed(1)} tons` },
+      { label: 'Lives Protected', value: fmtN(livesSaved), accent: true },
+      { label: energyKwh != null ? 'Energy Savings' : 'Interventions', value: energyKwh != null ? `${Math.round(energyKwh / 1000)}k kWh/yr` : String(strategies.length) },
+    ])
+    .addCallout(detailed.livesSavedCitation, 'info');
 
-  // ── Scenario metadata ──
+  // IMPLEMENTATION ROADMAP
+  pdf
+    .addH1('Implementation Roadmap')
+    .addTable(
+      ['Period', 'Milestone', 'Responsible Party', 'Key Tasks'],
+      detailed.roadmap.map(p => [
+        p.period, p.milestone, p.responsible,
+        (p.tasks ?? []).slice(0, 2).join('; '),
+      ]),
+      [1.4, 2.2, 1.8, 2.6],
+    );
+
+  if ((reportContent.riskFactors ?? []).length > 0) {
+    pdf.addH2('Risk Factors').addBulletList(reportContent.riskFactors ?? []);
+  }
+  if (reportContent.monitoringPlan) {
+    pdf.addH2('Monitoring Plan').addParagraph(reportContent.monitoringPlan, true);
+  }
+
+  // COMPARISON CITIES
+  pdf.addH1('Success Stories from Comparable Cities');
+  for (const city of detailed.comparisonCities) {
+    pdf
+      .addH2(`${city.name}, ${city.country}`)
+      .addCallout(city.context, 'info')
+      .addParagraph(`What they did: ${city.whatTheyDid}`, true)
+      .addCallout(`Results: ${city.results}`, 'success')
+      .addSpace(4);
+  }
+
+  // NEXT STEPS
+  pdf
+    .addH1('Next Steps')
+    .addH2('Key Contacts & Departments')
+    .addBulletList(detailed.contacts)
+    .addH2('Funding Applications to Submit')
+    .addBulletList(detailed.fundingApplications)
+    .addH2('Immediate Actions (First 30 Days)')
+    .addBulletList(detailed.immediateActions);
+
+  if (reportContent.recommendations) {
+    pdf.addH2('Strategic Recommendations').addParagraph(reportContent.recommendations, true);
+  }
+
+  // SCENARIO A vs B COMPARISON
+  if (sibling) {
+    const sibTemp = sibSim.tempReductionC ?? sibling.totalProjectedTempReductionC ?? 0;
+    const sibLives = sibSim.livesSaved ?? sibling.totalProjectedLivesSaved ?? 0;
+    const sibCo2 = sibSim.co2ReductionTons ?? sibling.projectedCo2ReductionTons ?? 0;
+    const sibCost = sibSim.totalCostLocal ?? sibling.totalEstimatedCostUsd ?? 0;
+    const sibCbr = sibSim.costBenefitRatio ?? null;
+
+    pdf
+      .addDivider()
+      .addH1('Scenario Comparison: A vs B')
+      .addMeta(`Scenario A: "${scenario.name}" \u2014 Scenario B: "${sibling.name}"`)
+      .addSpace(6)
+      .addABCompareTable([
+        {
+          label: 'Scenario Name',
+          valueA: scenario.name.length > 28 ? scenario.name.slice(0, 26) + '..' : scenario.name,
+          valueB: sibling.name.length > 28 ? sibling.name.slice(0, 26) + '..' : sibling.name,
+        },
+        {
+          label: 'Total Investment',
+          valueA: fmtCurrency(totalCostLocal, currencySymbol),
+          valueB: fmtCurrency(sibCost, currencySymbol),
+          winnerA: totalCostLocal > 0 && sibCost > 0 ? totalCostLocal <= sibCost : undefined,
+        },
+        {
+          label: 'Temperature Reduction',
+          valueA: fmtC(tempReduction),
+          valueB: fmtC(sibTemp),
+          winnerA: tempReduction >= sibTemp,
+        },
+        {
+          label: 'Lives Protected / Summer',
+          valueA: fmtN(livesSaved),
+          valueB: fmtN(sibLives),
+          winnerA: livesSaved >= sibLives,
+        },
+        {
+          label: 'CO\u2082 Reduction (tons/yr)',
+          valueA: co2Tons.toFixed(1),
+          valueB: sibCo2.toFixed(1),
+          winnerA: co2Tons >= sibCo2,
+        },
+        {
+          label: 'Cost-Benefit Ratio',
+          valueA: cbr != null ? `${cbr.toFixed(2)}x` : 'N/A',
+          valueB: sibCbr != null ? `${sibCbr.toFixed(2)}x` : 'N/A',
+          winnerA: cbr != null && sibCbr != null ? cbr >= sibCbr : undefined,
+        },
+        {
+          label: 'Interventions',
+          valueA: String(strategies.length),
+          valueB: 'See paired report',
+        },
+        { label: 'Priority', valueA: scenario.priority ?? 'Not set', valueB: sibling.priority ?? 'Not set' },
+      ]);
+
+    pdf.addCallout(
+      tempReduction >= sibTemp && livesSaved >= sibLives
+        ? `RECOMMENDATION: Scenario A ("${scenario.name}") leads on temperature reduction and lives protected. Recommended for council approval.`
+        : `RECOMMENDATION: Review both scenarios with your planning team. Scenario B ("${sibling.name}") may offer advantages on specific metrics.`,
+      tempReduction >= sibTemp && livesSaved >= sibLives ? 'success' : 'info',
+    );
+  }
+
+  // METADATA
   pdf
     .addDivider()
-    .addH2('Scenario Metadata')
+    .addH2('Report Metadata')
     .addTable(
       ['Field', 'Value'],
       [
+        ['Scenario ID', scenario.id],
+        ['City', cityCountry],
         ['Status', scenario.status],
         ['Priority', scenario.priority ?? 'Not set'],
         ['Created By', scenario.createdBy?.name ?? 'Unknown'],
-        ['Approved By', scenario.approvedBy?.name ?? 'N/A'],
-        ['Approved On', approvedDate],
-        ['Total Interventions', String(interventions.length)],
-        ['Places Covered', String(new Set(interventions.map((i) => i.place)).size)],
-        ['Scenario ID', scenario.id],
+        ['Approved By', scenario.approvedBy?.name ?? 'Pending'],
+        ['Generated', dateStr],
+        ['Total Interventions', String(strategies.length)],
+        ['Places Covered', String(new Set(scenario.scenarioInterventions.map(si => si.intervention.place?.name ?? 'City-wide')).size)],
       ],
-      [1, 2],
+      [1, 2.5],
     );
-
-  // ── Risk Matrix ──
-  const criticalInterventions = interventions.filter((i) => i.coolingC != null && i.coolingC >= 2.0);
-  const highCostInterventions = interventions.filter((i) => i.cost != null && i.cost >= 500000);
-  const pendingInterventions = interventions.filter((i) => i.status === 'PROPOSED');
-
-  pdf.addH1('Risk Assessment Matrix');
-  if (criticalInterventions.length > 0) {
-    pdf.addCallout(
-      `HIGH IMPACT — ${criticalInterventions.length} intervention${criticalInterventions.length !== 1 ? 's' : ''} project a temperature reduction ≥ 2.0°C: ` +
-      criticalInterventions.map((i) => `${i.name} (${fmtC(i.coolingC)})`).join(', ') + '. Prioritise these for earliest deployment.',
-      'success',
-    );
-  }
-  if (pendingInterventions.length > 0) {
-    pdf.addCallout(
-      `PENDING APPROVAL — ${pendingInterventions.length} intervention${pendingInterventions.length !== 1 ? 's' : ''} still in PROPOSED status: ` +
-      pendingInterventions.map((i) => i.name).join(', ') + '. Council approval required before site preparation begins.',
-      'warn',
-    );
-  }
-  if (highCostInterventions.length > 0) {
-    pdf.addCallout(
-      `BUDGET FLAG — ${highCostInterventions.length} intervention${highCostInterventions.length !== 1 ? 's' : ''} with individual cost ≥ ₹5,00,000: ` +
-      highCostInterventions.map((i) => `${i.name} (${fmt$(i.cost)})`).join(', ') + '. Verify procurement capacity and phased disbursement timelines.',
-      'info',
-    );
-  }
-
-  // ── Budget Breakdown by Type ──
-  const typeGroups: Record<string, { count: number; totalCost: number; totalCooling: number }> = {};
-  interventions.forEach((inv) => {
-    const key = inv.type.replace(/_/g, ' ');
-    if (!typeGroups[key]) typeGroups[key] = { count: 0, totalCost: 0, totalCooling: 0 };
-    typeGroups[key].count++;
-    if (inv.cost != null) typeGroups[key].totalCost += inv.cost;
-    if (inv.coolingC != null) typeGroups[key].totalCooling += inv.coolingC;
-  });
-
-  if (Object.keys(typeGroups).length > 1) {
-    pdf
-      .addH1('Budget Breakdown by Intervention Type')
-      .addTable(
-        ['Type', 'Count', 'Total Cost', 'Avg. Cooling'],
-        Object.entries(typeGroups).map(([type, g]) => [
-          type,
-          String(g.count),
-          g.totalCost > 0 ? fmt$(g.totalCost) : 'N/A',
-          g.count > 0 ? `-${(g.totalCooling / g.count).toFixed(1)}°C avg` : 'N/A',
-        ]),
-        [2.5, 1, 1.5, 1.5],
-      );
-  }
-
-  // ── Implementation Phases ──
-  pdf.addH1('Implementation Phases');
-  const phase1 = interventions.filter((i) => i.coolingC != null && i.coolingC >= 1.5);
-  const phase2 = interventions.filter((i) => !phase1.includes(i) && i.status !== 'PROPOSED');
-  const phase3 = interventions.filter((i) => i.status === 'PROPOSED');
-
-  pdf.addTable(
-    ['Phase', 'Scope', 'Interventions', 'Est. Cost'],
-    [
-      [
-        'Phase 1 (0–6 mo)',
-        'Highest-cooling impact',
-        phase1.length > 0 ? String(phase1.length) : '—',
-        fmt$(phase1.reduce((s, i) => s + (i.cost ?? 0), 0) || null),
-      ],
-      [
-        'Phase 2 (6–18 mo)',
-        'Approved & in-progress',
-        phase2.length > 0 ? String(phase2.length) : '—',
-        fmt$(phase2.reduce((s, i) => s + (i.cost ?? 0), 0) || null),
-      ],
-      [
-        'Phase 3 (18–36 mo)',
-        'Proposed / pending',
-        phase3.length > 0 ? String(phase3.length) : '—',
-        fmt$(phase3.reduce((s, i) => s + (i.cost ?? 0), 0) || null),
-      ],
-    ],
-    [2, 2, 1.5, 1.5],
-  );
 
   const pdfBuffer = pdf.build();
+  const filename = `${scenario.name.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}-full-report.pdf`;
 
-  const filename = `${scenario.name.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}-council-brief.pdf`;
   return new NextResponse(new Uint8Array(pdfBuffer), {
     headers: {
       'Content-Type': 'application/pdf',
       'Content-Disposition': `attachment; filename="${filename}"`,
+      'Content-Length': String(pdfBuffer.length),
     },
   });
 }
