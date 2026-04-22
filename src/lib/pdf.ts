@@ -156,12 +156,12 @@ export class PdfBuilder {
     return this;
   }
 
-  /** Section heading (black bold, green underline) */
+  /** Section heading (green bold, green underline) */
   addH1(text: string): this {
     const sz = 12;
     this._need(sz + 24);
     this.pg.y -= 10;
-    this._text(ML, this.pg.y, text.toUpperCase(), sz, true, 0, 0, 0);
+    this._text(ML, this.pg.y, text.toUpperCase(), sz, true, 0.09, 0.56, 0.40);
     this.pg.y -= sz + 5;
     this._hline(ML, this.pg.y, ML + CW, 0.09, 0.56, 0.40, 1);
     this.pg.y -= 9;

@@ -22,46 +22,40 @@ export interface AiChatOptions {
 
 /**
  * Normalise model name for the target endpoint.
- * OpenAI-compatible APIs (AICredits, OpenAI) use bare names: "gpt-4o-mini"
- * OpenRouter uses prefixed names: "openai/gpt-4o-mini"
+ * AICredits is fully OpenAI-compatible and accepts bare model names.
+ * Strip any provider prefix (e.g. "openai/") before sending to AICredits.
+ * OpenRouter fallback keeps the prefixed name.
  */
 function chooseModel(requested?: string): string {
   const allowGpt4o = process.env.AI_ALLOW_GPT4O === 'true';
-  // AI_PREFERRED_MODEL can be "openai/gpt-4o-mini" or "gpt-4o-mini"
   const envModel = process.env.AI_PREFERRED_MODEL ?? 'gpt-4o-mini';
 
   let model = requested ?? envModel;
 
-  // Extract the base name (strip provider prefix e.g. "openai/")
-  const base = model.includes('/') ? model.split('/').slice(1).join('/') : model;
+  // Strip provider prefix — AICredits accepts bare names (gpt-4o-mini, not openai/gpt-4o-mini)
+  const bare = model.includes('/') ? model.split('/').slice(1).join('/') : model;
 
-  // Cap: never use a model heavier than gpt-4o-mini
-  if (base.includes('gpt-4o') && !base.includes('mini')) {
-    model = model.includes('/') ? model.replace(base, 'gpt-4o-mini') : 'gpt-4o-mini';
-  }
+  // Cap: never use a model heavier than gpt-4o-mini for OpenAI models
+  if (bare.includes('gpt-4o') && !bare.includes('mini')) return 'gpt-4o-mini';
 
   // If gpt-4o-mini is requested but not explicitly allowed, fall back
-  if (base === 'gpt-4o-mini' && !allowGpt4o) {
-    model = 'gpt-3.5-turbo';
-  }
+  if (bare === 'gpt-4o-mini' && !allowGpt4o) return 'gpt-3.5-turbo';
 
-  return model; // may contain "openai/" prefix — callers strip as needed
+  return bare; // always return bare name for AICredits
 }
 
 export async function aiChat(opts: AiChatOptions): Promise<string> {
   const { messages, temperature = 0.7, maxTokens = 1024, timeoutMs = 25000 } = opts;
   const model = chooseModel(opts.model);
 
-  // Strip provider prefix for OpenAI-compatible endpoints (AICredits / OpenAI)
-  const bareModel = model.includes('/') ? model.split('/').slice(1).join('/') : model;
-  // Ensure provider prefix for OpenRouter
-  const orModel = model.includes('/') ? model : `openai/${model}`;
+  // For OpenRouter fallback, add openai/ prefix
+  const orModel = `openai/${model}`;
 
   const aicredKey = process.env.AICREDITS_API_KEY ?? '';
   const openaiKey = process.env.OPENAI_API_KEY ?? '';
   const openrouterKey = process.env.OPENROUTER_API_KEY ?? '';
 
-  // Prefer AICREDITS / OpenAI-compatible key
+  // AICredits / OpenAI — preferred path for all models
   if (aicredKey || openaiKey) {
     const key = aicredKey || openaiKey;
     const url = process.env.AICREDITS_API_URL ?? 'https://api.openai.com/v1/chat/completions';
@@ -69,7 +63,7 @@ export async function aiChat(opts: AiChatOptions): Promise<string> {
       const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
-        body: JSON.stringify({ model: bareModel, messages, temperature, max_tokens: maxTokens }),
+        body: JSON.stringify({ model: model, messages, temperature, max_tokens: maxTokens }),
         signal: AbortSignal.timeout(timeoutMs),
       });
       if (!res.ok) {
