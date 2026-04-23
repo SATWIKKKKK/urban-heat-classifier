@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
@@ -51,7 +51,7 @@ export default function MyDataClient({ city, places, stats, completeness, teamCo
   const [showAddMeasurement, setShowAddMeasurement] = useState<string | null>(null);
   const [error, setError] = useState('');
 
-  // ── Computed telemetry ─────────────────────────────────────────────────
+  // â”€â”€ Computed telemetry â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const totalArea = places.reduce((s, p) => s + (p.areaSqkm ?? 0), 0);
   const latestTemps = places.flatMap(p => p.heatMeasurements.slice(0, 1)).map(m => m.avgTemp);
   const avgTemp = latestTemps.length > 0 ? latestTemps.reduce((s, t) => s + t, 0) / latestTemps.length : null;
@@ -66,7 +66,7 @@ export default function MyDataClient({ city, places, stats, completeness, teamCo
   const treeCanopyPct2 = nPlaces > 0 ? Math.round(completeness.items.filter(i => i.checks.hasTreeCanopy).length / nPlaces * 100) : 0;
   const boundaryPct   = nPlaces > 0 ? Math.round(completeness.items.filter(i => i.checks.hasBoundary).length    / nPlaces * 100) : 0;
 
-  // ── Helpers ────────────────────────────────────────────────────────────
+  // â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   function statusLabel(level: string | null) {
     switch (level) {
       case 'CRITICAL': return 'CRITICAL';
@@ -94,7 +94,7 @@ export default function MyDataClient({ city, places, stats, completeness, teamCo
   }
 
   function TrendLine({ measurements, level }: { measurements: { avgTemp: number }[]; level: string | null }) {
-    if (measurements.length < 2) return <span className="text-zinc-600 font-mono text-[10px]">—</span>;
+    if (measurements.length < 2) return <span className="text-zinc-600 text-[10px]">â€”</span>;
     const temps = [...measurements].slice(0, 5).reverse();
     const min = Math.min(...temps.map(m => m.avgTemp));
     const max = Math.max(...temps.map(m => m.avgTemp));
@@ -153,16 +153,16 @@ export default function MyDataClient({ city, places, stats, completeness, teamCo
 
   return (
     <div className="flex flex-col gap-6 font-(family-name:--font-body)">
-      {error && <div className="px-4 py-2 text-sm bg-[#93000a]/30 border border-[#ffb4ab] text-[#ffb4ab] font-mono">{error}</div>}
+      {error && <div className="px-4 py-2 text-sm bg-[#93000a]/30 border border-[#ffb4ab] text-[#ffb4ab]">{error}</div>}
 
-      {/* ── HEADER ──────────────────────────────────────────────────────── */}
+      {/* â”€â”€ HEADER â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <header className="flex flex-col gap-4">
         {/* Title row */}
         <div className="flex flex-col md:flex-row md:justify-between md:items-end border-b border-zinc-900 pb-4 gap-3">
           <div>
             <h1 className="text-2xl font-semibold tracking-tight text-white font-(family-name:--font-headline)">Data Hub</h1>
             <p className="text-sm text-zinc-500 mt-1">
-              System Overview &amp; Metric Aggregation ·{' '}
+              System Overview &amp; Metric Aggregation Â·{' '}
               <span className="text-zinc-400">{city.name}</span>
             </p>
           </div>
@@ -173,7 +173,7 @@ export default function MyDataClient({ city, places, stats, completeness, teamCo
                 <>
                   <div className="flex flex-col px-4 py-2">
                     <span className="text-[9px] uppercase tracking-widest text-zinc-500">Avg Temp</span>
-                    <span className="text-sm text-[#7ed99e]">{avgTemp.toFixed(1)}°C</span>
+                    <span className="text-sm text-[#7ed99e]">{avgTemp.toFixed(1)}Â°C</span>
                   </div>
                   <div className="w-px h-8 bg-zinc-800" />
                 </>
@@ -200,16 +200,16 @@ export default function MyDataClient({ city, places, stats, completeness, teamCo
           <div className="bg-[#0e0e0e] p-4 flex flex-col gap-2">
             <span className="text-[10px] uppercase tracking-widest text-zinc-500">Total Monitored Area</span>
             <span className="text-xl text-white">
-              {totalArea > 0 ? `${totalArea.toLocaleString()} km²` : `${stats.totalPlaces} places`}
+              {totalArea > 0 ? `${totalArea.toLocaleString()} kmÂ²` : `${stats.totalPlaces} places`}
             </span>
           </div>
           <div className="bg-[#0e0e0e] p-4 flex flex-col gap-2">
             <span className="text-[10px] uppercase tracking-widest text-zinc-500">Avg Temp Delta</span>
-            <span className="text-xl text-[#ffb4ab]">{avgTemp != null ? `+${avgTemp.toFixed(1)}°C` : '—'}</span>
+            <span className="text-xl text-[#ffb4ab]">{avgTemp != null ? `+${avgTemp.toFixed(1)}Â°C` : 'â€”'}</span>
           </div>
           <div className="bg-[#0e0e0e] p-4 flex flex-col gap-2">
             <span className="text-[10px] uppercase tracking-widest text-zinc-500">Vulnerable Pop.</span>
-            <span className="text-xl text-[#f7bd48]">{vulnerablePop > 0 ? vulnerablePop.toLocaleString() : '—'}</span>
+            <span className="text-xl text-[#f7bd48]">{vulnerablePop > 0 ? vulnerablePop.toLocaleString() : 'â€”'}</span>
           </div>
           <div className="bg-[#0e0e0e] p-4 flex flex-col gap-2">
             <span className="text-[10px] uppercase tracking-widest text-zinc-500">Active Sensors</span>
@@ -248,10 +248,10 @@ export default function MyDataClient({ city, places, stats, completeness, teamCo
         )}
       </header>
 
-      {/* ── MAIN GRID ───────────────────────────────────────────────────── */}
+      {/* â”€â”€ MAIN GRID â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
 
-        {/* Left 8 cols — My Places Directory */}
+        {/* Left 8 cols â€” My Places Directory */}
         <div className="lg:col-span-8 flex flex-col gap-4">
           <div className="flex justify-between items-center border-b border-zinc-900 pb-2">
             <h2 className="text-[11px] uppercase tracking-widest text-white font-(family-name:--font-headline)">My Places Directory</h2>
@@ -270,18 +270,18 @@ export default function MyDataClient({ city, places, stats, completeness, teamCo
               className="p-4 border border-zinc-800 bg-zinc-950 grid grid-cols-2 md:grid-cols-3 gap-3"
             >
               <input name="name" required placeholder="Place name *"
-                className="col-span-2 md:col-span-3 px-3 py-2 bg-black border border-zinc-800 text-sm text-white font-mono placeholder:text-zinc-600 focus:outline-none focus:border-zinc-600" />
+                className="col-span-2 md:col-span-3 px-3 py-2 bg-black border border-zinc-800 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-zinc-600" />
               <input name="population" type="number" placeholder="Population"
-                className="px-3 py-2 bg-black border border-zinc-800 text-sm text-white font-mono placeholder:text-zinc-600 focus:outline-none" />
-              <input name="areaSqkm" type="number" step="0.01" placeholder="Area km²"
-                className="px-3 py-2 bg-black border border-zinc-800 text-sm text-white font-mono placeholder:text-zinc-600 focus:outline-none" />
+                className="px-3 py-2 bg-black border border-zinc-800 text-sm text-white placeholder:text-zinc-600 focus:outline-none" />
+              <input name="areaSqkm" type="number" step="0.01" placeholder="Area kmÂ²"
+                className="px-3 py-2 bg-black border border-zinc-800 text-sm text-white placeholder:text-zinc-600 focus:outline-none" />
               <input name="medianIncome" type="number" placeholder="Median Income"
-                className="px-3 py-2 bg-black border border-zinc-800 text-sm text-white font-mono placeholder:text-zinc-600 focus:outline-none" />
+                className="px-3 py-2 bg-black border border-zinc-800 text-sm text-white placeholder:text-zinc-600 focus:outline-none" />
               <div className="col-span-2 md:col-span-3 flex gap-2 justify-end">
                 <button type="button" onClick={() => setShowAddPlace(false)}
-                  className="px-3 py-1.5 text-xs text-zinc-400 border border-zinc-800 font-mono">Cancel</button>
+                  className="px-3 py-1.5 text-xs text-zinc-400 border border-zinc-800">Cancel</button>
                 <button type="submit" disabled={isPending}
-                  className="px-4 py-1.5 text-xs font-mono bg-[#22c55e] text-black disabled:opacity-50">Save Place</button>
+                  className="px-4 py-1.5 text-xs bg-[#22c55e] text-black disabled:opacity-50">Save Place</button>
               </div>
             </form>
           )}
@@ -290,21 +290,21 @@ export default function MyDataClient({ city, places, stats, completeness, teamCo
           <div className="border border-zinc-900 bg-[#0e0e0e] overflow-hidden">
             {places.length === 0 ? (
               <div className="p-10 text-center">
-                <p className="font-mono text-sm text-zinc-500 mb-4">No places added yet.</p>
+                <p className="text-sm text-zinc-500 mb-4">No places added yet.</p>
                 <button onClick={() => setShowAddPlace(true)}
-                  className="font-mono text-xs bg-[#22c55e] text-black px-4 py-2">Add Place</button>
+                  className="text-xs bg-[#22c55e] text-black px-4 py-2">Add Place</button>
               </div>
             ) : (
-              <table className="w-full text-left font-mono text-xs border-collapse">
+              <table className="w-full text-left text-xs border-collapse">
                 <thead>
                   <tr className="bg-zinc-950 border-b border-zinc-900">
-                    <th className="font-mono text-[10px] text-zinc-500 font-normal py-2 px-4 uppercase">Location</th>
-                    <th className="font-mono text-[10px] text-zinc-500 font-normal py-2 px-4 uppercase">Status</th>
-                    <th className="font-mono text-[10px] text-zinc-500 font-normal py-2 px-4 uppercase text-center">Trend 24H</th>
-                    <th className="font-mono text-[10px] text-zinc-500 font-normal py-2 px-4 uppercase text-right">Avg Temp</th>
-                    <th className="font-mono text-[10px] text-zinc-500 font-normal py-2 px-4 uppercase text-right hidden md:table-cell">Canopy %</th>
-                    <th className="font-mono text-[10px] text-zinc-500 font-normal py-2 px-4 uppercase text-right hidden md:table-cell">Population</th>
-                    <th className="font-mono text-[10px] text-zinc-500 font-normal py-2 px-4 uppercase text-center">Map</th>
+                    <th className="text-[10px] text-zinc-500 font-normal py-2 px-4 uppercase">Location</th>
+                    <th className="text-[10px] text-zinc-500 font-normal py-2 px-4 uppercase">Status</th>
+                    <th className="text-[10px] text-zinc-500 font-normal py-2 px-4 uppercase text-center">Trend 24H</th>
+                    <th className="text-[10px] text-zinc-500 font-normal py-2 px-4 uppercase text-right">Avg Temp</th>
+                    <th className="text-[10px] text-zinc-500 font-normal py-2 px-4 uppercase text-right hidden md:table-cell">Canopy %</th>
+                    <th className="text-[10px] text-zinc-500 font-normal py-2 px-4 uppercase text-right hidden md:table-cell">Population</th>
+                    <th className="text-[10px] text-zinc-500 font-normal py-2 px-4 uppercase text-center">Map</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -329,13 +329,13 @@ export default function MyDataClient({ city, places, stats, completeness, teamCo
                             <TrendLine measurements={p.heatMeasurements} level={p.vulnerabilityLevel} />
                           </td>
                           <td className={`py-1 px-4 text-right ${tempColor(p.vulnerabilityLevel)}`}>
-                            {latest ? `${latest.avgTemp.toFixed(1)}°C` : '—'}
+                            {latest ? `${latest.avgTemp.toFixed(1)}Â°C` : 'â€”'}
                           </td>
                           <td className="py-1 px-4 text-right text-white hidden md:table-cell">
-                            {latest?.treeCanopyPct != null ? `${latest.treeCanopyPct.toFixed(0)}%` : '—'}
+                            {latest?.treeCanopyPct != null ? `${latest.treeCanopyPct.toFixed(0)}%` : 'â€”'}
                           </td>
                           <td className="py-1 px-4 text-right text-white hidden md:table-cell">
-                            {p.population?.toLocaleString() ?? '—'}
+                            {p.population?.toLocaleString() ?? 'â€”'}
                           </td>
                           <td className="py-1 px-4 text-center">
                             <Link
@@ -356,45 +356,45 @@ export default function MyDataClient({ city, places, stats, completeness, teamCo
                                   className="mb-3 p-3 border border-zinc-800 bg-black grid grid-cols-2 md:grid-cols-4 gap-2"
                                 >
                                   <input name="date" type="date" required
-                                    className="px-2 py-1.5 bg-zinc-900 border border-zinc-800 text-xs text-white font-mono focus:outline-none" />
-                                  <input name="avgTemp" type="number" step="0.1" required placeholder="Avg Temp °C *"
-                                    className="px-2 py-1.5 bg-zinc-900 border border-zinc-800 text-xs text-white font-mono placeholder:text-zinc-600 focus:outline-none" />
-                                  <input name="maxTemp" type="number" step="0.1" required placeholder="Max Temp °C *"
-                                    className="px-2 py-1.5 bg-zinc-900 border border-zinc-800 text-xs text-white font-mono placeholder:text-zinc-600 focus:outline-none" />
-                                  <input name="minTemp" type="number" step="0.1" placeholder="Min Temp °C"
-                                    className="px-2 py-1.5 bg-zinc-900 border border-zinc-800 text-xs text-white font-mono placeholder:text-zinc-600 focus:outline-none" />
+                                    className="px-2 py-1.5 bg-zinc-900 border border-zinc-800 text-xs text-white focus:outline-none" />
+                                  <input name="avgTemp" type="number" step="0.1" required placeholder="Avg Temp Â°C *"
+                                    className="px-2 py-1.5 bg-zinc-900 border border-zinc-800 text-xs text-white placeholder:text-zinc-600 focus:outline-none" />
+                                  <input name="maxTemp" type="number" step="0.1" required placeholder="Max Temp Â°C *"
+                                    className="px-2 py-1.5 bg-zinc-900 border border-zinc-800 text-xs text-white placeholder:text-zinc-600 focus:outline-none" />
+                                  <input name="minTemp" type="number" step="0.1" placeholder="Min Temp Â°C"
+                                    className="px-2 py-1.5 bg-zinc-900 border border-zinc-800 text-xs text-white placeholder:text-zinc-600 focus:outline-none" />
                                   <input name="treeCanopyPct" type="number" step="0.1" placeholder="Tree Canopy %"
-                                    className="px-2 py-1.5 bg-zinc-900 border border-zinc-800 text-xs text-white font-mono placeholder:text-zinc-600 focus:outline-none" />
+                                    className="px-2 py-1.5 bg-zinc-900 border border-zinc-800 text-xs text-white placeholder:text-zinc-600 focus:outline-none" />
                                   <input name="imperviousSurfacePct" type="number" step="0.1" placeholder="Impervious Sfc %"
-                                    className="px-2 py-1.5 bg-zinc-900 border border-zinc-800 text-xs text-white font-mono placeholder:text-zinc-600 focus:outline-none" />
+                                    className="px-2 py-1.5 bg-zinc-900 border border-zinc-800 text-xs text-white placeholder:text-zinc-600 focus:outline-none" />
                                   <input name="dataSource" placeholder="Source"
-                                    className="px-2 py-1.5 bg-zinc-900 border border-zinc-800 text-xs text-white font-mono placeholder:text-zinc-600 focus:outline-none" />
+                                    className="px-2 py-1.5 bg-zinc-900 border border-zinc-800 text-xs text-white placeholder:text-zinc-600 focus:outline-none" />
                                   <div className="flex gap-2 items-center">
                                     <button type="submit" disabled={isPending}
-                                      className="px-3 py-1.5 text-xs font-mono bg-[#22c55e] text-black disabled:opacity-50">Save</button>
+                                      className="px-3 py-1.5 text-xs bg-[#22c55e] text-black disabled:opacity-50">Save</button>
                                     <button type="button" onClick={() => setShowAddMeasurement(null)}
-                                      className="px-3 py-1.5 text-xs font-mono text-zinc-500">Cancel</button>
+                                      className="px-3 py-1.5 text-xs text-zinc-500">Cancel</button>
                                   </div>
                                 </form>
                               )}
                               <div className="flex justify-between items-center mb-2">
-                                <span className="font-mono text-[10px] text-zinc-500 uppercase">
-                                  {p.heatMeasurements.length} measurements · {p.interventions.length} interventions
+                                <span className="text-[10px] text-zinc-500 uppercase">
+                                  {p.heatMeasurements.length} measurements Â· {p.interventions.length} interventions
                                 </span>
                                 <button
                                   onClick={() => setShowAddMeasurement(showAddMeasurement === p.id ? null : p.id)}
-                                  className="font-mono text-[10px] text-[#9ed1bd] hover:text-white border border-zinc-800 px-2 py-0.5"
+                                  className="text-[10px] text-[#9ed1bd] hover:text-white border border-zinc-800 px-2 py-0.5"
                                 >
                                   + Add Data
                                 </button>
                               </div>
                               {p.heatMeasurements.length > 0 ? (
-                                <table className="w-full text-xs font-mono">
+                                <table className="w-full text-xs">
                                   <thead>
                                     <tr className="border-b border-zinc-800">
                                       <th className="py-1 text-left text-zinc-500 font-normal">Date</th>
-                                      <th className="py-1 text-right text-zinc-500 font-normal">Avg °C</th>
-                                      <th className="py-1 text-right text-zinc-500 font-normal">Max °C</th>
+                                      <th className="py-1 text-right text-zinc-500 font-normal">Avg Â°C</th>
+                                      <th className="py-1 text-right text-zinc-500 font-normal">Max Â°C</th>
                                       <th className="py-1 text-right text-zinc-500 font-normal hidden md:table-cell">Canopy</th>
                                       <th className="py-1 text-left text-zinc-500 font-normal">Source</th>
                                     </tr>
@@ -404,9 +404,9 @@ export default function MyDataClient({ city, places, stats, completeness, teamCo
                                       <tr key={m.id} className="border-b border-zinc-900/50">
                                         <td className="py-1 text-white">{new Date(m.date).toLocaleDateString()}</td>
                                         <td className="py-1 text-right text-white">{m.avgTemp.toFixed(1)}</td>
-                                        <td className="py-1 text-right text-white">{m.maxTemp?.toFixed(1) ?? '—'}</td>
+                                        <td className="py-1 text-right text-white">{m.maxTemp?.toFixed(1) ?? 'â€”'}</td>
                                         <td className="py-1 text-right text-white hidden md:table-cell">
-                                          {m.treeCanopyPct != null ? `${m.treeCanopyPct.toFixed(0)}%` : '—'}
+                                          {m.treeCanopyPct != null ? `${m.treeCanopyPct.toFixed(0)}%` : 'â€”'}
                                         </td>
                                         <td className="py-1">
                                           <span className="px-1.5 py-0.5 bg-zinc-900 text-zinc-500 text-[10px]">{m.dataSource}</span>
@@ -416,7 +416,7 @@ export default function MyDataClient({ city, places, stats, completeness, teamCo
                                   </tbody>
                                 </table>
                               ) : (
-                                <p className="font-mono text-[11px] text-zinc-500">No measurements yet.</p>
+                                <p className="text-[11px] text-zinc-500">No measurements yet.</p>
                               )}
                             </td>
                           </tr>
@@ -430,45 +430,45 @@ export default function MyDataClient({ city, places, stats, completeness, teamCo
           </div>
         </div>
 
-        {/* Right 4 cols — Metrics + Completeness */}
+        {/* Right 4 cols â€” Metrics + Completeness */}
         <div className="lg:col-span-4 flex flex-col gap-6">
 
           {/* Intervention Metrics */}
           <div className="flex flex-col gap-4">
-            <h2 className="font-mono text-[11px] uppercase tracking-widest text-white border-b border-zinc-900 pb-2">
+            <h2 className="text-[11px] uppercase tracking-widest text-white border-b border-zinc-900 pb-2">
               Intervention Metrics
             </h2>
             <div className="grid grid-cols-2 gap-px bg-zinc-800">
               <div className="bg-[#0e0e0e] p-4 flex flex-col gap-1 border-t-2 border-[#1b4d3e]">
-                <span className="font-mono text-[10px] text-zinc-500 uppercase">Active Projects</span>
-                <span className="font-mono text-2xl text-[#9ed1bd]">{stats.activeInterventions}</span>
+                <span className="text-[10px] text-zinc-500 uppercase">Active Projects</span>
+                <span className="text-2xl text-[#9ed1bd]">{stats.activeInterventions}</span>
               </div>
               <div className="bg-[#0e0e0e] p-4 flex flex-col gap-1">
-                <span className="font-mono text-[10px] text-zinc-500 uppercase">Completed YTD</span>
-                <span className="font-mono text-2xl text-white">{stats.completedInterventions}</span>
+                <span className="text-[10px] text-zinc-500 uppercase">Completed YTD</span>
+                <span className="text-2xl text-white">{stats.completedInterventions}</span>
               </div>
               <div className="bg-[#0e0e0e] p-4 flex flex-col gap-1 col-span-2">
-                <span className="font-mono text-[10px] text-zinc-500 uppercase">Projected Temp Reduction</span>
+                <span className="text-[10px] text-zinc-500 uppercase">Projected Temp Reduction</span>
                 <div className="flex items-end gap-2 mt-1">
-                  <span className="font-mono text-3xl text-[#7ed99e]">
-                    {stats.totalProjectedReduction > 0 ? `-${stats.totalProjectedReduction.toFixed(1)}°C` : '—'}
+                  <span className="text-3xl text-[#7ed99e]">
+                    {stats.totalProjectedReduction > 0 ? `-${stats.totalProjectedReduction.toFixed(1)}Â°C` : 'â€”'}
                   </span>
-                  <span className="font-mono text-sm text-zinc-500 mb-1">if implemented</span>
+                  <span className="text-sm text-zinc-500 mb-1">if implemented</span>
                 </div>
               </div>
 
               {/* Scenarios bar chart */}
               <div className="bg-[#0e0e0e] p-4 flex flex-col gap-2 col-span-2">
                 <div className="flex justify-between items-center">
-                  <span className="font-mono text-[10px] text-zinc-500 uppercase">Scenarios by Status</span>
+                  <span className="text-[10px] text-zinc-500 uppercase">Scenarios by Status</span>
                   <div className="flex gap-3">
                     <div className="flex items-center gap-1">
                       <span className="w-2 h-2 bg-zinc-700 inline-block" />
-                      <span className="font-mono text-[8px] text-zinc-500">Draft</span>
+                      <span className="text-[8px] text-zinc-500">Draft</span>
                     </div>
                     <div className="flex items-center gap-1">
                       <span className="w-2 h-2 bg-[#9ed1bd] inline-block" />
-                      <span className="font-mono text-[8px] text-zinc-500">Active</span>
+                      <span className="text-[8px] text-zinc-500">Active</span>
                     </div>
                   </div>
                 </div>
@@ -486,12 +486,12 @@ export default function MyDataClient({ city, places, stats, completeness, teamCo
                     })
                   ) : (
                     <div className="flex w-full items-center justify-center">
-                      <span className="font-mono text-[10px] text-zinc-600">No scenarios yet</span>
+                      <span className="text-[10px] text-zinc-600">No scenarios yet</span>
                     </div>
                   )}
                 </div>
                 {scenarios.length > 0 && (
-                  <div className="flex justify-around font-mono text-[9px] text-zinc-500">
+                  <div className="flex justify-around text-[9px] text-zinc-500">
                     {['DRAFT', 'APRVD', 'REVW', 'RJCT'].map(s => <span key={s}>{s}</span>)}
                   </div>
                 )}
@@ -501,7 +501,7 @@ export default function MyDataClient({ city, places, stats, completeness, teamCo
 
           {/* Data Completeness */}
           <div className="flex flex-col gap-4">
-            <h2 className="font-mono text-[11px] uppercase tracking-widest text-white border-b border-zinc-900 pb-2">
+            <h2 className="text-[11px] uppercase tracking-widest text-white border-b border-zinc-900 pb-2">
               Data Completeness
             </h2>
             <div className="flex flex-col gap-4 border border-zinc-900 bg-[#0e0e0e] p-4">
@@ -513,8 +513,8 @@ export default function MyDataClient({ city, places, stats, completeness, teamCo
               ] as const).map(item => (
                 <div key={item.label} className="flex flex-col gap-1">
                   <div className="flex justify-between items-center">
-                    <span className="font-mono text-[11px] text-white uppercase">{item.label}</span>
-                    <span className="font-mono text-xs" style={{ color: item.color }}>{item.pct}%</span>
+                    <span className="text-[11px] text-white uppercase">{item.label}</span>
+                    <span className="text-xs" style={{ color: item.color }}>{item.pct}%</span>
                   </div>
                   <div className="w-full h-1 bg-zinc-900">
                     <div className="h-full" style={{ width: `${item.pct}%`, backgroundColor: item.color }} />
@@ -527,14 +527,14 @@ export default function MyDataClient({ city, places, stats, completeness, teamCo
           {/* Recent Reports */}
           {reports.length > 0 && (
             <div className="flex flex-col gap-4">
-              <h2 className="font-mono text-[11px] uppercase tracking-widest text-white border-b border-zinc-900 pb-2">
+              <h2 className="text-[11px] uppercase tracking-widest text-white border-b border-zinc-900 pb-2">
                 Recent Reports
               </h2>
               <div className="flex flex-col gap-1">
                 {reports.slice(0, 4).map(r => (
                   <div key={r.id} className="flex justify-between items-center px-3 py-2 border border-zinc-900 bg-[#0e0e0e]">
-                    <span className="font-mono text-[11px] text-white truncate max-w-[60%]">{r.title}</span>
-                    <span className="font-mono text-[10px] text-zinc-500">{new Date(r.generatedAt).toLocaleDateString()}</span>
+                    <span className="text-[11px] text-white truncate max-w-[60%]">{r.title}</span>
+                    <span className="text-[10px] text-zinc-500">{new Date(r.generatedAt).toLocaleDateString()}</span>
                   </div>
                 ))}
               </div>
@@ -544,7 +544,7 @@ export default function MyDataClient({ city, places, stats, completeness, teamCo
           {/* Recent Scenarios */}
           {scenarios.length > 0 && (
             <div className="flex flex-col gap-4">
-              <h2 className="font-mono text-[11px] uppercase tracking-widest text-white border-b border-zinc-900 pb-2">
+              <h2 className="text-[11px] uppercase tracking-widest text-white border-b border-zinc-900 pb-2">
                 Recent Scenarios
               </h2>
               <div className="flex flex-col gap-1">
@@ -554,8 +554,8 @@ export default function MyDataClient({ city, places, stats, completeness, teamCo
                     href={`/dashboard/scenarios/${s.id}`}
                     className="flex justify-between items-center px-3 py-2 border border-zinc-900 bg-[#0e0e0e] hover:border-zinc-700"
                   >
-                    <span className="font-mono text-[11px] text-white truncate max-w-[60%]">{s.name}</span>
-                    <span className="font-mono text-[10px] text-zinc-500">{s.status}</span>
+                    <span className="text-[11px] text-white truncate max-w-[60%]">{s.name}</span>
+                    <span className="text-[10px] text-zinc-500">{s.status}</span>
                   </Link>
                 ))}
               </div>
@@ -564,29 +564,29 @@ export default function MyDataClient({ city, places, stats, completeness, teamCo
         </div>
       </div>
 
-      {/* ── QUICK ACTIONS FOOTER ────────────────────────────────────────── */}
+      {/* â”€â”€ QUICK ACTIONS FOOTER â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <footer className="border-t border-zinc-900 pt-4 flex flex-wrap gap-3">
         <Link
           href="/dashboard/map"
-          className="bg-[#1b4d3e] text-white font-mono text-[11px] px-6 py-2 uppercase tracking-widest hover:bg-[#22c55e]/20 transition-colors flex items-center gap-2"
+          className="bg-[#1b4d3e] text-white text-[11px] px-6 py-2 uppercase tracking-widest hover:bg-[#22c55e]/20 transition-colors flex items-center gap-2"
         >
           <span className="material-symbols-outlined text-sm">map</span>Go to Map
         </Link>
         <Link
           href="/dashboard/reports"
-          className="bg-transparent border border-zinc-800 text-white font-mono text-[11px] px-6 py-2 uppercase tracking-widest hover:border-[#7ed99e] hover:text-[#7ed99e] transition-colors flex items-center gap-2"
+          className="bg-transparent border border-zinc-800 text-white text-[11px] px-6 py-2 uppercase tracking-widest hover:border-[#7ed99e] hover:text-[#7ed99e] transition-colors flex items-center gap-2"
         >
           <span className="material-symbols-outlined text-sm">summarize</span>Reports
         </Link>
         <Link
           href="/dashboard/data"
-          className="bg-transparent border border-zinc-800 text-white font-mono text-[11px] px-6 py-2 uppercase tracking-widest hover:border-[#7ed99e] hover:text-[#7ed99e] transition-colors flex items-center gap-2"
+          className="bg-transparent border border-zinc-800 text-white text-[11px] px-6 py-2 uppercase tracking-widest hover:border-[#7ed99e] hover:text-[#7ed99e] transition-colors flex items-center gap-2"
         >
           <span className="material-symbols-outlined text-sm">upload_file</span>Import Data
         </Link>
         <Link
           href="/dashboard/scenarios"
-          className="ml-auto bg-transparent border border-zinc-800 text-white font-mono text-[11px] px-6 py-2 uppercase tracking-widest hover:border-[#7ed99e] hover:text-[#7ed99e] transition-colors flex items-center gap-2"
+          className="ml-auto bg-transparent border border-zinc-800 text-white text-[11px] px-6 py-2 uppercase tracking-widest hover:border-[#7ed99e] hover:text-[#7ed99e] transition-colors flex items-center gap-2"
         >
           <span className="material-symbols-outlined text-sm">science</span>View Scenarios
         </Link>
@@ -594,4 +594,5 @@ export default function MyDataClient({ city, places, stats, completeness, teamCo
     </div>
   );
 }
+
 
