@@ -5,12 +5,14 @@ import { useSession } from 'next-auth/react';
 import GlobalNavbar from '@/components/layout/GlobalNavbar';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const pathname = usePathname();
 
   const isOnboarding = pathname.startsWith('/dashboard/onboarding');
   const onboardingComplete = session?.user?.onboardingComplete;
-  const hideNav = isOnboarding || !onboardingComplete;
+  // Only hide when we KNOW user is authenticated but onboarding incomplete.
+  // During loading/unauthenticated states the navbar stays visible.
+  const hideNav = isOnboarding || (status === 'authenticated' && !onboardingComplete);
 
   // Full-screen routes that must not be wrapped in the page container
   const isFullscreen = pathname.startsWith('/dashboard/map');

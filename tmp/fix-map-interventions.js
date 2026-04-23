@@ -25,13 +25,25 @@ if (depIdx >= 0) {
 // 4. Remove setSelectedIntervention(null) calls (just remove the call, keep rest)
 for (let i = 0; i < lines.length; i++) {
   lines[i] = lines[i].replace(/setSelectedIntervention\(null\); ?/g, '');
-  lines[i] = lines[i].replace(/setSelectedIntervention\(iv\);.*?setSearchedMarkerPos\(null\);/g, 'setSelectedPlace(payload.places.find(n => n.id === iv.placeId) ?? null); setSearchedPlace(null); setSearchedMarkerPos(null);');
+  // Handle the setSelectedIntervention(iv) replacement—may be on its own line
+  if (/setSelectedIntervention\(iv\)/.test(lines[i])) {
+    lines[i] = lines[i].replace(
+      /setSelectedIntervention\(iv\)[^;]*;/,
+      'setSelectedPlace(payload.places.find(n => n.id === iv.placeId) ?? null);'
+    );
+  }
+  // On the line that has setSearchedMarkerPos(null), also insert setSearchedPlace(null) before it
+  // but only if the previous line already has setSelectedPlace (i.e. we just replaced it)
+  if (/setSearchedMarkerPos\(null\)/.test(lines[i]) && i > 0 && /setSelectedPlace/.test(lines[i - 1])) {
+    lines[i] = lines[i].replace('setSearchedMarkerPos(null)', 'setSearchedPlace(null); setSearchedMarkerPos(null)');
+  }
 }
 
 // 5. Remove intervention markers block (the map(iv => <Marker ...>) block)
 const intMapIdx = lines.findIndex(l => l.includes("payload?.interventions.map(iv =>"));
 if (intMapIdx >= 0) {
-  // Find closing ))}
+  // Find the closing line using paren depth.
+  // Start depth at 0; increment for '(', decrement for ')'. Stop only when i > intMapIdx AND depth <= 0.
   let depth = 0;
   let endIdx = intMapIdx;
   for (let i = intMapIdx; i < lines.length; i++) {
@@ -40,9 +52,7 @@ if (intMapIdx >= 0) {
       if (ch === '(') depth++;
       if (ch === ')') depth--;
     }
-    if (depth <= 0 && i > intMapIdx) { endIdx = i; break; }
-    if (i === intMapIdx && depth <= 0) { endIdx = i; break; }
-  }
+    if (i > intMapIdx && depth <= 0) { endIdx = i; break; }
   lines.splice(intMapIdx, endIdx - intMapIdx + 1);
 }
 
@@ -60,7 +70,7 @@ if (mobileIntLinkIdx >= 0) {
   if (nextLine && nextLine.includes('Intervention')) {
     lines.splice(mobileIntLinkIdx, 2,
       '                <Link href="/dashboard/scenarios/new" className="flex items-center justify-center gap-1 h-9 text-xs font-medium bg-[#22c55e] text-white rounded-lg col-span-2">',
-      '                  <span className="material-symbols-outlined text-xs">auto_awesome</span>Build Scenario'
+      '              Build Scenario'
     );
   } else {
     lines[mobileIntLinkIdx] = lines[mobileIntLinkIdx]

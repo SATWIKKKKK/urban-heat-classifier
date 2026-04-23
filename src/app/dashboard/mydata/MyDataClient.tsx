@@ -51,6 +51,63 @@ export default function MyDataClient({ city, places, stats, completeness, teamCo
   const [showAddMeasurement, setShowAddMeasurement] = useState<string | null>(null);
   const [error, setError] = useState('');
 
+  // ── Computed telemetry ─────────────────────────────────────────────────
+  const totalArea = places.reduce((s, p) => s + (p.areaSqkm ?? 0), 0);
+  const latestTemps = places.flatMap(p => p.heatMeasurements.slice(0, 1)).map(m => m.avgTemp);
+  const avgTemp = latestTemps.length > 0 ? latestTemps.reduce((s, t) => s + t, 0) / latestTemps.length : null;
+  const vulnerablePop = places
+    .filter(p => ['CRITICAL', 'HIGH'].includes(p.vulnerabilityLevel ?? ''))
+    .reduce((s, p) => s + (p.population ?? 0), 0);
+  const activePlacesCount = places.filter(p => p.heatMeasurements.length > 0).length;
+
+  // Completeness percentages
+  const nPlaces = completeness.items.length;
+  const tempLayerPct  = nPlaces > 0 ? Math.round(completeness.items.filter(i => i.checks.hasHeatData).length   / nPlaces * 100) : 0;
+  const treeCanopyPct2 = nPlaces > 0 ? Math.round(completeness.items.filter(i => i.checks.hasTreeCanopy).length / nPlaces * 100) : 0;
+  const boundaryPct   = nPlaces > 0 ? Math.round(completeness.items.filter(i => i.checks.hasBoundary).length    / nPlaces * 100) : 0;
+
+  // ── Helpers ────────────────────────────────────────────────────────────
+  function statusLabel(level: string | null) {
+    switch (level) {
+      case 'CRITICAL': return 'CRITICAL';
+      case 'HIGH':     return 'SEVERE';
+      case 'MODERATE': return 'ELEVATED';
+      case 'LOW':      return 'STABLE';
+      default:         return 'UNKNOWN';
+    }
+  }
+
+  function statusBadge(level: string | null): { bg: string; border: string; text: string } {
+    switch (level) {
+      case 'CRITICAL': return { bg: 'bg-[#5b4000]/30', border: 'border-[#f7bd48]',    text: 'text-[#f7bd48]' };
+      case 'HIGH':     return { bg: 'bg-[#93000a]/30', border: 'border-[#ffb4ab]',    text: 'text-[#ffb4ab]' };
+      case 'MODERATE': return { bg: 'bg-[#5b4000]/20', border: 'border-[#f7bd48]/60', text: 'text-[#f7bd48]' };
+      case 'LOW':      return { bg: 'bg-[#00703f]/30', border: 'border-[#7ed99e]',    text: 'text-[#7ed99e]' };
+      default:         return { bg: 'bg-zinc-900',     border: 'border-zinc-700',     text: 'text-zinc-400'  };
+    }
+  }
+
+  function tempColor(level: string | null) {
+    if (level === 'CRITICAL' || level === 'HIGH') return 'text-[#ffb4ab]';
+    if (level === 'MODERATE') return 'text-[#f7bd48]';
+    return 'text-white';
+  }
+
+  function TrendLine({ measurements, level }: { measurements: { avgTemp: number }[]; level: string | null }) {
+    if (measurements.length < 2) return <span className="text-zinc-600 font-mono text-[10px]">—</span>;
+    const temps = [...measurements].slice(0, 5).reverse();
+    const min = Math.min(...temps.map(m => m.avgTemp));
+    const max = Math.max(...temps.map(m => m.avgTemp));
+    const range = max - min || 1;
+    const pts = temps.map((m, i) => `${i * (40 / Math.max(temps.length - 1, 1))},${10 - ((m.avgTemp - min) / range) * 8}`).join(' ');
+    const stroke = level === 'CRITICAL' || level === 'HIGH' ? '#ffb4ab' : level === 'MODERATE' ? '#f7bd48' : '#7ed99e';
+    return (
+      <svg className="inline-block w-12 h-4" viewBox="0 0 40 10" preserveAspectRatio="none">
+        <polyline points={pts} fill="none" stroke={stroke} strokeWidth="1.5" />
+      </svg>
+    );
+  }
+
   async function handleAddPlace(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError('');
@@ -95,302 +152,445 @@ export default function MyDataClient({ city, places, stats, completeness, teamCo
   }
 
   return (
-    <div className="flex flex-col gap-8">
-      {/* Page Header */}
-      <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
-        <div>
-          <div className="flex items-center gap-1.5 mb-1">
-            <span className="material-symbols-outlined text-[var(--text-tertiary)] text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>person</span>
-            <span className="text-[10px] font-medium uppercase tracking-[0.06em] text-[var(--text-tertiary)]">My Data</span>
+    <div className="flex flex-col gap-6">
+      {error && <div className="px-4 py-2 text-sm bg-[#93000a]/30 border border-[#ffb4ab] text-[#ffb4ab] font-mono">{error}</div>}
+
+      {/* ── HEADER ──────────────────────────────────────────────────────── */}
+      <header className="flex flex-col gap-4">
+        {/* Title row */}
+        <div className="flex flex-col md:flex-row md:justify-between md:items-end border-b border-zinc-900 pb-4 gap-3">
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight text-white font-mono">Data Hub</h1>
+            <p className="text-sm text-zinc-500 mt-1 font-mono">
+              System Overview &amp; Metric Aggregation ·{' '}
+              <span className="text-zinc-400">{city.name}</span>
+            </p>
           </div>
-          <h1 className="text-2xl font-bold tracking-tight text-[var(--text-primary)]">Data Hub</h1>
-          <p className="text-sm text-[var(--text-secondary)] mt-0.5">Everything about your city and places in one view.</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Link href="/dashboard/map" className="inline-flex items-center gap-1.5 h-9 px-4 text-sm font-medium text-[var(--bg-base)] bg-gradient-to-r from-[var(--green-400)] to-[var(--green-500)] rounded-lg hover:opacity-90 transition-opacity">
-            <span className="material-symbols-outlined text-sm">map</span>Go to Map
-          </Link>
-          <Link href="/dashboard/data" className="inline-flex items-center gap-1.5 h-9 px-4 text-sm font-medium text-[var(--text-secondary)] border border-[var(--border-strong)] rounded-lg hover:bg-[var(--bg-elevated)] transition-colors">
-            <span className="material-symbols-outlined text-sm">upload</span>Import Data
-          </Link>
-        </div>
-      </div>
-
-      {error && <div className="px-4 py-2 text-sm bg-red-500/10 border border-red-500/30 text-red-400 rounded-lg">{error}</div>}
-
-      {/* SECTION 1: City Overview */}
-      <section className="p-5 rounded-xl border border-[var(--border-default)] bg-[var(--bg-surface)]">
-        <h2 className="text-sm font-semibold text-[var(--text-primary)] mb-3 flex items-center gap-2">
-          <span className="material-symbols-outlined text-base">location_city</span>City Overview
-        </h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div><span className="text-[10px] uppercase tracking-wider text-[var(--text-tertiary)]">City</span><p className="font-semibold text-[var(--text-primary)]">{city.name}</p></div>
-          <div><span className="text-[10px] uppercase tracking-wider text-[var(--text-tertiary)]">State / Country</span><p className="font-semibold text-[var(--text-primary)]">{city.state ? `${city.state}, ` : ''}{city.country}</p></div>
-          <div><span className="text-[10px] uppercase tracking-wider text-[var(--text-tertiary)]">Total Places</span><p className="font-semibold text-[var(--text-primary)]">{stats.totalPlaces}</p></div>
-          <div><span className="text-[10px] uppercase tracking-wider text-[var(--text-tertiary)]">Last Updated</span><p className="font-semibold text-[var(--text-primary)]">{new Date(city.updatedAt).toLocaleDateString()}</p></div>
-          {city.lat && city.lng && (
-            <div><span className="text-[10px] uppercase tracking-wider text-[var(--text-tertiary)]">Coordinates</span><p className="text-xs text-[var(--text-secondary)]">{city.lat.toFixed(4)}, {city.lng.toFixed(4)}</p></div>
-          )}
-          {city.population && (
-            <div><span className="text-[10px] uppercase tracking-wider text-[var(--text-tertiary)]">Population</span><p className="font-semibold text-[var(--text-primary)]">{city.population.toLocaleString()}</p></div>
-          )}
-          <div><span className="text-[10px] uppercase tracking-wider text-[var(--text-tertiary)]">Team Members</span><p className="font-semibold text-[var(--text-primary)]">{teamCount}</p></div>
-          <div><span className="text-[10px] uppercase tracking-wider text-[var(--text-tertiary)]">Currency</span><p className="font-semibold text-[var(--text-primary)]">{city.currency}</p></div>
-        </div>
-      </section>
-
-      {/* SECTION 2: My Places */}
-      <section className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-surface)] overflow-hidden">
-        <div className="flex items-center justify-between p-5 pb-3">
-          <h2 className="text-sm font-semibold text-[var(--text-primary)] flex items-center gap-2">
-            <span className="material-symbols-outlined text-base">place</span>My Places
-          </h2>
-          <button onClick={() => setShowAddPlace(!showAddPlace)} className="inline-flex items-center gap-1 text-xs font-medium px-3 py-1.5 rounded-lg bg-[var(--green-400)]/10 text-[var(--green-400)] hover:bg-[var(--green-400)]/20 transition-colors">
-            <span className="material-symbols-outlined text-sm">add</span>Add Place
-          </button>
-        </div>
-
-        {/* Add Place Form */}
-        {showAddPlace && (
-          <form onSubmit={handleAddPlace} className="mx-5 mb-4 p-4 rounded-lg border border-[var(--border-strong)] bg-[var(--bg-elevated)] grid grid-cols-2 md:grid-cols-3 gap-3">
-            <input name="name" required placeholder="Place name *" className="col-span-2 md:col-span-3 px-3 py-2 rounded-lg bg-[var(--bg-base)] border border-[var(--border-default)] text-sm text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)]" />
-            <input name="population" type="number" placeholder="Population" className="px-3 py-2 rounded-lg bg-[var(--bg-base)] border border-[var(--border-default)] text-sm text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)]" />
-            <input name="areaSqkm" type="number" step="0.01" placeholder="Area (sq km)" className="px-3 py-2 rounded-lg bg-[var(--bg-base)] border border-[var(--border-default)] text-sm text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)]" />
-            <input name="medianIncome" type="number" placeholder="Median Income" className="px-3 py-2 rounded-lg bg-[var(--bg-base)] border border-[var(--border-default)] text-sm text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)]" />
-            <input name="pctElderly" type="number" step="0.1" placeholder="% Elderly" className="px-3 py-2 rounded-lg bg-[var(--bg-base)] border border-[var(--border-default)] text-sm text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)]" />
-            <input name="pctChildren" type="number" step="0.1" placeholder="% Children" className="px-3 py-2 rounded-lg bg-[var(--bg-base)] border border-[var(--border-default)] text-sm text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)]" />
-            <div className="col-span-2 md:col-span-3 flex gap-2 justify-end">
-              <button type="button" onClick={() => setShowAddPlace(false)} className="px-3 py-1.5 text-xs text-[var(--text-secondary)] border border-[var(--border-default)] rounded-lg">Cancel</button>
-              <button type="submit" disabled={isPending} className="px-4 py-1.5 text-xs font-semibold bg-[var(--green-400)] text-[var(--bg-base)] rounded-lg disabled:opacity-50">Save Place</button>
+          <div className="flex flex-wrap items-center gap-4">
+            {/* Mini weather/stats bar */}
+            <div className="flex items-center gap-px border border-zinc-800 bg-zinc-950">
+              {avgTemp != null && (
+                <>
+                  <div className="flex flex-col px-4 py-2">
+                    <span className="font-mono text-[9px] uppercase tracking-widest text-zinc-500">Avg Temp</span>
+                    <span className="font-mono text-sm text-[#7ed99e]">{avgTemp.toFixed(1)}°C</span>
+                  </div>
+                  <div className="w-px h-8 bg-zinc-800" />
+                </>
+              )}
+              <div className="flex flex-col px-4 py-2">
+                <span className="font-mono text-[9px] uppercase tracking-widest text-zinc-500">Places</span>
+                <span className="font-mono text-sm text-[#9ed1bd]">{stats.totalPlaces}</span>
+              </div>
+              <div className="w-px h-8 bg-zinc-800" />
+              <div className="flex flex-col px-4 py-2">
+                <span className="font-mono text-[9px] uppercase tracking-widest text-zinc-500">Country</span>
+                <span className="font-mono text-sm text-[#9ed1bd]">{city.country}</span>
+              </div>
             </div>
-          </form>
-        )}
-
-        {places.length === 0 ? (
-          <div className="p-8 text-center">
-            <span className="material-symbols-outlined text-4xl text-[var(--text-tertiary)] mb-2">add_location_alt</span>
-            <p className="text-sm text-[var(--text-secondary)] mb-3">You haven&apos;t added any places yet.<br />Add your first place to start tracking heat vulnerability.</p>
-            <button onClick={() => setShowAddPlace(true)} className="px-4 py-2 text-sm font-semibold bg-[var(--green-400)] text-[var(--bg-base)] rounded-lg">Add Place</button>
+            <div className="flex items-center gap-2">
+              <span className="flex h-2 w-2 bg-[#9af6b8]" />
+              <span className="font-mono text-[11px] text-[#9af6b8] uppercase tracking-wider">System Active</span>
+            </div>
           </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs">
-              <thead><tr className="border-t border-b border-[var(--border-default)] bg-[var(--bg-elevated)]">
-                <th className="px-4 py-2.5 text-left text-[var(--text-tertiary)] font-medium">Place</th>
-                <th className="px-4 py-2.5 text-left text-[var(--text-tertiary)] font-medium">Vulnerability</th>
-                <th className="px-4 py-2.5 text-right text-[var(--text-tertiary)] font-medium">Avg Temp</th>
-                <th className="px-4 py-2.5 text-right text-[var(--text-tertiary)] font-medium hidden md:table-cell">Tree Canopy</th>
-                <th className="px-4 py-2.5 text-right text-[var(--text-tertiary)] font-medium hidden md:table-cell">Population</th>
-                <th className="px-4 py-2.5 text-right text-[var(--text-tertiary)] font-medium">Measurements</th>
-                <th className="px-4 py-2.5 text-right text-[var(--text-tertiary)] font-medium">Actions</th>
-              </tr></thead>
-              <tbody>
-                {places.map((p) => {
-                  const vc = vulnColor(p.vulnerabilityLevel);
-                  const latest = p.heatMeasurements[0];
-                  const isExpanded = expandedPlace === p.id;
-                  return (
-                    <> 
-                      <tr key={p.id} className="border-b border-[var(--border-default)] hover:bg-[var(--bg-elevated)] cursor-pointer transition-colors" onClick={() => setExpandedPlace(isExpanded ? null : p.id)}>
-                        <td className="px-4 py-3">
-                          <div className="flex items-center gap-2">
-                            <span className="material-symbols-outlined text-sm" style={{ color: vc.color }}>{isExpanded ? 'expand_more' : 'chevron_right'}</span>
-                            <span className="font-medium text-[var(--text-primary)]">{p.name}</span>
-                          </div>
-                        </td>
-                        <td className="px-4 py-3">
-                          {p.vulnerabilityLevel ? (
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold" style={{ color: vc.color, backgroundColor: vc.bg }}>{p.vulnerabilityLevel}</span>
-                          ) : <span className="text-[var(--text-tertiary)]">No data</span>}
-                        </td>
-                        <td className="px-4 py-3 text-right text-[var(--text-primary)]">{latest ? `${latest.avgTemp.toFixed(1)}°C` : '—'}</td>
-                        <td className="px-4 py-3 text-right text-[var(--text-primary)] hidden md:table-cell">{latest?.treeCanopyPct != null ? `${latest.treeCanopyPct.toFixed(0)}%` : '—'}</td>
-                        <td className="px-4 py-3 text-right text-[var(--text-primary)] hidden md:table-cell">{p.population?.toLocaleString() ?? '—'}</td>
-                        <td className="px-4 py-3 text-right text-[var(--text-primary)]">{p.heatMeasurements.length}</td>
-                        <td className="px-4 py-3 text-right">
-                          <Link href={`/dashboard/map?placeId=${p.id}`} className="text-[var(--green-400)] hover:underline mr-2" onClick={(e) => e.stopPropagation()}>Map</Link>
-                          <button className="text-[var(--info)] hover:underline" onClick={(e) => { e.stopPropagation(); setShowAddMeasurement(showAddMeasurement === p.id ? null : p.id); }}>+ Data</button>
-                        </td>
-                      </tr>
-                      {/* SECTION 3: Expanded heat data */}
-                      {isExpanded && (
-                        <tr key={`${p.id}-expanded`}><td colSpan={7} className="px-4 py-3 bg-[var(--bg-elevated)]">
-                          {showAddMeasurement === p.id && (
-                            <form onSubmit={(e) => handleAddMeasurement(e, p.id)} className="mb-3 p-3 rounded-lg border border-[var(--border-strong)] bg-[var(--bg-base)] grid grid-cols-2 md:grid-cols-4 gap-2">
-                              <input name="date" type="date" required className="px-2 py-1.5 rounded bg-[var(--bg-surface)] border border-[var(--border-default)] text-xs text-[var(--text-primary)]" />
-                              <input name="avgTemp" type="number" step="0.1" required placeholder="Avg Temp °C *" className="px-2 py-1.5 rounded bg-[var(--bg-surface)] border border-[var(--border-default)] text-xs text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)]" />
-                              <input name="maxTemp" type="number" step="0.1" required placeholder="Max Temp °C *" className="px-2 py-1.5 rounded bg-[var(--bg-surface)] border border-[var(--border-default)] text-xs text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)]" />
-                              <input name="minTemp" type="number" step="0.1" placeholder="Min Temp °C" className="px-2 py-1.5 rounded bg-[var(--bg-surface)] border border-[var(--border-default)] text-xs text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)]" />
-                              <input name="treeCanopyPct" type="number" step="0.1" placeholder="Tree Canopy %" className="px-2 py-1.5 rounded bg-[var(--bg-surface)] border border-[var(--border-default)] text-xs text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)]" />
-                              <input name="imperviousSurfacePct" type="number" step="0.1" placeholder="Impervious Sfc %" className="px-2 py-1.5 rounded bg-[var(--bg-surface)] border border-[var(--border-default)] text-xs text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)]" />
-                              <input name="dataSource" placeholder="Source (e.g. MANUAL)" className="px-2 py-1.5 rounded bg-[var(--bg-surface)] border border-[var(--border-default)] text-xs text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)]" />
-                              <div className="flex gap-2 items-center">
-                                <button type="submit" disabled={isPending} className="px-3 py-1.5 text-xs font-semibold bg-[var(--green-400)] text-[var(--bg-base)] rounded disabled:opacity-50">Save</button>
-                                <button type="button" onClick={() => setShowAddMeasurement(null)} className="px-3 py-1.5 text-xs text-[var(--text-secondary)]">Cancel</button>
+        </div>
+
+        {/* Telemetry cards */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-px bg-zinc-800">
+          <div className="bg-[#0e0e0e] p-4 flex flex-col gap-2">
+            <span className="font-mono text-[10px] uppercase tracking-widest text-zinc-500">Total Monitored Area</span>
+            <span className="font-mono text-xl text-white">
+              {totalArea > 0 ? `${totalArea.toLocaleString()} km²` : `${stats.totalPlaces} places`}
+            </span>
+          </div>
+          <div className="bg-[#0e0e0e] p-4 flex flex-col gap-2">
+            <span className="font-mono text-[10px] uppercase tracking-widest text-zinc-500">Avg Temp Delta</span>
+            <span className="font-mono text-xl text-[#ffb4ab]">{avgTemp != null ? `+${avgTemp.toFixed(1)}°C` : '—'}</span>
+          </div>
+          <div className="bg-[#0e0e0e] p-4 flex flex-col gap-2">
+            <span className="font-mono text-[10px] uppercase tracking-widest text-zinc-500">Vulnerable Pop.</span>
+            <span className="font-mono text-xl text-[#f7bd48]">{vulnerablePop > 0 ? vulnerablePop.toLocaleString() : '—'}</span>
+          </div>
+          <div className="bg-[#0e0e0e] p-4 flex flex-col gap-2">
+            <span className="font-mono text-[10px] uppercase tracking-widest text-zinc-500">Active Sensors</span>
+            <span className="font-mono text-xl text-[#7ed99e]">{activePlacesCount} / {stats.totalPlaces}</span>
+          </div>
+        </div>
+
+        {/* Place Array Health */}
+        {places.length > 0 && (
+          <div className="border border-zinc-900 bg-[#0e0e0e] p-4 flex flex-col gap-3">
+            <div className="flex justify-between items-center border-b border-zinc-900 pb-2">
+              <h2 className="font-mono text-[11px] uppercase tracking-widest text-white">Place Array Health</h2>
+              <span className="font-mono text-xs text-[#7ed99e]">
+                ACTIVE: {activePlacesCount} | UNMEASURED: {stats.totalPlaces - activePlacesCount}
+              </span>
+            </div>
+            <div className="grid grid-cols-4 md:grid-cols-8 gap-2">
+              {places.slice(0, 16).map(p => {
+                const st = statusBadge(p.vulnerabilityLevel);
+                const active = p.heatMeasurements.length > 0;
+                return (
+                  <div
+                    key={p.id}
+                    className={`flex items-center gap-2 border p-1.5 ${active ? st.border + '/40' : 'border-zinc-800'}`}
+                  >
+                    <span className={`h-1.5 w-1.5 flex-shrink-0 ${p.vulnerabilityLevel === 'CRITICAL' ? 'bg-[#f7bd48]' : active ? 'bg-[#9af6b8]' : 'bg-zinc-700'}`} />
+                    <span className="font-mono text-[9px] text-white truncate">
+                      {p.name.toUpperCase().replace(/\s+/g, '-').slice(0, 9)}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </header>
+
+      {/* ── MAIN GRID ───────────────────────────────────────────────────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+        {/* Left 8 cols — My Places Directory */}
+        <div className="lg:col-span-8 flex flex-col gap-4">
+          <div className="flex justify-between items-center border-b border-zinc-900 pb-2">
+            <h2 className="font-mono text-[11px] uppercase tracking-widest text-white">My Places Directory</h2>
+            <button
+              onClick={() => setShowAddPlace(!showAddPlace)}
+              className="font-mono text-[11px] text-[#9ed1bd] hover:text-white uppercase border border-zinc-800 px-3 py-1 hover:border-zinc-700"
+            >
+              + Add Place
+            </button>
+          </div>
+
+          {/* Add Place Form */}
+          {showAddPlace && (
+            <form
+              onSubmit={handleAddPlace}
+              className="p-4 border border-zinc-800 bg-zinc-950 grid grid-cols-2 md:grid-cols-3 gap-3"
+            >
+              <input name="name" required placeholder="Place name *"
+                className="col-span-2 md:col-span-3 px-3 py-2 bg-black border border-zinc-800 text-sm text-white font-mono placeholder:text-zinc-600 focus:outline-none focus:border-zinc-600" />
+              <input name="population" type="number" placeholder="Population"
+                className="px-3 py-2 bg-black border border-zinc-800 text-sm text-white font-mono placeholder:text-zinc-600 focus:outline-none" />
+              <input name="areaSqkm" type="number" step="0.01" placeholder="Area km²"
+                className="px-3 py-2 bg-black border border-zinc-800 text-sm text-white font-mono placeholder:text-zinc-600 focus:outline-none" />
+              <input name="medianIncome" type="number" placeholder="Median Income"
+                className="px-3 py-2 bg-black border border-zinc-800 text-sm text-white font-mono placeholder:text-zinc-600 focus:outline-none" />
+              <div className="col-span-2 md:col-span-3 flex gap-2 justify-end">
+                <button type="button" onClick={() => setShowAddPlace(false)}
+                  className="px-3 py-1.5 text-xs text-zinc-400 border border-zinc-800 font-mono">Cancel</button>
+                <button type="submit" disabled={isPending}
+                  className="px-4 py-1.5 text-xs font-mono bg-[#22c55e] text-black disabled:opacity-50">Save Place</button>
+              </div>
+            </form>
+          )}
+
+          {/* Places table */}
+          <div className="border border-zinc-900 bg-[#0e0e0e] overflow-hidden">
+            {places.length === 0 ? (
+              <div className="p-10 text-center">
+                <p className="font-mono text-sm text-zinc-500 mb-4">No places added yet.</p>
+                <button onClick={() => setShowAddPlace(true)}
+                  className="font-mono text-xs bg-[#22c55e] text-black px-4 py-2">Add Place</button>
+              </div>
+            ) : (
+              <table className="w-full text-left font-mono text-xs border-collapse">
+                <thead>
+                  <tr className="bg-zinc-950 border-b border-zinc-900">
+                    <th className="font-mono text-[10px] text-zinc-500 font-normal py-2 px-4 uppercase">Location</th>
+                    <th className="font-mono text-[10px] text-zinc-500 font-normal py-2 px-4 uppercase">Status</th>
+                    <th className="font-mono text-[10px] text-zinc-500 font-normal py-2 px-4 uppercase text-center">Trend 24H</th>
+                    <th className="font-mono text-[10px] text-zinc-500 font-normal py-2 px-4 uppercase text-right">Avg Temp</th>
+                    <th className="font-mono text-[10px] text-zinc-500 font-normal py-2 px-4 uppercase text-right hidden md:table-cell">Canopy %</th>
+                    <th className="font-mono text-[10px] text-zinc-500 font-normal py-2 px-4 uppercase text-right hidden md:table-cell">Population</th>
+                    <th className="font-mono text-[10px] text-zinc-500 font-normal py-2 px-4 uppercase text-center">Map</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {places.map(p => {
+                    const st = statusBadge(p.vulnerabilityLevel);
+                    const latest = p.heatMeasurements[0];
+                    const isExp = expandedPlace === p.id;
+                    return (
+                      <>
+                        <tr
+                          key={p.id}
+                          className="border-b border-zinc-900 hover:bg-zinc-900/50 cursor-pointer h-9"
+                          onClick={() => setExpandedPlace(isExp ? null : p.id)}
+                        >
+                          <td className="py-1 px-4 text-white">{p.name}</td>
+                          <td className="py-1 px-4">
+                            <span className={`inline-block ${st.bg} border ${st.border} ${st.text} px-2 py-0.5 text-[9px] uppercase font-bold tracking-widest`}>
+                              {statusLabel(p.vulnerabilityLevel)}
+                            </span>
+                          </td>
+                          <td className="py-1 px-4 text-center">
+                            <TrendLine measurements={p.heatMeasurements} level={p.vulnerabilityLevel} />
+                          </td>
+                          <td className={`py-1 px-4 text-right ${tempColor(p.vulnerabilityLevel)}`}>
+                            {latest ? `${latest.avgTemp.toFixed(1)}°C` : '—'}
+                          </td>
+                          <td className="py-1 px-4 text-right text-white hidden md:table-cell">
+                            {latest?.treeCanopyPct != null ? `${latest.treeCanopyPct.toFixed(0)}%` : '—'}
+                          </td>
+                          <td className="py-1 px-4 text-right text-white hidden md:table-cell">
+                            {p.population?.toLocaleString() ?? '—'}
+                          </td>
+                          <td className="py-1 px-4 text-center">
+                            <Link
+                              href={`/dashboard/map?placeId=${p.id}`}
+                              className="text-zinc-600 hover:text-[#9ed1bd]"
+                              onClick={e => e.stopPropagation()}
+                            >
+                              <span className="material-symbols-outlined text-sm">open_in_new</span>
+                            </Link>
+                          </td>
+                        </tr>
+                        {isExp && (
+                          <tr key={`${p.id}-exp`}>
+                            <td colSpan={7} className="px-4 py-3 bg-zinc-950 border-b border-zinc-900">
+                              {showAddMeasurement === p.id && (
+                                <form
+                                  onSubmit={e => handleAddMeasurement(e, p.id)}
+                                  className="mb-3 p-3 border border-zinc-800 bg-black grid grid-cols-2 md:grid-cols-4 gap-2"
+                                >
+                                  <input name="date" type="date" required
+                                    className="px-2 py-1.5 bg-zinc-900 border border-zinc-800 text-xs text-white font-mono focus:outline-none" />
+                                  <input name="avgTemp" type="number" step="0.1" required placeholder="Avg Temp °C *"
+                                    className="px-2 py-1.5 bg-zinc-900 border border-zinc-800 text-xs text-white font-mono placeholder:text-zinc-600 focus:outline-none" />
+                                  <input name="maxTemp" type="number" step="0.1" required placeholder="Max Temp °C *"
+                                    className="px-2 py-1.5 bg-zinc-900 border border-zinc-800 text-xs text-white font-mono placeholder:text-zinc-600 focus:outline-none" />
+                                  <input name="minTemp" type="number" step="0.1" placeholder="Min Temp °C"
+                                    className="px-2 py-1.5 bg-zinc-900 border border-zinc-800 text-xs text-white font-mono placeholder:text-zinc-600 focus:outline-none" />
+                                  <input name="treeCanopyPct" type="number" step="0.1" placeholder="Tree Canopy %"
+                                    className="px-2 py-1.5 bg-zinc-900 border border-zinc-800 text-xs text-white font-mono placeholder:text-zinc-600 focus:outline-none" />
+                                  <input name="imperviousSurfacePct" type="number" step="0.1" placeholder="Impervious Sfc %"
+                                    className="px-2 py-1.5 bg-zinc-900 border border-zinc-800 text-xs text-white font-mono placeholder:text-zinc-600 focus:outline-none" />
+                                  <input name="dataSource" placeholder="Source"
+                                    className="px-2 py-1.5 bg-zinc-900 border border-zinc-800 text-xs text-white font-mono placeholder:text-zinc-600 focus:outline-none" />
+                                  <div className="flex gap-2 items-center">
+                                    <button type="submit" disabled={isPending}
+                                      className="px-3 py-1.5 text-xs font-mono bg-[#22c55e] text-black disabled:opacity-50">Save</button>
+                                    <button type="button" onClick={() => setShowAddMeasurement(null)}
+                                      className="px-3 py-1.5 text-xs font-mono text-zinc-500">Cancel</button>
+                                  </div>
+                                </form>
+                              )}
+                              <div className="flex justify-between items-center mb-2">
+                                <span className="font-mono text-[10px] text-zinc-500 uppercase">
+                                  {p.heatMeasurements.length} measurements · {p.interventions.length} interventions
+                                </span>
+                                <button
+                                  onClick={() => setShowAddMeasurement(showAddMeasurement === p.id ? null : p.id)}
+                                  className="font-mono text-[10px] text-[#9ed1bd] hover:text-white border border-zinc-800 px-2 py-0.5"
+                                >
+                                  + Add Data
+                                </button>
                               </div>
-                            </form>
-                          )}
-                          {p.heatMeasurements.length > 0 ? (
-                            <table className="w-full text-xs">
-                              <thead><tr className="border-b border-[var(--border-default)]">
-                                <th className="py-1.5 text-left text-[var(--text-tertiary)] font-medium">Date</th>
-                                <th className="py-1.5 text-right text-[var(--text-tertiary)] font-medium">Avg Temp</th>
-                                <th className="py-1.5 text-right text-[var(--text-tertiary)] font-medium">Max Temp</th>
-                                <th className="py-1.5 text-right text-[var(--text-tertiary)] font-medium hidden md:table-cell">Tree Canopy</th>
-                                <th className="py-1.5 text-left text-[var(--text-tertiary)] font-medium">Source</th>
-                              </tr></thead>
-                              <tbody>
-                                {p.heatMeasurements.slice(0, 10).map((m) => (
-                                  <tr key={m.id} className="border-b border-[var(--border-default)]/50">
-                                    <td className="py-1.5 text-[var(--text-primary)]">{new Date(m.date).toLocaleDateString()}</td>
-                                    <td className="py-1.5 text-right text-[var(--text-primary)]">{m.avgTemp.toFixed(1)}°C</td>
-                                    <td className="py-1.5 text-right text-[var(--text-primary)]">{m.maxTemp?.toFixed(1) ?? '—'}°C</td>
-                                    <td className="py-1.5 text-right text-[var(--text-primary)] hidden md:table-cell">{m.treeCanopyPct != null ? `${m.treeCanopyPct.toFixed(0)}%` : '—'}</td>
-                                    <td className="py-1.5"><span className="px-1.5 py-0.5 rounded text-[10px] bg-[var(--bg-surface)] text-[var(--text-tertiary)]">{m.dataSource}</span></td>
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
-                          ) : <p className="text-xs text-[var(--text-tertiary)]">No heat measurements yet. Click &quot;+ Data&quot; to add.</p>}
-                        </td></tr>
-                      )}
-                    </>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
-
-      {/* SECTION 4: Interventions Summary */}
-      <section className="p-5 rounded-xl border border-[var(--border-default)] bg-[var(--bg-surface)]">
-        <h2 className="text-sm font-semibold text-[var(--text-primary)] mb-3 flex items-center gap-2">
-          <span className="material-symbols-outlined text-base">construction</span>Interventions Summary
-        </h2>
-        <div className="grid grid-cols-3 gap-4">
-          <div className="text-center">
-            <p className="text-2xl font-bold text-[var(--green-400)]">{stats.activeInterventions}</p>
-            <p className="text-[10px] uppercase tracking-wider text-[var(--text-tertiary)]">Active</p>
-          </div>
-          <div className="text-center">
-            <p className="text-2xl font-bold text-[var(--text-primary)]">{stats.completedInterventions}</p>
-            <p className="text-[10px] uppercase tracking-wider text-[var(--text-tertiary)]">Completed</p>
-          </div>
-          <div className="text-center">
-            <p className="text-2xl font-bold text-[var(--info)]">-{stats.totalProjectedReduction.toFixed(1)}°C</p>
-            <p className="text-[10px] uppercase tracking-wider text-[var(--text-tertiary)]">Projected Reduction</p>
+                              {p.heatMeasurements.length > 0 ? (
+                                <table className="w-full text-xs font-mono">
+                                  <thead>
+                                    <tr className="border-b border-zinc-800">
+                                      <th className="py-1 text-left text-zinc-500 font-normal">Date</th>
+                                      <th className="py-1 text-right text-zinc-500 font-normal">Avg °C</th>
+                                      <th className="py-1 text-right text-zinc-500 font-normal">Max °C</th>
+                                      <th className="py-1 text-right text-zinc-500 font-normal hidden md:table-cell">Canopy</th>
+                                      <th className="py-1 text-left text-zinc-500 font-normal">Source</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {p.heatMeasurements.slice(0, 8).map(m => (
+                                      <tr key={m.id} className="border-b border-zinc-900/50">
+                                        <td className="py-1 text-white">{new Date(m.date).toLocaleDateString()}</td>
+                                        <td className="py-1 text-right text-white">{m.avgTemp.toFixed(1)}</td>
+                                        <td className="py-1 text-right text-white">{m.maxTemp?.toFixed(1) ?? '—'}</td>
+                                        <td className="py-1 text-right text-white hidden md:table-cell">
+                                          {m.treeCanopyPct != null ? `${m.treeCanopyPct.toFixed(0)}%` : '—'}
+                                        </td>
+                                        <td className="py-1">
+                                          <span className="px-1.5 py-0.5 bg-zinc-900 text-zinc-500 text-[10px]">{m.dataSource}</span>
+                                        </td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              ) : (
+                                <p className="font-mono text-[11px] text-zinc-500">No measurements yet.</p>
+                              )}
+                            </td>
+                          </tr>
+                        )}
+                      </>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
           </div>
         </div>
-      </section>
 
-      {/* SECTION 5: Data Completeness */}
-      <section className="p-5 rounded-xl border border-[var(--border-default)] bg-[var(--bg-surface)]">
-        <h2 className="text-sm font-semibold text-[var(--text-primary)] mb-3 flex items-center gap-2">
-          <span className="material-symbols-outlined text-base">checklist</span>Data Completeness
-        </h2>
-        <div className="mb-4">
-          <div className="flex items-center justify-between mb-1">
-            <span className="text-xs text-[var(--text-secondary)]">Overall: {completeness.overall}% complete</span>
-          </div>
-          <div className="h-2 rounded-full bg-[var(--bg-elevated)] overflow-hidden">
-            <div className="h-full rounded-full bg-[var(--green-400)] transition-all" style={{ width: `${completeness.overall}%` }} />
-          </div>
-          <p className="text-[10px] text-[var(--text-tertiary)] mt-1">More complete data means more accurate vulnerability scores and better Gemini report quality.</p>
-        </div>
-        {completeness.items.map((item) => (
-          <div key={item.placeId} className="mb-2 p-3 rounded-lg bg-[var(--bg-elevated)]">
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-xs font-medium text-[var(--text-primary)]">{item.placeName}</span>
-              <span className="text-[10px] text-[var(--text-tertiary)]">{item.pct}%</span>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {Object.entries(item.checks).map(([key, val]) => (
-                <span key={key} className={`text-[10px] px-1.5 py-0.5 rounded ${val ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'}`}>
-                  {val ? '✓' : '✗'} {key.replace(/^has/, '').replace(/([A-Z])/g, ' $1').trim()}
-                </span>
-              ))}
-            </div>
-          </div>
-        ))}
-      </section>
+        {/* Right 4 cols — Metrics + Completeness */}
+        <div className="lg:col-span-4 flex flex-col gap-6">
 
-      {/* SECTION 6: Quick Actions */}
-      <section className="p-5 rounded-xl border border-[var(--border-default)] bg-[var(--bg-surface)]">
-        <h2 className="text-sm font-semibold text-[var(--text-primary)] mb-3 flex items-center gap-2">
-          <span className="material-symbols-outlined text-base">bolt</span>Quick Actions
-        </h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <Link href="/dashboard/map" className="flex flex-col items-center gap-2 p-4 rounded-xl bg-[var(--bg-elevated)] hover:bg-[var(--bg-base)] border border-[var(--border-default)] transition-colors text-center">
-            <span className="material-symbols-outlined text-2xl text-[var(--green-400)]">map</span>
-            <span className="text-xs font-medium text-[var(--text-primary)]">Go to Map</span>
-          </Link>
-          <Link href="/dashboard/interventions" className="flex flex-col items-center gap-2 p-4 rounded-xl bg-[var(--bg-elevated)] hover:bg-[var(--bg-base)] border border-[var(--border-default)] transition-colors text-center">
-            <span className="material-symbols-outlined text-2xl text-[var(--info)]">eco</span>
-            <span className="text-xs font-medium text-[var(--text-primary)]">Vulnerability Report</span>
-          </Link>
-          <Link href="/dashboard/data" className="flex flex-col items-center gap-2 p-4 rounded-xl bg-[var(--bg-elevated)] hover:bg-[var(--bg-base)] border border-[var(--border-default)] transition-colors text-center">
-            <span className="material-symbols-outlined text-2xl text-[var(--high)]">upload</span>
-            <span className="text-xs font-medium text-[var(--text-primary)]">Import Data</span>
-          </Link>
-          <Link href="/dashboard/scenarios" className="flex flex-col items-center gap-2 p-4 rounded-xl bg-[var(--bg-elevated)] hover:bg-[var(--bg-base)] border border-[var(--border-default)] transition-colors text-center">
-            <span className="material-symbols-outlined text-2xl text-[var(--moderate)]">compare_arrows</span>
-            <span className="text-xs font-medium text-[var(--text-primary)]">View Scenarios</span>
-          </Link>
-        </div>
-      </section>
+          {/* Intervention Metrics */}
+          <div className="flex flex-col gap-4">
+            <h2 className="font-mono text-[11px] uppercase tracking-widest text-white border-b border-zinc-900 pb-2">
+              Intervention Metrics
+            </h2>
+            <div className="grid grid-cols-2 gap-px bg-zinc-800">
+              <div className="bg-[#0e0e0e] p-4 flex flex-col gap-1 border-t-2 border-[#1b4d3e]">
+                <span className="font-mono text-[10px] text-zinc-500 uppercase">Active Projects</span>
+                <span className="font-mono text-2xl text-[#9ed1bd]">{stats.activeInterventions}</span>
+              </div>
+              <div className="bg-[#0e0e0e] p-4 flex flex-col gap-1">
+                <span className="font-mono text-[10px] text-zinc-500 uppercase">Completed YTD</span>
+                <span className="font-mono text-2xl text-white">{stats.completedInterventions}</span>
+              </div>
+              <div className="bg-[#0e0e0e] p-4 flex flex-col gap-1 col-span-2">
+                <span className="font-mono text-[10px] text-zinc-500 uppercase">Projected Temp Reduction</span>
+                <div className="flex items-end gap-2 mt-1">
+                  <span className="font-mono text-3xl text-[#7ed99e]">
+                    {stats.totalProjectedReduction > 0 ? `-${stats.totalProjectedReduction.toFixed(1)}°C` : '—'}
+                  </span>
+                  <span className="font-mono text-sm text-zinc-500 mb-1">if implemented</span>
+                </div>
+              </div>
 
-      {/* Scenarios & Reports Summary */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <section className="p-5 rounded-xl border border-[var(--border-default)] bg-[var(--bg-surface)]">
-          <h2 className="text-sm font-semibold text-[var(--text-primary)] mb-3">Recent Scenarios</h2>
-          {scenarios.length === 0 ? <p className="text-xs text-[var(--text-tertiary)]">No scenarios yet.</p> : (
-            <div className="space-y-2">
-              {scenarios.slice(0, 5).map((s) => (
-                <Link key={s.id} href={`/dashboard/scenarios/${s.id}`} className="flex items-center justify-between p-2 rounded-lg hover:bg-[var(--bg-elevated)] transition-colors">
-                  <div>
-                    <p className="text-xs font-medium text-[var(--text-primary)]">{s.name}</p>
-                    <p className="text-[10px] text-[var(--text-tertiary)]">{s.interventionCount} interventions</p>
+              {/* Scenarios bar chart */}
+              <div className="bg-[#0e0e0e] p-4 flex flex-col gap-2 col-span-2">
+                <div className="flex justify-between items-center">
+                  <span className="font-mono text-[10px] text-zinc-500 uppercase">Scenarios by Status</span>
+                  <div className="flex gap-3">
+                    <div className="flex items-center gap-1">
+                      <span className="w-2 h-2 bg-zinc-700 inline-block" />
+                      <span className="font-mono text-[8px] text-zinc-500">Draft</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <span className="w-2 h-2 bg-[#9ed1bd] inline-block" />
+                      <span className="font-mono text-[8px] text-zinc-500">Active</span>
+                    </div>
                   </div>
-                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-[var(--bg-elevated)] text-[var(--text-secondary)]">{s.status}</span>
-                </Link>
-              ))}
-            </div>
-          )}
-        </section>
-
-        <section className="p-5 rounded-xl border border-[var(--border-default)] bg-[var(--bg-surface)]">
-          <h2 className="text-sm font-semibold text-[var(--text-primary)] mb-3">Recent Reports</h2>
-          {reports.length === 0 ? <p className="text-xs text-[var(--text-tertiary)]">No reports generated yet.</p> : (
-            <div className="space-y-2">
-              {reports.slice(0, 5).map((r) => (
-                <div key={r.id} className="flex items-center justify-between p-2 rounded-lg hover:bg-[var(--bg-elevated)] transition-colors">
-                  <div>
-                    <p className="text-xs font-medium text-[var(--text-primary)]">{r.title}</p>
-                    <p className="text-[10px] text-[var(--text-tertiary)]">{new Date(r.generatedAt).toLocaleDateString()} {r.generatedBy ? `by ${r.generatedBy}` : ''}</p>
+                </div>
+                <div className="flex h-14 items-end gap-2 mt-2">
+                  {scenarios.length > 0 ? (
+                    (['DRAFT', 'APPROVED', 'PENDING_REVIEW', 'REJECTED'] as const).map((s, idx) => {
+                      const count = scenarios.filter(sc => sc.status === s).length;
+                      const pct = scenarios.length > 0 ? count / scenarios.length : 0;
+                      const colors = ['bg-zinc-700', 'bg-[#9ed1bd]', 'bg-[#f7bd48]', 'bg-[#ffb4ab]'] as const;
+                      return (
+                        <div key={s} className="flex items-end h-full flex-1" title={`${s}: ${count}`}>
+                          <div className={`w-full ${colors[idx]} min-h-[2px]`} style={{ height: `${Math.max(pct * 100, 4)}%` }} />
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <div className="flex w-full items-center justify-center">
+                      <span className="font-mono text-[10px] text-zinc-600">No scenarios yet</span>
+                    </div>
+                  )}
+                </div>
+                {scenarios.length > 0 && (
+                  <div className="flex justify-around font-mono text-[9px] text-zinc-500">
+                    {['DRAFT', 'APRVD', 'REVW', 'RJCT'].map(s => <span key={s}>{s}</span>)}
                   </div>
-                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-[var(--bg-elevated)] text-[var(--text-secondary)]">{r.status}</span>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Data Completeness */}
+          <div className="flex flex-col gap-4">
+            <h2 className="font-mono text-[11px] uppercase tracking-widest text-white border-b border-zinc-900 pb-2">
+              Data Completeness
+            </h2>
+            <div className="flex flex-col gap-4 border border-zinc-900 bg-[#0e0e0e] p-4">
+              {([
+                { label: 'Surface Temp Layer',      pct: tempLayerPct,           color: '#7ed99e' },
+                { label: 'Tree Canopy Inventory',   pct: treeCanopyPct2,          color: '#9ed1bd' },
+                { label: 'Social Vulnerability Idx', pct: completeness.overall,  color: '#f7bd48' },
+                { label: 'Building Footprints',     pct: boundaryPct,            color: '#ffb4ab' },
+              ] as const).map(item => (
+                <div key={item.label} className="flex flex-col gap-1">
+                  <div className="flex justify-between items-center">
+                    <span className="font-mono text-[11px] text-white uppercase">{item.label}</span>
+                    <span className="font-mono text-xs" style={{ color: item.color }}>{item.pct}%</span>
+                  </div>
+                  <div className="w-full h-1 bg-zinc-900">
+                    <div className="h-full" style={{ width: `${item.pct}%`, backgroundColor: item.color }} />
+                  </div>
                 </div>
               ))}
             </div>
+          </div>
+
+          {/* Recent Reports */}
+          {reports.length > 0 && (
+            <div className="flex flex-col gap-4">
+              <h2 className="font-mono text-[11px] uppercase tracking-widest text-white border-b border-zinc-900 pb-2">
+                Recent Reports
+              </h2>
+              <div className="flex flex-col gap-1">
+                {reports.slice(0, 4).map(r => (
+                  <div key={r.id} className="flex justify-between items-center px-3 py-2 border border-zinc-900 bg-[#0e0e0e]">
+                    <span className="font-mono text-[11px] text-white truncate max-w-[60%]">{r.title}</span>
+                    <span className="font-mono text-[10px] text-zinc-500">{new Date(r.generatedAt).toLocaleDateString()}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
           )}
-        </section>
+
+          {/* Recent Scenarios */}
+          {scenarios.length > 0 && (
+            <div className="flex flex-col gap-4">
+              <h2 className="font-mono text-[11px] uppercase tracking-widest text-white border-b border-zinc-900 pb-2">
+                Recent Scenarios
+              </h2>
+              <div className="flex flex-col gap-1">
+                {scenarios.slice(0, 4).map(s => (
+                  <Link
+                    key={s.id}
+                    href={`/dashboard/scenarios/${s.id}`}
+                    className="flex justify-between items-center px-3 py-2 border border-zinc-900 bg-[#0e0e0e] hover:border-zinc-700"
+                  >
+                    <span className="font-mono text-[11px] text-white truncate max-w-[60%]">{s.name}</span>
+                    <span className="font-mono text-[10px] text-zinc-500">{s.status}</span>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Audit Trail */}
-      {auditLogs.length > 0 && (
-        <section className="p-5 rounded-xl border border-[var(--border-default)] bg-[var(--bg-surface)]">
-          <h2 className="text-sm font-semibold text-[var(--text-primary)] mb-3">Recent Activity</h2>
-          <div className="space-y-1">
-            {auditLogs.map((a) => (
-              <div key={a.id} className="flex items-center justify-between py-1.5 text-xs">
-                <span className="text-[var(--text-secondary)]">{a.action.replace(/_/g, ' ')} {a.resourceType ? `(${a.resourceType})` : ''}</span>
-                <span className="text-[var(--text-tertiary)]">{new Date(a.createdAt).toLocaleDateString()}</span>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
+      {/* ── QUICK ACTIONS FOOTER ────────────────────────────────────────── */}
+      <footer className="border-t border-zinc-900 pt-4 flex flex-wrap gap-3">
+        <Link
+          href="/dashboard/map"
+          className="bg-[#1b4d3e] text-white font-mono text-[11px] px-6 py-2 uppercase tracking-widest hover:bg-[#22c55e]/20 transition-colors flex items-center gap-2"
+        >
+          <span className="material-symbols-outlined text-sm">map</span>Go to Map
+        </Link>
+        <Link
+          href="/dashboard/reports"
+          className="bg-transparent border border-zinc-800 text-white font-mono text-[11px] px-6 py-2 uppercase tracking-widest hover:border-[#7ed99e] hover:text-[#7ed99e] transition-colors flex items-center gap-2"
+        >
+          <span className="material-symbols-outlined text-sm">summarize</span>Reports
+        </Link>
+        <Link
+          href="/dashboard/data"
+          className="bg-transparent border border-zinc-800 text-white font-mono text-[11px] px-6 py-2 uppercase tracking-widest hover:border-[#7ed99e] hover:text-[#7ed99e] transition-colors flex items-center gap-2"
+        >
+          <span className="material-symbols-outlined text-sm">upload_file</span>Import Data
+        </Link>
+        <Link
+          href="/dashboard/scenarios"
+          className="ml-auto bg-transparent border border-zinc-800 text-white font-mono text-[11px] px-6 py-2 uppercase tracking-widest hover:border-[#7ed99e] hover:text-[#7ed99e] transition-colors flex items-center gap-2"
+        >
+          <span className="material-symbols-outlined text-sm">science</span>View Scenarios
+        </Link>
+      </footer>
     </div>
   );
 }
+

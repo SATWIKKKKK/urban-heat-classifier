@@ -243,6 +243,45 @@ export default function DashboardMapPage() {
     }
   }, []);
 
+  /* Restore last searched place from sessionStorage on mount (survives page reload) */
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const sp = sessionStorage.getItem('map_searchedPlace');
+      const sm = sessionStorage.getItem('map_searchedMarkerPos');
+      const cc = sessionStorage.getItem('map_countryCode');
+      if (sp) { setSearchedPlace(JSON.parse(sp)); setRightPanel('inspector'); }
+      if (sm) setSearchedMarkerPos(JSON.parse(sm));
+      if (cc) setCountryCode(cc);
+    } catch { /* ignore corrupt data */ }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  /* Persist searched place to sessionStorage so it survives reload */
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      if (searchedPlace) sessionStorage.setItem('map_searchedPlace', JSON.stringify(searchedPlace));
+      else sessionStorage.removeItem('map_searchedPlace');
+    } catch { /* ignore */ }
+  }, [searchedPlace]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      if (searchedMarkerPos) sessionStorage.setItem('map_searchedMarkerPos', JSON.stringify(searchedMarkerPos));
+      else sessionStorage.removeItem('map_searchedMarkerPos');
+    } catch { /* ignore */ }
+  }, [searchedMarkerPos]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      if (countryCode) sessionStorage.setItem('map_countryCode', countryCode);
+      else sessionStorage.removeItem('map_countryCode');
+    } catch { /* ignore */ }
+  }, [countryCode]);
+
   /* Esc key deactivates map */
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setMapActive(false); };
@@ -369,7 +408,7 @@ export default function DashboardMapPage() {
       const data = await res.json() as { cityId?: string; error?: string };
       if (res.ok && data.cityId) {
         setCitySaved(true);
-        setTimeout(() => router.push(`/dashboard/my-data?newCity=${data.cityId}&welcome=true`), 1500);
+        // Don't redirect — user stays on the map so previously searched places stay visible
       }
     } catch { /* silent */ }
     finally { setSavingCity(false); }
@@ -428,7 +467,7 @@ export default function DashboardMapPage() {
           <div className="absolute inset-0 z-10 grid place-items-center bg-[#0a0a0a]/80 backdrop-blur-sm">
             <div className="flex flex-col items-center gap-3">
               <div className="w-6 h-6 border-2 border-[#22c55e]/30 border-t-[#22c55e] rounded-full animate-spin" />
-              <span className="text-xs font-medium text-neutral-400">Loading mapâ€¦</span>
+              <span className="text-xs font-medium text-neutral-400">Loading map…</span>
             </div>
           </div>
         )}
@@ -444,7 +483,7 @@ export default function DashboardMapPage() {
           <div className="absolute inset-0 z-10 grid place-items-center bg-[#0a0a0a]/90">
             <GlassCard className="p-6 text-center max-w-xs">
               <span className="material-symbols-outlined text-2xl text-red-400">map</span>
-              <p className="mt-2 text-xs text-red-400">Google Maps failed to load. Check your API key.</p>
+              <p className="mt-2 text-xs text-red-400">Google Maps failed to load. </p>
             </GlassCard>
           </div>
         )}
@@ -463,6 +502,7 @@ export default function DashboardMapPage() {
             })}
             {searchedMarkerPos && (
               <Marker position={searchedMarkerPos}
+                onClick={() => setRightPanel('inspector')}
                 options={{ icon: { path: google.maps.SymbolPath.CIRCLE, scale: 9, fillColor: '#22c55e', fillOpacity: 1, strokeColor: '#fff', strokeWeight: 2.5 } }} />
             )}
           </GoogleMap>
@@ -570,7 +610,7 @@ export default function DashboardMapPage() {
                     : '/dashboard/scenarios/new'
               }
               className="flex items-center justify-center gap-2 h-11 w-full text-sm font-semibold bg-[#22c55e] text-white rounded-xl hover:bg-[#16a34a] transition-colors shadow-lg shadow-[#22c55e]/20">
-              <span className="material-symbols-outlined text-base">auto_awesome</span>Build Scenario
+              Build Scenario
             </Link>
           </div>
         )}
@@ -667,7 +707,7 @@ export default function DashboardMapPage() {
                         </p>
                       )}
                     </div>
-                    <button onClick={() => { setSearchedPlace(null); setSearchedMarkerPos(null); setRightPanel('trends'); setCountryCode(null); }} className="text-neutral-500 hover:text-white p-0.5 shrink-0">
+                    <button onClick={() => { setSearchedPlace(null); setSearchedMarkerPos(null); setRightPanel('trends'); setCountryCode(null); try { sessionStorage.removeItem('map_searchedPlace'); sessionStorage.removeItem('map_searchedMarkerPos'); sessionStorage.removeItem('map_countryCode'); } catch {} }} className="text-neutral-500 hover:text-white p-0.5 shrink-0">
                       <span className="material-symbols-outlined text-base">close</span>
                     </button>
                   </div>
@@ -706,11 +746,7 @@ export default function DashboardMapPage() {
                     </div>
                   )}
 
-                  <button onClick={runGeminiAnalysis} disabled={geminiLoading}
-                    className="w-full flex items-center justify-center gap-2 h-10 text-xs font-semibold bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-xl hover:opacity-90 transition-opacity disabled:opacity-50">
-                    <span className="material-symbols-outlined text-sm">auto_awesome</span>
-                    {geminiLoading ? 'Analyzingâ€¦' : 'AI Heat Analysis'}
-                  </button>
+
 
                   {geminiReport && (
                     <div className="rounded-xl border border-purple-500/20 p-3 bg-purple-500/5">
@@ -721,14 +757,7 @@ export default function DashboardMapPage() {
                     </div>
                   )}
 
-                  {/* Build Scenario from searched place */}
-                  {canEdit && (
-                    <Link
-                      href={`/dashboard/scenarios/new?placeName=${encodeURIComponent(searchedPlace.name)}&cityName=${encodeURIComponent(searchedPlace.name)}&countryName=${encodeURIComponent(searchedPlace.countryLongName ?? '')}&countryCode=${encodeURIComponent(searchedPlace.countryCode ?? '')}&lat=${searchedPlace.lat}&lng=${searchedPlace.lng}${searchedPlace.weather ? `&baselineTempC=${searchedPlace.weather.temp.toFixed(1)}` : ''}`}
-                      className="w-full flex items-center justify-center gap-2 h-10 text-xs font-semibold bg-[#22c55e] text-white rounded-xl hover:bg-[#16a34a] transition-colors shadow-lg shadow-[#22c55e]/20">
-                      <span className="material-symbols-outlined text-sm">auto_awesome</span>Build Scenario
-                    </Link>
-                  )}
+
 
                   {/* Save City CTA */}
                   {session?.user && !citySaved && (
@@ -738,12 +767,7 @@ export default function DashboardMapPage() {
                       {savingCity ? 'Saving…' : `+ Add ${searchedPlace.name} to My Cities`}
                     </button>
                   )}
-                  {citySaved && (
-                    <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-[#22c55e]/10 border border-[#22c55e]/20">
-                      <span className="material-symbols-outlined text-sm text-[#22c55e]" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
-                      <span className="text-xs text-[#22c55e]">City added! Redirecting…</span>
-                    </div>
-                  )}
+                  {citySaved && <p className="text-[11px] text-[#22c55e] text-center">✓ City saved to your account</p>}
                 </div>
               ) : inspectorPlace ? (
                 /* Place inspector with live vulnerability */
@@ -822,11 +846,6 @@ export default function DashboardMapPage() {
                     ) : null;
                   })()}
 
-                  <div className="pt-2 border-t border-white/[0.06]">
-                    <Link href={`/dashboard/scenarios/new?placeId=${inspectorPlace.id}`} className="flex items-center justify-center gap-2 h-10 w-full text-sm font-semibold bg-[#22c55e] text-white rounded-xl hover:bg-[#16a34a] transition-colors shadow-lg shadow-[#22c55e]/20">
-                      <span className="material-symbols-outlined text-base">auto_awesome</span>Build Scenario
-                    </Link>
-                  </div>
                   </div>
               ) : (
                 <div className="flex flex-col items-center justify-center py-12 text-center">
@@ -880,7 +899,7 @@ export default function DashboardMapPage() {
             {canEdit && (
               <div className="mt-3 grid grid-cols-2 gap-2">
                 <Link href="/dashboard/scenarios/new" className="flex items-center justify-center gap-1 h-9 text-xs font-medium bg-[#22c55e] text-white rounded-lg">
-                  <span className="material-symbols-outlined text-xs">auto_awesome</span>Build Scenario
+                  Build Scenario
                 </Link>
               </div>
             )}
