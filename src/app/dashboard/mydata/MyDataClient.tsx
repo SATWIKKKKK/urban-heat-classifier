@@ -152,7 +152,7 @@ export default function MyDataClient({ city, places, stats, completeness, teamCo
   }
 
   return (
-    <div className="flex flex-col gap-6 font-(family-name:--font-body)">
+    <div className="flex flex-col gap-6 font-[family-name:var(--font-headline)]">
       {error && <div className="px-4 py-2 text-sm bg-[#93000a]/30 border border-[#ffb4ab] text-[#ffb4ab]">{error}</div>}
 
       {/* â”€â”€ HEADER â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
