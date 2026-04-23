@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import prisma from '@/lib/db';
+import { revalidatePath } from 'next/cache';
 
 const CURRENCY_MAP: Record<string, string> = {
   in: 'INR', us: 'USD', gb: 'GBP', eu: 'EUR', jp: 'JPY', cn: 'CNY',
@@ -13,6 +14,19 @@ const CURRENCY_MAP: Record<string, string> = {
 
 function makeSlug(name: string): string {
   return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+}
+
+function createPointBoundary(lat: number, lng: number, delta = 0.01): string {
+  return JSON.stringify({
+    type: 'Polygon',
+    coordinates: [[
+      [lng - delta, lat - delta],
+      [lng + delta, lat - delta],
+      [lng + delta, lat + delta],
+      [lng - delta, lat + delta],
+      [lng - delta, lat - delta],
+    ]],
+  });
 }
 
 // POST /api/cities/save
@@ -45,7 +59,51 @@ export async function POST(request: Request) {
   }
 
   try {
-    // Generate unique slug
+    if (session.user.cityId) {
+      const boundary = createPointBoundary(lat, lng);
+
+      const place = await prisma.$transaction(async (tx) => {
+        const existingPlace = await tx.place.findUnique({
+          where: {
+            cityId_name: {
+              cityId: session.user.cityId!,
+              name,
+            },
+          },
+        });
+
+        if (existingPlace) {
+          return tx.place.update({
+            where: { id: existingPlace.id },
+            data: {
+              boundary: existingPlace.boundary ?? boundary,
+              isActive: true,
+            },
+          });
+        }
+
+        return tx.place.create({
+          data: {
+            cityId: session.user.cityId!,
+            name,
+            boundary,
+            isActive: true,
+          },
+        });
+      });
+
+      revalidatePath('/dashboard/map');
+      revalidatePath('/dashboard/mydata');
+      revalidatePath('/dashboard/places');
+
+      return NextResponse.json({
+        cityId: session.user.cityId,
+        placeId: place.id,
+        placeName: place.name,
+        preservedCityContext: true,
+      });
+    }
+
     let slug = makeSlug(name);
     const existing = await prisma.city.findFirst({ where: { slug } });
     if (existing) {
@@ -53,8 +111,8 @@ export async function POST(request: Request) {
     }
 
     const currency = CURRENCY_MAP[countryCode?.toLowerCase() ?? ''] ?? 'USD';
+    const boundary = createPointBoundary(lat, lng);
 
-    // Create city, initial place, and update user in a transaction
     const result = await prisma.$transaction(async (tx) => {
       const city = await tx.city.create({
         data: {
@@ -68,21 +126,20 @@ export async function POST(request: Request) {
         },
       });
 
-      // Create initial onboarding state
       await tx.onboardingState.create({
         data: { cityId: city.id },
       });
 
-      // Create initial place record (the city itself as a place)
-      await tx.place.create({
+      const place = await tx.place.create({
         data: {
           cityId: city.id,
           name,
+          boundary,
+          isActive: true,
         },
       });
 
-      // Update user to be CITY_ADMIN of this city
-      const user = await tx.user.update({
+      await tx.user.update({
         where: { id: session.user.id },
         data: {
           cityId: city.id,
@@ -90,13 +147,19 @@ export async function POST(request: Request) {
         },
       });
 
-      return { city, user };
+      return { city, place };
     });
+
+    revalidatePath('/dashboard/map');
+    revalidatePath('/dashboard/mydata');
 
     return NextResponse.json({
       cityId: result.city.id,
       cityName: result.city.name,
       slug: result.city.slug,
+      placeId: result.place.id,
+      placeName: result.place.name,
+      preservedCityContext: false,
     });
   } catch (err) {
     console.error('Failed to save city:', err);

@@ -30,6 +30,7 @@ export interface CityMapPlace {
   imperviousSurfacePct: number | null;
   vulnerabilityScore: number;
   vulnerabilityLevel: VulnerabilityResult['level'];
+  hasBoundary: boolean;
   geometry: SupportedMapGeometry;
   center: [number, number];
   interventions: Array<{
@@ -125,8 +126,9 @@ export async function getCityMapData({
       cityAverageTemperature || latestMeasurement?.avgTempCelsius || 0
     );
 
+    const parsedBoundary = parseBoundaryGeometry(place.boundary);
     const geometry =
-      parseBoundaryGeometry(place.boundary) ||
+      parsedBoundary ||
       createFallbackPlaceGeometry(
         city.lat ?? 20.5937,
         city.lng ?? 78.9629,
@@ -144,6 +146,7 @@ export async function getCityMapData({
       imperviousSurfacePct: latestMeasurement?.imperviousSurfacePct ?? null,
       vulnerabilityScore: vulnerability.score,
       vulnerabilityLevel: vulnerability.level,
+      hasBoundary: parsedBoundary !== null,
       geometry,
       center: getGeometryCenter(geometry),
       interventions: place.interventions.map((intervention) => ({

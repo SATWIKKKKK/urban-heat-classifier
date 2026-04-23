@@ -152,7 +152,7 @@ export default function MyDataClient({ city, places, stats, completeness, teamCo
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-6 font-(family-name:--font-body)">
       {error && <div className="px-4 py-2 text-sm bg-[#93000a]/30 border border-[#ffb4ab] text-[#ffb4ab] font-mono">{error}</div>}
 
       {/* ── HEADER ──────────────────────────────────────────────────────── */}
@@ -160,8 +160,8 @@ export default function MyDataClient({ city, places, stats, completeness, teamCo
         {/* Title row */}
         <div className="flex flex-col md:flex-row md:justify-between md:items-end border-b border-zinc-900 pb-4 gap-3">
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight text-white font-mono">Data Hub</h1>
-            <p className="text-sm text-zinc-500 mt-1 font-mono">
+            <h1 className="text-2xl font-semibold tracking-tight text-white font-(family-name:--font-headline)">Data Hub</h1>
+            <p className="text-sm text-zinc-500 mt-1">
               System Overview &amp; Metric Aggregation ·{' '}
               <span className="text-zinc-400">{city.name}</span>
             </p>
@@ -172,25 +172,25 @@ export default function MyDataClient({ city, places, stats, completeness, teamCo
               {avgTemp != null && (
                 <>
                   <div className="flex flex-col px-4 py-2">
-                    <span className="font-mono text-[9px] uppercase tracking-widest text-zinc-500">Avg Temp</span>
-                    <span className="font-mono text-sm text-[#7ed99e]">{avgTemp.toFixed(1)}°C</span>
+                    <span className="text-[9px] uppercase tracking-widest text-zinc-500">Avg Temp</span>
+                    <span className="text-sm text-[#7ed99e]">{avgTemp.toFixed(1)}°C</span>
                   </div>
                   <div className="w-px h-8 bg-zinc-800" />
                 </>
               )}
               <div className="flex flex-col px-4 py-2">
-                <span className="font-mono text-[9px] uppercase tracking-widest text-zinc-500">Places</span>
-                <span className="font-mono text-sm text-[#9ed1bd]">{stats.totalPlaces}</span>
+                <span className="text-[9px] uppercase tracking-widest text-zinc-500">Places</span>
+                <span className="text-sm text-[#9ed1bd]">{stats.totalPlaces}</span>
               </div>
               <div className="w-px h-8 bg-zinc-800" />
               <div className="flex flex-col px-4 py-2">
-                <span className="font-mono text-[9px] uppercase tracking-widest text-zinc-500">Country</span>
-                <span className="font-mono text-sm text-[#9ed1bd]">{city.country}</span>
+                <span className="text-[9px] uppercase tracking-widest text-zinc-500">Country</span>
+                <span className="text-sm text-[#9ed1bd]">{city.country}</span>
               </div>
             </div>
             <div className="flex items-center gap-2">
               <span className="flex h-2 w-2 bg-[#9af6b8]" />
-              <span className="font-mono text-[11px] text-[#9af6b8] uppercase tracking-wider">System Active</span>
+              <span className="text-[11px] text-[#9af6b8] uppercase tracking-wider">System Active</span>
             </div>
           </div>
         </div>
@@ -198,22 +198,22 @@ export default function MyDataClient({ city, places, stats, completeness, teamCo
         {/* Telemetry cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-px bg-zinc-800">
           <div className="bg-[#0e0e0e] p-4 flex flex-col gap-2">
-            <span className="font-mono text-[10px] uppercase tracking-widest text-zinc-500">Total Monitored Area</span>
-            <span className="font-mono text-xl text-white">
+            <span className="text-[10px] uppercase tracking-widest text-zinc-500">Total Monitored Area</span>
+            <span className="text-xl text-white">
               {totalArea > 0 ? `${totalArea.toLocaleString()} km²` : `${stats.totalPlaces} places`}
             </span>
           </div>
           <div className="bg-[#0e0e0e] p-4 flex flex-col gap-2">
-            <span className="font-mono text-[10px] uppercase tracking-widest text-zinc-500">Avg Temp Delta</span>
-            <span className="font-mono text-xl text-[#ffb4ab]">{avgTemp != null ? `+${avgTemp.toFixed(1)}°C` : '—'}</span>
+            <span className="text-[10px] uppercase tracking-widest text-zinc-500">Avg Temp Delta</span>
+            <span className="text-xl text-[#ffb4ab]">{avgTemp != null ? `+${avgTemp.toFixed(1)}°C` : '—'}</span>
           </div>
           <div className="bg-[#0e0e0e] p-4 flex flex-col gap-2">
-            <span className="font-mono text-[10px] uppercase tracking-widest text-zinc-500">Vulnerable Pop.</span>
-            <span className="font-mono text-xl text-[#f7bd48]">{vulnerablePop > 0 ? vulnerablePop.toLocaleString() : '—'}</span>
+            <span className="text-[10px] uppercase tracking-widest text-zinc-500">Vulnerable Pop.</span>
+            <span className="text-xl text-[#f7bd48]">{vulnerablePop > 0 ? vulnerablePop.toLocaleString() : '—'}</span>
           </div>
           <div className="bg-[#0e0e0e] p-4 flex flex-col gap-2">
-            <span className="font-mono text-[10px] uppercase tracking-widest text-zinc-500">Active Sensors</span>
-            <span className="font-mono text-xl text-[#7ed99e]">{activePlacesCount} / {stats.totalPlaces}</span>
+            <span className="text-[10px] uppercase tracking-widest text-zinc-500">Active Sensors</span>
+            <span className="text-xl text-[#7ed99e]">{activePlacesCount} / {stats.totalPlaces}</span>
           </div>
         </div>
 
@@ -221,23 +221,24 @@ export default function MyDataClient({ city, places, stats, completeness, teamCo
         {places.length > 0 && (
           <div className="border border-zinc-900 bg-[#0e0e0e] p-4 flex flex-col gap-3">
             <div className="flex justify-between items-center border-b border-zinc-900 pb-2">
-              <h2 className="font-mono text-[11px] uppercase tracking-widest text-white">Place Array Health</h2>
-              <span className="font-mono text-xs text-[#7ed99e]">
+              <h2 className="text-[11px] uppercase tracking-widest text-white font-(family-name:--font-headline)">Place Array Health</h2>
+              <span className="text-xs text-[#7ed99e]">
                 ACTIVE: {activePlacesCount} | UNMEASURED: {stats.totalPlaces - activePlacesCount}
               </span>
             </div>
-            <div className="grid grid-cols-4 md:grid-cols-8 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-8 gap-2">
               {places.slice(0, 16).map(p => {
                 const st = statusBadge(p.vulnerabilityLevel);
                 const active = p.heatMeasurements.length > 0;
                 return (
                   <div
                     key={p.id}
-                    className={`flex items-center gap-2 border p-1.5 ${active ? st.border + '/40' : 'border-zinc-800'}`}
+                    className={`min-w-0 flex items-center gap-2 border p-1.5 ${active ? st.border + '/40' : 'border-zinc-800'}`}
+                    title={p.name}
                   >
-                    <span className={`h-1.5 w-1.5 flex-shrink-0 ${p.vulnerabilityLevel === 'CRITICAL' ? 'bg-[#f7bd48]' : active ? 'bg-[#9af6b8]' : 'bg-zinc-700'}`} />
-                    <span className="font-mono text-[9px] text-white truncate">
-                      {p.name.toUpperCase().replace(/\s+/g, '-').slice(0, 9)}
+                    <span className={`h-1.5 w-1.5 shrink-0 ${p.vulnerabilityLevel === 'CRITICAL' ? 'bg-[#f7bd48]' : active ? 'bg-[#9af6b8]' : 'bg-zinc-700'}`} />
+                    <span className="min-w-0 flex-1 text-[10px] text-white leading-tight wrap-break-word">
+                      {p.name.toUpperCase().replace(/\s+/g, '-')}
                     </span>
                   </div>
                 );
@@ -253,10 +254,10 @@ export default function MyDataClient({ city, places, stats, completeness, teamCo
         {/* Left 8 cols — My Places Directory */}
         <div className="lg:col-span-8 flex flex-col gap-4">
           <div className="flex justify-between items-center border-b border-zinc-900 pb-2">
-            <h2 className="font-mono text-[11px] uppercase tracking-widest text-white">My Places Directory</h2>
+            <h2 className="text-[11px] uppercase tracking-widest text-white font-(family-name:--font-headline)">My Places Directory</h2>
             <button
               onClick={() => setShowAddPlace(!showAddPlace)}
-              className="font-mono text-[11px] text-[#9ed1bd] hover:text-white uppercase border border-zinc-800 px-3 py-1 hover:border-zinc-700"
+              className="text-[11px] text-[#9ed1bd] hover:text-white uppercase border border-zinc-800 px-3 py-1 hover:border-zinc-700"
             >
               + Add Place
             </button>

@@ -2,13 +2,13 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSession } from 'next-auth/react';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { GoogleMap, useJsApiLoader, Polygon, Marker, Autocomplete } from '@react-google-maps/api';
 import type { Libraries } from '@react-google-maps/api';
-import { getInterventionStatusColor, type SupportedMapGeometry } from '@/lib/map-utils';
-import type { CityMapPayload, CityMapPlace, CityMapIntervention } from '@/lib/map-data';
+import { type SupportedMapGeometry } from '@/lib/map-utils';
+import type { CityMapPayload, CityMapPlace } from '@/lib/map-data';
 import { countryName, countryFlag } from '@/lib/utils/countryCodeMapping';
 
 /* ── Recharts charts (client-only, lazy-loaded) ── */
@@ -75,6 +75,15 @@ function extendBoundsWithGeometry(bounds: google.maps.LatLngBounds, geometry: Su
   }
 }
 
+function extendBoundsWithPlace(bounds: google.maps.LatLngBounds, place: CityMapPlace) {
+  if (place.hasBoundary) {
+    extendBoundsWithGeometry(bounds, place.geometry);
+    return;
+  }
+
+  bounds.extend({ lat: place.center[0], lng: place.center[1] });
+}
+
 /* â”€â”€ Glass card wrapper â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 function GlassCard({ children, className = '' }: { children: React.ReactNode; className?: string }) {
@@ -123,9 +132,8 @@ interface LiveVulnerabilityData {
 
 export default function DashboardMapPage() {
   const { isLoaded, loadError } = useJsApiLoader({ id: 'google-map-script', googleMapsApiKey: GOOGLE_MAPS_API_KEY, libraries: LIBRARIES });
-  const { data: session, status } = useSession();
+  const { data: session, status, update } = useSession();
   const searchParams = useSearchParams();
-  const router = useRouter();
   const role = session?.user?.role;
   const canEdit = ['URBAN_PLANNER', 'CITY_ADMIN', 'SUPER_ADMIN'].includes(role ?? '');
 
@@ -172,25 +180,47 @@ export default function DashboardMapPage() {
     return null;
   }, [canEdit, session?.user?.cityId, status]);
 
+  const loadCityPayload = useCallback(async (preferredPlaceId?: string | null) => {
+    if (!cityQuery) return;
+
+    setLoading(true);
+    setError('');
+    setNoCityData(false);
+
+    try {
+      const res = await fetch(cityQuery);
+      const json = await res.json() as CityMapPayload | { error?: string };
+
+      if (res.status === 404 || ('error' in json && json.error === 'City not found')) {
+        setNoCityData(true);
+        return;
+      }
+
+      if (!res.ok || 'error' in json || !('places' in json)) {
+        throw new Error(('error' in json ? json.error : undefined) ?? 'Failed to load');
+      }
+
+      setPayload(json);
+
+      const placeId = preferredPlaceId ?? searchParams.get('placeId');
+      setSelectedPlace((current) => {
+        const explicitMatch = placeId ? json.places.find((place) => place.id === placeId) ?? null : null;
+        const currentMatch = current ? json.places.find((place) => place.id === current.id) ?? null : null;
+        return explicitMatch ?? currentMatch ?? json.places[0] ?? null;
+      });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to load map data');
+    } finally {
+      setLoading(false);
+    }
+  }, [cityQuery, searchParams]);
+
   /* â”€â”€ Data loading â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
   useEffect(() => {
     if (!cityQuery) { if (status !== 'loading') setLoading(false); return; }
-    (async () => {
-      setLoading(true); setError(''); setNoCityData(false);
-      try {
-        const res = await fetch(cityQuery);
-        const json = await res.json();
-        if (res.status === 404 || json.error === 'City not found') { setNoCityData(true); setLoading(false); return; }
-        if (!res.ok || 'error' in json || !('places' in json)) throw new Error(json.error ?? 'Failed to load');
-        setPayload(json);
-        const pid = searchParams.get('placeId');
-        const found = pid ? (json.places as CityMapPlace[]).find(p => p.id === pid) : null;
-        setSelectedPlace(found ?? (json.places as CityMapPlace[])[0] ?? null);
-      } catch (e) { setError(e instanceof Error ? e.message : 'Failed to load map data'); }
-      finally { setLoading(false); }
-    })();
-  }, [cityQuery, status, searchParams]);
+    void loadCityPayload();
+  }, [cityQuery, loadCityPayload, status]);
 
   useEffect(() => {
     if (!selectedPlace) { setLiveVuln(null); return; }
@@ -198,13 +228,13 @@ export default function DashboardMapPage() {
     fetch(`/api/vulnerability/realtime?placeId=${encodeURIComponent(selectedPlace.id)}`)
       .then(r => r.json()).then((d: LiveVulnerabilityData) => setLiveVuln(d)).catch(() => {})
       .finally(() => setLiveVulnLoading(false));
-  }, [selectedPlace?.id]);
+  }, [selectedPlace]);
 
   useEffect(() => {
     if (!mapRef.current || !payload?.city.lat || !isLoaded) return;
     if (payload.places.length > 0) {
       const bounds = new google.maps.LatLngBounds();
-      payload.places.forEach(p => extendBoundsWithGeometry(bounds, p.geometry));
+      payload.places.forEach(p => extendBoundsWithPlace(bounds, p));
       mapRef.current.fitBounds(bounds, 40);
     } else {
       mapRef.current.setCenter({ lat: payload.city.lat, lng: payload.city.lng });
@@ -254,8 +284,12 @@ export default function DashboardMapPage() {
       if (sm) setSearchedMarkerPos(JSON.parse(sm));
       if (cc) setCountryCode(cc);
     } catch { /* ignore corrupt data */ }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (!searchInputRef.current || !searchedPlace) return;
+    searchInputRef.current.value = searchedPlace.name;
+  }, [searchedPlace]);
 
   /* Persist searched place to sessionStorage so it survives reload */
   useEffect(() => {
@@ -301,9 +335,14 @@ export default function DashboardMapPage() {
     // When returning from world view, prefer the currently selected place (inspector),
     // then any searched place, then fall back to the city payload bounds.
     if (selectedPlace) {
-      const bounds = new google.maps.LatLngBounds();
-      extendBoundsWithGeometry(bounds, selectedPlace.geometry);
-      mapRef.current.fitBounds(bounds, { top: 60, right: 60, bottom: 60, left: 60 });
+      if (selectedPlace.hasBoundary) {
+        const bounds = new google.maps.LatLngBounds();
+        extendBoundsWithGeometry(bounds, selectedPlace.geometry);
+        mapRef.current.fitBounds(bounds, { top: 60, right: 60, bottom: 60, left: 60 });
+      } else {
+        mapRef.current.setCenter({ lat: selectedPlace.center[0], lng: selectedPlace.center[1] });
+        mapRef.current.setZoom(12);
+      }
       return;
     }
 
@@ -316,7 +355,7 @@ export default function DashboardMapPage() {
     if (payload?.city?.lat) {
       const bounds = new google.maps.LatLngBounds();
       if (payload.places && payload.places.length > 0) {
-        payload.places.forEach(p => extendBoundsWithGeometry(bounds, p.geometry));
+        payload.places.forEach(p => extendBoundsWithPlace(bounds, p));
         mapRef.current.fitBounds(bounds, 40);
       } else {
         mapRef.current.setCenter({ lat: payload.city.lat, lng: payload.city.lng });
@@ -331,10 +370,15 @@ export default function DashboardMapPage() {
 
   const flyToPlace = useCallback((place: CityMapPlace) => {
     if (!mapRef.current || !isLoaded) return;
-    const bounds = new google.maps.LatLngBounds();
-    extendBoundsWithGeometry(bounds, place.geometry);
-    mapRef.current.fitBounds(bounds, { top: 60, right: 60, bottom: 60, left: 60 });
-    setSelectedPlace(place); setSearchedPlace(null); setSearchedMarkerPos(null); setGeminiReport(null); setCitySaved(false);
+    if (place.hasBoundary) {
+      const bounds = new google.maps.LatLngBounds();
+      extendBoundsWithGeometry(bounds, place.geometry);
+      mapRef.current.fitBounds(bounds, { top: 60, right: 60, bottom: 60, left: 60 });
+    } else {
+      mapRef.current.setCenter({ lat: place.center[0], lng: place.center[1] });
+      mapRef.current.setZoom(12);
+    }
+    setSelectedPlace(place); setSearchedPlace(null); setSearchedMarkerPos(null); setGeminiReport(null); setCitySaved(false); setRightPanel('inspector'); setMobilePanel('inspector');
   }, [isLoaded]);
 
   const onPlaceChanged = useCallback(async () => {
@@ -382,7 +426,7 @@ export default function DashboardMapPage() {
       if (fRes.ok) { const f = await fRes.json() as { daily: { time: string[]; temperature_2m_max: number[]; temperature_2m_min: number[] } }; live.forecast = { dates: f.daily?.time ?? [], maxTemps: f.daily?.temperature_2m_max ?? [], minTemps: f.daily?.temperature_2m_min ?? [] }; }
     } catch { /* optional */ }
 
-    setSearchedPlace(live); setSearchedPlaceLoading(false);
+    setSearchedPlace(live); setSearchedPlaceLoading(false); setRightPanel('inspector'); setMobilePanel('inspector');
   }, []);
 
   async function runGeminiAnalysis() {
@@ -405,12 +449,19 @@ export default function DashboardMapPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: searchedPlace.name, country: searchedPlace.countryLongName ?? searchedPlace.countryCode, countryCode: searchedPlace.countryCode, lat: searchedPlace.lat, lng: searchedPlace.lng }),
       });
-      const data = await res.json() as { cityId?: string; error?: string };
-      if (res.ok && data.cityId) {
-        setCitySaved(true);
-        // Don't redirect — user stays on the map so previously searched places stay visible
+      const data = await res.json() as { cityId?: string; placeId?: string; preservedCityContext?: boolean; error?: string };
+      if (!res.ok) throw new Error(data.error ?? 'Failed to save place');
+
+      setCitySaved(true);
+
+      if (data.preservedCityContext) {
+        await loadCityPayload(data.placeId ?? null);
+      } else {
+        await update();
       }
-    } catch { /* silent */ }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save place');
+    }
     finally { setSavingCity(false); }
   }
 
@@ -490,6 +541,7 @@ export default function DashboardMapPage() {
         {isLoaded && (
           <GoogleMap mapContainerStyle={MAP_CONTAINER} center={INITIAL_CENTER} zoom={4} onLoad={onMapLoad} options={mapOptions}>
             {payload?.places.flatMap(place => {
+              if (!place.hasBoundary) return [];
               const color = VULN_COLORS[place.vulnerabilityLevel] ?? '#22c55e';
               const isSel = selectedPlace?.id === place.id;
               const isHov = hoveredPlaceId === place.id;
@@ -500,9 +552,30 @@ export default function DashboardMapPage() {
                   onMouseOver={() => setHoveredPlaceId(place.id)} onMouseOut={() => setHoveredPlaceId(null)} />
               ));
             })}
+            {payload?.places.filter(place => !place.hasBoundary).map(place => {
+              const isSel = selectedPlace?.id === place.id;
+              return (
+                <Marker
+                  key={place.id}
+                  position={{ lat: place.center[0], lng: place.center[1] }}
+                  onClick={() => flyToPlace(place)}
+                  options={{
+                    title: place.name,
+                    icon: {
+                      path: google.maps.SymbolPath.CIRCLE,
+                      scale: isSel ? 8 : 6,
+                      fillColor: '#22c55e',
+                      fillOpacity: 1,
+                      strokeColor: '#fff',
+                      strokeWeight: isSel ? 2.5 : 2,
+                    },
+                  }}
+                />
+              );
+            })}
             {searchedMarkerPos && (
               <Marker position={searchedMarkerPos}
-                onClick={() => setRightPanel('inspector')}
+                onClick={() => { setRightPanel('inspector'); setMobilePanel('inspector'); }}
                 options={{ icon: { path: google.maps.SymbolPath.CIRCLE, scale: 9, fillColor: '#22c55e', fillOpacity: 1, strokeColor: '#fff', strokeWeight: 2.5 } }} />
             )}
           </GoogleMap>
@@ -707,7 +780,7 @@ export default function DashboardMapPage() {
                         </p>
                       )}
                     </div>
-                    <button onClick={() => { setSearchedPlace(null); setSearchedMarkerPos(null); setRightPanel('trends'); setCountryCode(null); try { sessionStorage.removeItem('map_searchedPlace'); sessionStorage.removeItem('map_searchedMarkerPos'); sessionStorage.removeItem('map_countryCode'); } catch {} }} className="text-neutral-500 hover:text-white p-0.5 shrink-0">
+                    <button onClick={() => { setSearchedPlace(null); setSearchedMarkerPos(null); setRightPanel('trends'); setCountryCode(null); if (searchInputRef.current) searchInputRef.current.value = ''; try { sessionStorage.removeItem('map_searchedPlace'); sessionStorage.removeItem('map_searchedMarkerPos'); sessionStorage.removeItem('map_countryCode'); } catch {} }} className="text-neutral-500 hover:text-white p-0.5 shrink-0">
                       <span className="material-symbols-outlined text-base">close</span>
                     </button>
                   </div>
@@ -764,10 +837,10 @@ export default function DashboardMapPage() {
                     <button onClick={saveCity} disabled={savingCity}
                       className="w-full flex items-center justify-center gap-2 h-10 text-xs font-semibold border border-[#22c55e]/40 text-[#22c55e] rounded-xl hover:bg-[#22c55e]/10 transition-colors disabled:opacity-50">
                       <span className="material-symbols-outlined text-sm">add_location_alt</span>
-                      {savingCity ? 'Saving…' : `+ Add ${searchedPlace.name} to My Cities`}
+                      {savingCity ? 'Saving…' : `+ Add ${searchedPlace.name} to My Places`}
                     </button>
                   )}
-                  {citySaved && <p className="text-[11px] text-[#22c55e] text-center">✓ City saved to your account</p>}
+                  {citySaved && <p className="text-[11px] text-[#22c55e] text-center">✓ Place saved to your city</p>}
                 </div>
               ) : inspectorPlace ? (
                 /* Place inspector with live vulnerability */
@@ -910,7 +983,7 @@ export default function DashboardMapPage() {
           <GlassCard className="mx-2 mb-2 p-4 max-h-[50vh] overflow-y-auto">
             {searchedPlace ? (
               <div className="space-y-2">
-                <div className="flex justify-between"><h2 className="text-sm font-semibold text-white">{searchedPlace.name}</h2><button onClick={() => { setSearchedPlace(null); setSearchedMarkerPos(null); setCountryCode(null); }} className="text-neutral-500"><span className="material-symbols-outlined text-base">close</span></button></div>
+                <div className="flex justify-between"><h2 className="text-sm font-semibold text-white">{searchedPlace.name}</h2><button onClick={() => { setSearchedPlace(null); setSearchedMarkerPos(null); setCountryCode(null); if (searchInputRef.current) searchInputRef.current.value = ''; }} className="text-neutral-500"><span className="material-symbols-outlined text-base">close</span></button></div>
                 {searchedPlace.countryLongName && <p className="text-[10px] text-neutral-500">{searchedPlace.countryCode ? countryFlag(searchedPlace.countryCode) : ''} {searchedPlace.countryLongName}</p>}
                 {searchedPlace.weather && <div className="text-xs text-neutral-300">{searchedPlace.weather.temp.toFixed(1)}°C · {searchedPlace.weather.description} · {searchedPlace.weather.humidity}% humidity</div>}
                 {searchedPlace.aqi && <div className="text-xs text-neutral-300">AQI {searchedPlace.aqi.overall} · PM2.5: {searchedPlace.aqi.pm25.toFixed(1)}</div>}
@@ -920,10 +993,10 @@ export default function DashboardMapPage() {
                 {geminiReport && <div className="text-[11px] text-neutral-300 leading-relaxed whitespace-pre-wrap max-h-[200px] overflow-y-auto border border-purple-500/20 rounded-lg p-3">{geminiReport}</div>}
                 {session?.user && !citySaved && (
                   <button onClick={saveCity} disabled={savingCity} className="w-full h-9 text-xs font-medium border border-[#22c55e]/40 text-[#22c55e] rounded-lg disabled:opacity-50">
-                    {savingCity ? 'Saving…' : `+ Add ${searchedPlace.name}`}
+                    {savingCity ? 'Saving…' : `+ Add ${searchedPlace.name} to My Places`}
                   </button>
                 )}
-                {citySaved && <div className="text-xs text-[#22c55e] text-center">✓ City added!</div>}
+                {citySaved && <div className="text-xs text-[#22c55e] text-center">✓ Place saved to your city</div>}
               </div>
             ) : inspectorPlace ? (
               <div className="space-y-2">
