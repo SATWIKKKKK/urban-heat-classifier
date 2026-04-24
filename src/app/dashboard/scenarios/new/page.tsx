@@ -78,10 +78,13 @@ export default function ScenarioBuilderPage() {
     const placeName = searchParams.get('placeName');
 
     if (placeId) {
-      fetch(`/api/neighborhoods?id=${placeId}`)
-        .then(r => r.json())
+      fetch(`/api/places/${placeId}`, { cache: 'no-store' })
+        .then(r => {
+          if (!r.ok) throw new Error('Failed to fetch place');
+          return r.json();
+        })
         .then(data => {
-          if (data) {
+          if (data && !data.error) {
             setPlace({
               id: data.id,
               name: data.name,
@@ -100,7 +103,9 @@ export default function ScenarioBuilderPage() {
             });
           }
         })
-        .catch(() => {});
+        .catch((err) => {
+          console.error("Failed to load place:", err);
+        });
     } else if (placeName) {
       setPlace({
         name: placeName,
@@ -253,7 +258,7 @@ export default function ScenarioBuilderPage() {
             disabled={!place || !selectedStrategies.length}
             className="px-5 h-9 text-sm font-semibold bg-[#22c55e] text-white rounded-lg hover:bg-[#16a34a] disabled:opacity-30 disabled:cursor-not-allowed transition-all flex items-center gap-2"
           >
-            <span className="material-symbols-outlined text-base">auto_awesome</span>
+           
             Generate Plan
           </button>
         </div>
@@ -399,7 +404,7 @@ export default function ScenarioBuilderPage() {
               disabled={!place || !selectedStrategies.length}
               className="w-full lg:hidden px-5 h-12 text-sm font-semibold bg-[#22c55e] text-white rounded-xl hover:bg-[#16a34a] disabled:opacity-30 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
             >
-              <span className="material-symbols-outlined text-base">auto_awesome</span>
+           
               Generate Plan
             </button>
           </div>

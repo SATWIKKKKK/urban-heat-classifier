@@ -92,6 +92,39 @@ export async function POST(request: Request) {
         });
       });
 
+      let avgTempCelsius = 32;
+      let dataSource = 'CLIMATE_ESTIMATE';
+      const absLat = Math.abs(lat);
+      if (absLat >= 23 && absLat < 35) avgTempCelsius = 28;
+      else if (absLat >= 35 && absLat < 50) avgTempCelsius = 20;
+      else if (absLat >= 50) avgTempCelsius = 12;
+
+      try {
+        const baseUrl = new URL(request.url).origin;
+        const wRes = await fetch(`${baseUrl}/api/climate/current-weather?lat=${lat}&lng=${lng}`);
+        if (wRes.ok) {
+          const wData = await wRes.json();
+          if (wData.temp) {
+            avgTempCelsius = wData.temp;
+            dataSource = 'OPENWEATHERMAP';
+          }
+        }
+      } catch (e) {
+        console.error('Weather fetch error', e);
+      }
+
+      await prisma.heatMeasurement.create({
+        data: {
+          placeId: place.id,
+          measurementDate: new Date(),
+          avgTempCelsius,
+          dataSource,
+        }
+      });
+
+      const { computeAndStoreVulnerability } = await import('@/lib/compute/vulnerability');
+      await computeAndStoreVulnerability(place.id);
+
       revalidatePath('/dashboard/map');
       revalidatePath('/dashboard/mydata');
       revalidatePath('/dashboard/places');
@@ -149,6 +182,39 @@ export async function POST(request: Request) {
 
       return { city, place };
     });
+
+    let avgTempCelsius = 32;
+    let dataSource = 'CLIMATE_ESTIMATE';
+    const absLat = Math.abs(lat);
+    if (absLat >= 23 && absLat < 35) avgTempCelsius = 28;
+    else if (absLat >= 35 && absLat < 50) avgTempCelsius = 20;
+    else if (absLat >= 50) avgTempCelsius = 12;
+
+    try {
+      const baseUrl = new URL(request.url).origin;
+      const wRes = await fetch(`${baseUrl}/api/climate/current-weather?lat=${lat}&lng=${lng}`);
+      if (wRes.ok) {
+        const wData = await wRes.json();
+        if (wData.temp) {
+          avgTempCelsius = wData.temp;
+          dataSource = 'OPENWEATHERMAP';
+        }
+      }
+    } catch (e) {
+      console.error('Weather fetch error', e);
+    }
+
+    await prisma.heatMeasurement.create({
+      data: {
+        placeId: result.place.id,
+        measurementDate: new Date(),
+        avgTempCelsius,
+        dataSource,
+      }
+    });
+
+    const { computeAndStoreVulnerability } = await import('@/lib/compute/vulnerability');
+    await computeAndStoreVulnerability(result.place.id);
 
     revalidatePath('/dashboard/map');
     revalidatePath('/dashboard/mydata');

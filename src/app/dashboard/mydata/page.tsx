@@ -26,7 +26,7 @@ export default async function MyDataPage() {
   const places = await prisma.place.findMany({
     where: { cityId },
     include: {
-      heatMeasurements: { orderBy: { measurementDate: 'desc' } },
+      heatMeasurements: { orderBy: { measurementDate: 'desc' }, take: 10 },
       interventions: { orderBy: { createdAt: 'desc' } },
     },
     orderBy: { name: 'asc' },
@@ -178,14 +178,31 @@ export default async function MyDataPage() {
 
 function MyDataSkeleton() {
   return (
-    <div className="flex flex-col gap-8 animate-pulse">
-      <div className="h-8 w-48 rounded bg-[var(--bg-elevated)]" />
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {[1, 2, 3].map((i) => (
-          <div key={i} className="h-24 rounded-xl bg-[var(--bg-elevated)]" />
+    <div className="flex flex-col gap-6 animate-pulse">
+      <div className="flex justify-between items-end pb-[24px] border-b border-[var(--border)] mb-[24px]">
+        <div className="flex flex-col gap-2">
+          <div className="h-3 w-16 rounded bg-[var(--bg-elevated)]" />
+          <div className="h-8 w-48 rounded bg-[var(--bg-elevated)]" />
+          <div className="h-4 w-32 rounded bg-[var(--bg-elevated)]" />
+        </div>
+        <div className="h-10 w-32 rounded-lg bg-[var(--bg-elevated)]" />
+      </div>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {[1, 2, 3, 4].map((i) => (
+          <div key={i} className="h-32 rounded-[16px] bg-[var(--bg-elevated)]" />
         ))}
       </div>
-      <div className="h-64 rounded-xl bg-[var(--bg-elevated)]" />
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mt-2">
+        <div className="lg:col-span-8 grid grid-cols-1 sm:grid-cols-2 gap-4">
+           {[1, 2, 3, 4].map((i) => (
+             <div key={i} className="h-64 rounded-[16px] bg-[var(--bg-elevated)]" />
+           ))}
+        </div>
+        <div className="lg:col-span-4 flex flex-col gap-5">
+           <div className="h-48 rounded-[16px] bg-[var(--bg-elevated)]" />
+           <div className="h-64 rounded-[16px] bg-[var(--bg-elevated)]" />
+        </div>
+      </div>
     </div>
   );
 }

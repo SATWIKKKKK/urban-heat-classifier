@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSession } from 'next-auth/react';
@@ -715,19 +715,7 @@ export default function DashboardMapPage() {
           ))}
         </GlassCard>
 
-        {/* Place list */}
-        {payload && payload.places.length > 0 && (
-          <GlassCard className="p-3 max-h-[200px] overflow-y-auto">
-            <h3 className="text-[10px] font-medium uppercase tracking-wider text-neutral-500 px-2 mb-1">Places ({payload.places.length})</h3>
-            {payload.places.map(n => (
-              <button key={n.id} type="button" onClick={() => flyToPlace(n)}
-                className={`w-full flex items-center justify-between px-2 py-1.5 rounded-lg text-left text-xs transition-colors ${selectedPlace?.id === n.id ? 'bg-white/[0.08] text-white' : 'text-neutral-400 hover:bg-white/[0.04] hover:text-neutral-200'}`}>
-                <span className="truncate">{n.name}</span>
-                <span className="w-2 h-2 rounded-full shrink-0 ml-2" style={{ backgroundColor: VULN_COLORS[n.vulnerabilityLevel] }} />
-              </button>
-            ))}
-          </GlassCard>
-        )}
+
 
       </div>
 

@@ -225,7 +225,7 @@ export async function POST(request: Request) {
       }
 
       // Create simulation result
-      await prisma.simulationResult.create({
+      const simResult = await prisma.simulationResult.create({
         data: {
           scenarioId: dbScenario.id,
           inputState: JSON.stringify({
@@ -249,6 +249,31 @@ export async function POST(request: Request) {
           modelVersion: 'gemini-2.0-flash',
         },
       });
+
+      // FIX 1: Create HeatMeasurement if none exist for place
+      if (placeId) {
+        const existingMeasurements = await prisma.heatMeasurement.count({
+          where: { placeId }
+        });
+        
+        if (existingMeasurements === 0) {
+          await prisma.heatMeasurement.create({
+            data: {
+              placeId,
+              measurementDate: new Date(),
+              avgTempCelsius: currentTempC ?? 30, // Use fallback if not provided
+              maxTempCelsius: todayMaxC ?? null,
+              treeCanopyPct: treeCanopyPct ?? null,
+              imperviousSurfacePct: imperviousSurfacePct ?? null,
+              dataSource: 'SCENARIO_ESTIMATE',
+            }
+          });
+        }
+        
+        // Update vulnerability
+        const { computeAndStoreVulnerability } = await import('@/lib/compute/vulnerability');
+        await computeAndStoreVulnerability(placeId);
+      }
 
       // Create report
       await prisma.report.create({

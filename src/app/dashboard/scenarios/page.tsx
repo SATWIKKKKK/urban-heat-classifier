@@ -2,7 +2,7 @@ import { auth } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { getScenarios } from '@/lib/actions';
-import { db } from '@/lib/db';
+import { prisma } from '@/lib/db';
 
 function getScenarioBadgeStyle(status: string) {
   switch (status) {
@@ -22,7 +22,7 @@ export default async function DashboardScenariosPage() {
 
   const [scenarios, places] = await Promise.all([
     getScenarios(session.user.cityId),
-    db.place.findMany({
+    prisma.place.findMany({
       where: { cityId: session.user.cityId },
       select: {
         id: true,

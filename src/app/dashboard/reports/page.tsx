@@ -87,13 +87,21 @@ export default async function DashboardReportsPage() {
                     <td className="px-4 py-3 text-[var(--text-secondary)]">{new Date(report.generatedAt).toLocaleDateString()}</td>
                     <td className="px-4 py-3">
                       {report.status === 'COMPLETED' ? (
-                        <a
-                          href={`/api/reports/${report.id}/pdf`}
-                          className="inline-flex items-center gap-1.5 rounded-md border border-[var(--border-strong)] px-3 py-1.5 text-xs font-medium text-[var(--text-secondary)] hover:bg-[var(--bg-overlay)] transition-colors"
-                        >
-                          <span className="material-symbols-outlined text-sm">download</span>
-                          PDF
-                        </a>
+                        <div className="flex gap-2">
+                          <Link
+                            href={`/dashboard/reports/${report.id}`}
+                            className="inline-flex items-center gap-1.5 rounded-md border border-[var(--border-strong)] px-3 py-1.5 text-xs font-medium text-[var(--text-secondary)] hover:bg-[var(--bg-overlay)] transition-colors"
+                          >
+                            View Report
+                          </Link>
+                          <Link
+                            href={`/dashboard/reports/${report.id}?download=true`}
+                            className="inline-flex items-center gap-1.5 rounded-md bg-[var(--green-500)] px-3 py-1.5 text-xs font-medium text-white hover:bg-[var(--green-400)] transition-colors"
+                          >
+                            <span className="material-symbols-outlined text-sm">download</span>
+                            Download PDF
+                          </Link>
+                        </div>
                       ) : (
                         <span className="text-[var(--text-tertiary)] text-xs">—</span>
                       )}

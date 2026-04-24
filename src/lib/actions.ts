@@ -3,72 +3,10 @@
 import { hash } from 'bcryptjs';
 import { prisma } from '@/lib/db';
 import { auth } from '@/lib/auth';
-import { computeVulnerabilityScore } from '@/lib/compute/vulnerability';
+import { computeVulnerabilityScore, computeAndStoreVulnerability } from '@/lib/compute/vulnerability';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { generateReportNarrative } from '@/lib/gemini';
-
-async function recomputePlaceVulnerability(placeId: string) {
-  const place = await prisma.place.findUnique({
-    where: { id: placeId },
-    include: {
-      city: {
-        include: {
-          places: {
-            include: {
-              heatMeasurements: { orderBy: { measurementDate: 'desc' }, take: 1 },
-            },
-          },
-        },
-      },
-      heatMeasurements: { orderBy: { measurementDate: 'desc' }, take: 1 },
-    },
-  });
-
-  if (!place) {
-    return null;
-  }
-
-  const latestMeasurement = place.heatMeasurements[0];
-  const placesWithLatest = place.city.places.map((candidate) => candidate.heatMeasurements[0]);
-  const measuredPlaces = placesWithLatest.filter((measurement) => measurement?.avgTempCelsius != null);
-  const cityAvgTemp = measuredPlaces.length
-    ? measuredPlaces.reduce((sum, measurement) => sum + (measurement?.avgTempCelsius ?? 0), 0) /
-      measuredPlaces.length
-    : latestMeasurement?.avgTempCelsius ?? 30;
-
-  const incomes = place.city.places
-    .map((candidate) => candidate.medianIncome)
-    .filter((income): income is number => typeof income === 'number' && Number.isFinite(income));
-  const cityMedianIncome = incomes.length
-    ? incomes.reduce((sum, income) => sum + income, 0) / incomes.length
-    : undefined;
-
-  const vulnerability = computeVulnerabilityScore(
-    {
-      id: place.id,
-      name: place.name,
-      population: place.population,
-      areaSqkm: place.areaSqkm,
-      medianIncome: place.medianIncome,
-      pctElderly: place.pctElderly,
-      pctChildren: place.pctChildren,
-      avgTempCelsius: latestMeasurement?.avgTempCelsius,
-      treeCanopyPct: latestMeasurement?.treeCanopyPct ?? undefined,
-      imperviousSurfacePct: latestMeasurement?.imperviousSurfacePct ?? undefined,
-    },
-    cityAvgTemp,
-    cityMedianIncome
-  );
-
-  return prisma.place.update({
-    where: { id: place.id },
-    data: {
-      vulnerabilityScore: vulnerability.score,
-      vulnerabilityLevel: vulnerability.level,
-    },
-  });
-}
 
 // ── Place Actions ──
 
@@ -86,7 +24,7 @@ const addPlaceSchema = z.object({
 export async function addPlaceAction(data: z.infer<typeof addPlaceSchema>) {
   const parsed = addPlaceSchema.parse(data);
   const place = await prisma.place.create({ data: parsed });
-  await recomputePlaceVulnerability(place.id);
+  await computeAndStoreVulnerability(place.id);
   revalidatePath('/dashboard/places');
   revalidatePath('/dashboard/onboarding');
   revalidatePath('/map');
@@ -95,7 +33,7 @@ export async function addPlaceAction(data: z.infer<typeof addPlaceSchema>) {
 
 export async function updatePlaceAction(id: string, data: Partial<z.infer<typeof addPlaceSchema>>) {
   const place = await prisma.place.update({ where: { id }, data });
-  await recomputePlaceVulnerability(id);
+  await computeAndStoreVulnerability(id);
   revalidatePath(`/dashboard/places/${id}`);
   revalidatePath('/dashboard/places');
   revalidatePath('/map');
@@ -128,7 +66,7 @@ export async function addHeatMeasurementAction(data: z.infer<typeof addHeatMeasu
       measurementDate: new Date(parsed.measurementDate),
     },
   });
-  await recomputePlaceVulnerability(parsed.placeId);
+  await computeAndStoreVulnerability(parsed.placeId);
   revalidatePath(`/dashboard/places/${parsed.placeId}`);
   revalidatePath('/dashboard/onboarding');
   revalidatePath('/map');
