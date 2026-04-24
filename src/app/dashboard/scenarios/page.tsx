@@ -2,6 +2,7 @@ import { auth } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { getScenarios } from '@/lib/actions';
+import { db } from '@/lib/db';
 
 function getScenarioBadgeStyle(status: string) {
   switch (status) {
@@ -19,7 +20,20 @@ export default async function DashboardScenariosPage() {
     redirect('/login');
   }
 
-  const scenarios = await getScenarios(session.user.cityId);
+  const [scenarios, places] = await Promise.all([
+    getScenarios(session.user.cityId),
+    db.place.findMany({
+      where: { cityId: session.user.cityId },
+      select: {
+        id: true,
+        name: true,
+        vulnerabilityLevel: true,
+        population: true,
+        heatMeasurements: { take: 1, orderBy: { measurementDate: 'desc' }, select: { avgTempCelsius: true } },
+      },
+      orderBy: { name: 'asc' },
+    }),
+  ]);
   const visibleScenarios =
     session.user.role === 'CITY_COUNCIL'
       ? scenarios.filter((scenario) => scenario.status === 'APPROVED')
@@ -48,6 +62,55 @@ export default async function DashboardScenariosPage() {
           </Link>
         )}
       </div>
+
+      {/* ── Place Selector ─────────────────────────────────────────────────── */}
+      {places.length > 0 && (
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] font-medium uppercase tracking-[0.06em] text-[var(--text-tertiary)]">Filter by Place</span>
+            <span className="text-[10px] text-[var(--text-tertiary)]">— select a location to create a targeted scenario</span>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {places.map(place => {
+              const vulnColors: Record<string, { color: string; bg: string; border: string }> = {
+                CRITICAL: { color: '#ef4444', bg: '#ef44441a', border: '#ef44444d' },
+                HIGH:     { color: '#f97316', bg: '#f973161a', border: '#f973164d' },
+                MODERATE: { color: '#eab308', bg: '#eab3081a', border: '#eab3084d' },
+                LOW:      { color: '#22c55e', bg: '#22c55e1a', border: '#22c55e4d' },
+              };
+              const vc = vulnColors[place.vulnerabilityLevel ?? ''] ?? { color: 'var(--text-tertiary)', bg: 'var(--bg-elevated)', border: 'var(--border-strong)' };
+              const latestTemp = place.heatMeasurements[0]?.avgTempCelsius;
+              return (
+                <Link
+                  key={place.id}
+                  href={`/dashboard/scenarios/new?placeId=${place.id}`}
+                  className="group flex flex-col gap-1.5 min-w-[140px] bg-[var(--bg-surface)] border border-[var(--border)] rounded-lg p-3 hover:border-[var(--border-strong)] hover:bg-[var(--bg-elevated)] transition-colors"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <span className="text-xs font-semibold text-[var(--text-primary)] leading-tight">{place.name}</span>
+                    {place.vulnerabilityLevel && (
+                      <span
+                        className="shrink-0 text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded border"
+                        style={{ color: vc.color, backgroundColor: vc.bg, borderColor: vc.border }}
+                      >
+                        {place.vulnerabilityLevel}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-3 text-[10px] text-[var(--text-tertiary)]">
+                    {latestTemp != null && <span style={{ color: vc.color }}>{latestTemp.toFixed(1)}°C</span>}
+                    {place.population != null && <span>{place.population.toLocaleString()} pop</span>}
+                  </div>
+                  <div className="flex items-center gap-1 text-[10px] text-[var(--green-400)] opacity-0 group-hover:opacity-100 transition-opacity">
+                    <span className="material-symbols-outlined text-xs">add_circle</span>
+                    New scenario
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {visibleScenarios.length === 0 ? (
         <div className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-lg p-12 text-center">

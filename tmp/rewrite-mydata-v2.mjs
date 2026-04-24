@@ -1,4 +1,15 @@
-﻿'use client';
+/**
+ * Rewrites src/app/dashboard/mydata/MyDataClient.tsx with a revamped UI.
+ * Run: node tmp/rewrite-mydata-v2.mjs
+ */
+import { writeFileSync } from 'fs';
+import { fileURLToPath } from 'url';
+import { resolve, dirname } from 'path';
+
+const __dir = dirname(fileURLToPath(import.meta.url));
+const OUT = resolve(__dir, '../src/app/dashboard/mydata/MyDataClient.tsx');
+
+const code = `'use client';
 
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
@@ -63,12 +74,12 @@ function Sparkline({ data, color }: { data: number[]; color: string }) {
   const d = pts.map((v, i) => {
     const x = ((i / (pts.length - 1)) * (W - 6) + 3).toFixed(1);
     const y = (H - 5 - ((v - lo) / r) * (H - 10)).toFixed(1);
-    return `${i === 0 ? 'M' : 'L'}${x},${y}`;
+    return \`\${i === 0 ? 'M' : 'L'}\${x},\${y}\`;
   }).join(' ');
   const lx = (W - 3).toFixed(1);
   const ly = (H - 5 - ((pts.at(-1)! - lo) / r) * (H - 10)).toFixed(1);
   return (
-    <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} className="shrink-0">
+    <svg width={W} height={H} viewBox={\`0 0 \${W} \${H}\`} className="shrink-0">
       <path d={d} fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.7" />
       <circle cx={lx} cy={ly} r="2.5" fill={color} />
     </svg>
@@ -121,11 +132,11 @@ function PlaceCard({ place, expanded, onToggle, addDataOpen, onOpenAddData, onCl
                 </span>
                 <div className="flex items-center gap-2 mt-0.5">
                   <span className="text-[10px] text-[var(--text-tertiary)]">
-                    max {latest.maxTemp != null ? latest.maxTemp.toFixed(1) : '—'}&#176;C
+                    max {latest.maxTemp != null ? latest.maxTemp.toFixed(1) : '\u2014'}&#176;C
                   </span>
                   {delta !== null && (
                     <span className="text-[10px]" style={{ color: delta > 0 ? '#ef4444' : '#22c55e' }}>
-                      {delta > 0 ? '▲' : '▼'} {Math.abs(delta).toFixed(1)}
+                      {delta > 0 ? '\u25b2' : '\u25bc'} {Math.abs(delta).toFixed(1)}
                     </span>
                   )}
                 </div>
@@ -141,9 +152,9 @@ function PlaceCard({ place, expanded, onToggle, addDataOpen, onOpenAddData, onCl
       {/* ── Stats strip ── */}
       <div className="grid grid-cols-4 divide-x divide-[var(--border)] border-y border-[var(--border)]">
         {[
-          { val: place.population != null ? `${(place.population / 1000).toFixed(0)}k` : '—', lbl: 'pop' },
-          { val: place.areaSqkm   != null ? `${place.areaSqkm.toFixed(1)}`            : '—', lbl: 'km²' },
-          { val: latest?.treeCanopyPct != null ? `${latest.treeCanopyPct.toFixed(0)}%` : '—', lbl: 'canopy' },
+          { val: place.population != null ? \`\${(place.population / 1000).toFixed(0)}k\` : '\u2014', lbl: 'pop' },
+          { val: place.areaSqkm   != null ? \`\${place.areaSqkm.toFixed(1)}\`            : '\u2014', lbl: 'km\u00b2' },
+          { val: latest?.treeCanopyPct != null ? \`\${latest.treeCanopyPct.toFixed(0)}%\` : '\u2014', lbl: 'canopy' },
           { val: String(place.heatMeasurements.length), lbl: 'logs' },
         ].map(({ val, lbl }) => (
           <div key={lbl} className="flex flex-col items-center py-2.5 gap-0.5">
@@ -178,7 +189,7 @@ function PlaceCard({ place, expanded, onToggle, addDataOpen, onOpenAddData, onCl
           className="flex items-center gap-1 px-2 py-1 rounded-md text-[10px] text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-elevated)] transition-colors"
         >
           <span className="material-symbols-outlined text-sm leading-none">{expanded ? 'keyboard_arrow_up' : 'keyboard_arrow_down'}</span>
-          {expanded ? 'Hide' : `${place.heatMeasurements.length} readings`}
+          {expanded ? 'Hide' : \`\${place.heatMeasurements.length} readings\`}
         </button>
         <div className="flex-1" />
         <button
@@ -189,7 +200,7 @@ function PlaceCard({ place, expanded, onToggle, addDataOpen, onOpenAddData, onCl
           Data
         </button>
         <Link
-          href={`/dashboard/map?placeId=${place.id}`}
+          href={\`/dashboard/map?placeId=\${place.id}\`}
           onClick={e => e.stopPropagation()}
           className="flex items-center gap-1 px-2 py-1 rounded-md text-[10px] text-[var(--text-tertiary)] hover:text-[#22c55e] hover:bg-[var(--bg-elevated)] transition-colors"
         >
@@ -197,7 +208,7 @@ function PlaceCard({ place, expanded, onToggle, addDataOpen, onOpenAddData, onCl
           Map
         </Link>
         <Link
-          href={`/dashboard/scenarios/new?placeId=${place.id}`}
+          href={\`/dashboard/scenarios/new?placeId=\${place.id}\`}
           onClick={e => e.stopPropagation()}
           className="flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-semibold hover:bg-[var(--bg-elevated)] transition-colors"
           style={{ color: '#22c55e' }}
@@ -215,9 +226,9 @@ function PlaceCard({ place, expanded, onToggle, addDataOpen, onOpenAddData, onCl
           onClick={e => e.stopPropagation()}
         >
           <input name="date" type="date" required className={IC} />
-          <input name="avgTemp" type="number" step="0.1" required placeholder="Avg °C *" className={IC} />
-          <input name="maxTemp" type="number" step="0.1" required placeholder="Max °C *" className={IC} />
-          <input name="minTemp" type="number" step="0.1" placeholder="Min °C" className={IC} />
+          <input name="avgTemp" type="number" step="0.1" required placeholder="Avg \u00b0C *" className={IC} />
+          <input name="maxTemp" type="number" step="0.1" required placeholder="Max \u00b0C *" className={IC} />
+          <input name="minTemp" type="number" step="0.1" placeholder="Min \u00b0C" className={IC} />
           <input name="treeCanopyPct" type="number" step="0.1" placeholder="Canopy %" className={IC} />
           <input name="imperviousSurfacePct" type="number" step="0.1" placeholder="Impervious %" className={IC} />
           <input name="dataSource" placeholder="Source" className={IC} />
@@ -242,8 +253,8 @@ function PlaceCard({ place, expanded, onToggle, addDataOpen, onOpenAddData, onCl
               <table className="w-full text-xs">
                 <thead>
                   <tr className="border-b border-[var(--border)]">
-                    {['Date', 'Avg °C', 'Max °C', 'Canopy', 'Source'].map((h, idx) => (
-                      <th key={h} className={`py-2 px-3 font-normal text-[9px] uppercase tracking-widest text-[var(--text-tertiary)] ${idx === 0 ? 'text-left' : 'text-right'}`}>{h}</th>
+                    {['Date', 'Avg \u00b0C', 'Max \u00b0C', 'Canopy', 'Source'].map((h, idx) => (
+                      <th key={h} className={\`py-2 px-3 font-normal text-[9px] uppercase tracking-widest text-[var(--text-tertiary)] \${idx === 0 ? 'text-left' : 'text-right'}\`}>{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -257,10 +268,10 @@ function PlaceCard({ place, expanded, onToggle, addDataOpen, onOpenAddData, onCl
                         {m.avgTemp.toFixed(1)}
                       </td>
                       <td className="py-1.5 px-3 text-right tabular-nums text-[var(--text-secondary)]">
-                        {m.maxTemp != null ? m.maxTemp.toFixed(1) : '—'}
+                        {m.maxTemp != null ? m.maxTemp.toFixed(1) : '\u2014'}
                       </td>
                       <td className="py-1.5 px-3 text-right text-[var(--text-secondary)]">
-                        {m.treeCanopyPct != null ? `${m.treeCanopyPct.toFixed(0)}%` : '—'}
+                        {m.treeCanopyPct != null ? \`\${m.treeCanopyPct.toFixed(0)}%\` : '\u2014'}
                       </td>
                       <td className="py-1.5 px-3 text-right">
                         <span className="text-[9px] bg-[var(--bg-elevated)] text-[var(--text-tertiary)] px-1.5 py-0.5 rounded">
@@ -282,8 +293,10 @@ function PlaceCard({ place, expanded, onToggle, addDataOpen, onOpenAddData, onCl
 }
 
 // ─── Main Component ───────────────────────────────────────────────────────────
-export default function MyDataClient(props: Props) {
-  const { city, places, stats, completeness, scenarios, cityId } = props;
+export default function MyDataClient({
+  city, places, stats, completeness, teamCount,
+  scenarios, reports, auditLogs, userId, cityId,
+}: Props) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
@@ -386,7 +399,7 @@ export default function MyDataClient(props: Props) {
           </div>
           <h1 className="text-2xl font-bold tracking-tight text-[var(--text-primary)]">Data Hub</h1>
           <p className="text-sm text-[var(--text-secondary)] mt-0.5">
-            {city.name}{city.state ? `, ${city.state}` : ''} &middot; {city.country}
+            {city.name}{city.state ? \`, \${city.state}\` : ''} &middot; {city.country}
           </p>
         </div>
         <div className="flex items-center gap-3 shrink-0">
@@ -408,9 +421,9 @@ export default function MyDataClient(props: Props) {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {([
           { icon: 'location_on', label: 'Total Places',    val: String(stats.totalPlaces),                                                     accent: undefined    },
-          { icon: 'thermostat',  label: 'Avg Temperature', val: avgTemp != null ? `${avgTemp.toFixed(1)}°C` : '—',                  accent: '#ef4444'   },
-          { icon: 'groups',      label: 'Vulnerable Pop',  val: vulnerablePop > 0 ? `${(vulnerablePop / 1000).toFixed(0)}k` : '—',      accent: '#f97316'   },
-          { icon: 'sensors',     label: 'Monitored Zones', val: `${activePlaces} / ${stats.totalPlaces}`,                                   accent: '#22c55e'   },
+          { icon: 'thermostat',  label: 'Avg Temperature', val: avgTemp != null ? \`\${avgTemp.toFixed(1)}\u00b0C\` : '\u2014',                  accent: '#ef4444'   },
+          { icon: 'groups',      label: 'Vulnerable Pop',  val: vulnerablePop > 0 ? \`\${(vulnerablePop / 1000).toFixed(0)}k\` : '\u2014',      accent: '#f97316'   },
+          { icon: 'sensors',     label: 'Monitored Zones', val: \`\${activePlaces} / \${stats.totalPlaces}\`,                                   accent: '#22c55e'   },
         ] as const).map(({ icon, label, val, accent }) => (
           <div key={label} className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-xl p-4 flex flex-col gap-2.5">
             <div className="flex items-center gap-1.5">
@@ -443,7 +456,7 @@ export default function MyDataClient(props: Props) {
             type="search"
             value={query}
             onChange={e => setQuery(e.target.value)}
-            placeholder={`Search ${places.length} place${places.length !== 1 ? 's' : ''}…`}
+            placeholder={\`Search \${places.length} place\${places.length !== 1 ? 's' : ''}\u2026\`}
             className="w-full pl-9 pr-4 py-2.5 bg-[var(--bg-surface)] border border-[var(--border)] rounded-lg text-sm text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:border-[var(--border-strong)] transition-colors"
           />
           {query && (
@@ -522,7 +535,7 @@ export default function MyDataClient(props: Props) {
               </span>
               <div className="text-center">
                 <p className="text-sm font-medium text-[var(--text-secondary)]">
-                  {places.length === 0 ? 'No places added yet' : `No places match &ldquo;${query}&rdquo;`}
+                  {places.length === 0 ? 'No places added yet' : \`No places match &ldquo;\${query}&rdquo;\`}
                 </p>
                 <p className="text-xs text-[var(--text-tertiary)] mt-1">
                   {places.length === 0 ? 'Start by adding your first monitored location.' : 'Try a different name or clear the filter.'}
@@ -580,7 +593,7 @@ export default function MyDataClient(props: Props) {
                 <div className="col-span-2 bg-[var(--bg-elevated)] rounded-lg p-3 flex flex-col gap-0.5">
                   <span className="text-[9px] uppercase tracking-wider text-[var(--text-tertiary)]">Projected cooling</span>
                   <span className="text-2xl font-bold" style={{ color: '#22c55e' }}>
-                    -{stats.totalProjectedReduction.toFixed(1)}°C
+                    -{stats.totalProjectedReduction.toFixed(1)}\u00b0C
                   </span>
                   <span className="text-[9px] text-[var(--text-tertiary)]">if active plans implemented</span>
                 </div>
@@ -612,7 +625,7 @@ export default function MyDataClient(props: Props) {
                 <div className="h-1.5 bg-[var(--bg-elevated)] rounded-full overflow-hidden">
                   <div
                     className="h-full rounded-full transition-all duration-700"
-                    style={{ width: `${pct}%`, backgroundColor: color }}
+                    style={{ width: \`\${pct}%\`, backgroundColor: color }}
                   />
                 </div>
               </div>
@@ -637,7 +650,7 @@ export default function MyDataClient(props: Props) {
                 return (
                   <Link
                     key={s.id}
-                    href={`/dashboard/scenarios/${s.id}`}
+                    href={\`/dashboard/scenarios/\${s.id}\`}
                     className="flex items-center justify-between gap-2 px-3 py-2 bg-[var(--bg-elevated)] rounded-lg hover:bg-[var(--bg-base)] transition-colors"
                   >
                     <span className="text-xs text-[var(--text-primary)] truncate">{s.name}</span>
@@ -710,7 +723,7 @@ export default function MyDataClient(props: Props) {
               <input name="name" required placeholder="Place name *" className={IC} />
               <div className="grid grid-cols-2 gap-3">
                 <input name="population"   type="number"        placeholder="Population"     className={IC} />
-                <input name="areaSqkm"     type="number" step="0.01" placeholder="Area (km²)"       className={IC} />
+                <input name="areaSqkm"     type="number" step="0.01" placeholder="Area (km\u00b2)"       className={IC} />
                 <input name="medianIncome" type="number"        placeholder="Median income"  className={IC} />
                 <input name="pctElderly"   type="number" step="0.1" placeholder="% Elderly"          className={IC} />
               </div>
@@ -735,3 +748,7 @@ export default function MyDataClient(props: Props) {
     </div>
   );
 }
+`;
+
+writeFileSync(OUT, code, 'utf8');
+console.log(`Written ${code.length} chars to ${OUT}`);

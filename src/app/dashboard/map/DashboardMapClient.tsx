@@ -170,6 +170,7 @@ export default function DashboardMapPage() {
   /* city save */
   const [savingCity, setSavingCity] = useState(false);
   const [citySaved, setCitySaved] = useState(false);
+  const [showSaveSuccess, setShowSaveSuccess] = useState(false);
 
   const inspectorPlace = selectedPlace ?? payload?.places[0] ?? null;
   const hasInspector = !!(searchedPlace || inspectorPlace);
@@ -453,6 +454,7 @@ export default function DashboardMapPage() {
       if (!res.ok) throw new Error(data.error ?? 'Failed to save place');
 
       setCitySaved(true);
+      setShowSaveSuccess(true);
 
       if (data.preservedCityContext) {
         await loadCityPayload(data.placeId ?? null);
@@ -609,6 +611,18 @@ export default function DashboardMapPage() {
               className="w-full bg-transparent text-sm text-neutral-500 focus:outline-none cursor-not-allowed" />
           )}
           {searchedPlaceLoading && <div className="w-4 h-4 border-2 border-[#22c55e]/30 border-t-[#22c55e] rounded-full animate-spin shrink-0" />}
+          {searchedPlace && !searchedPlaceLoading && !citySaved && session?.user && (
+            <button
+              onClick={() => { void saveCity(); }}
+              disabled={savingCity}
+              className="shrink-0 px-3 py-1 text-xs font-semibold text-[#22c55e] border border-[#22c55e]/40 rounded-lg hover:bg-[#22c55e]/10 transition-colors disabled:opacity-50 whitespace-nowrap"
+            >
+              {savingCity ? 'Saving…' : 'Save Place'}
+            </button>
+          )}
+          {citySaved && !searchedPlaceLoading && (
+            <span className="shrink-0 text-xs text-[#22c55e] font-medium whitespace-nowrap">✓ Saved</span>
+          )}
         </GlassCard>
 
         {/* No-city banner — only shows when needed, visible in document flow */}
@@ -1010,6 +1024,36 @@ export default function DashboardMapPage() {
           </GlassCard>
         )}
       </div>
+
+      {/* ─── SAVE SUCCESS POPUP ─────────────────────────────────────────────── */}
+      {showSaveSuccess && searchedPlace && (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 backdrop-blur-sm">
+          <GlassCard className="p-6 max-w-sm w-full mx-4 text-center space-y-4">
+            <div className="w-12 h-12 mx-auto rounded-full bg-[#22c55e]/15 border border-[#22c55e]/30 grid place-items-center">
+              <span className="material-symbols-outlined text-[#22c55e] text-2xl" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+            </div>
+            <div>
+              <h3 className="text-base font-semibold text-white">{searchedPlace.name} saved!</h3>
+              <p className="text-sm text-neutral-400 mt-1">Added to your data hub. Continue in Scenarios or stay on the Map.</p>
+            </div>
+            <div className="flex gap-3">
+              <Link
+                href="/dashboard/scenarios"
+                className="flex-1 h-10 flex items-center justify-center gap-2 text-xs font-semibold text-white bg-[#22c55e] hover:bg-[#16a34a] rounded-xl transition-colors"
+              >
+                <span className="material-symbols-outlined text-sm">science</span>
+                Go to Scenarios
+              </Link>
+              <button
+                onClick={() => setShowSaveSuccess(false)}
+                className="flex-1 h-10 text-xs font-semibold text-neutral-300 border border-white/10 hover:border-white/20 rounded-xl transition-colors"
+              >
+                Stay on Map
+              </button>
+            </div>
+          </GlassCard>
+        </div>
+      )}
     </div>
   );
 }
