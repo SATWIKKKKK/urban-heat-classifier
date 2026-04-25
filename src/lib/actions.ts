@@ -26,7 +26,7 @@ export async function addPlaceAction(data: z.infer<typeof addPlaceSchema>) {
   const place = await prisma.place.create({ data: parsed });
   await computeAndStoreVulnerability(place.id);
   revalidatePath('/dashboard/places');
-  revalidatePath('/dashboard/onboarding');
+  revalidatePath('/dashboard/map');
   revalidatePath('/map');
   return place;
 }
@@ -90,7 +90,7 @@ export async function addHeatMeasurementAction(data: z.infer<typeof addHeatMeasu
   });
   await computeAndStoreVulnerability(parsed.placeId);
   revalidatePath(`/dashboard/places/${parsed.placeId}`);
-  revalidatePath('/dashboard/onboarding');
+  revalidatePath('/dashboard/map');
   revalidatePath('/map');
   revalidatePath('/dashboard/admin');
   return measurement;
@@ -469,7 +469,7 @@ export async function updateCityProfileAction(data: z.input<typeof updateCityPro
   });
 
   await updateOnboardingAction(parsed.cityId, { step1City: true });
-  revalidatePath('/dashboard/onboarding');
+  revalidatePath('/dashboard/map');
   revalidatePath('/dashboard/admin');
   revalidatePath('/map');
   return city;
@@ -523,7 +523,7 @@ export async function inviteTeamMemberAction(data: z.input<typeof inviteTeamMemb
   });
 
   await updateOnboardingAction(parsed.cityId, { step4Team: true });
-  revalidatePath('/dashboard/onboarding');
+  revalidatePath('/dashboard/map');
   revalidatePath('/dashboard/admin');
 
   return {
@@ -547,7 +547,7 @@ export async function completeOnboardingAction(cityId: string) {
   });
 
   revalidatePath('/dashboard');
-  revalidatePath('/dashboard/onboarding');
+  revalidatePath('/dashboard/map');
   revalidatePath('/dashboard/waiting');
   revalidatePath('/dashboard/admin');
 }

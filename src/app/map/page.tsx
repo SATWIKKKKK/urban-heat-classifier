@@ -410,8 +410,8 @@ export default function MapPage() {
                 <p className="mt-2 text-sm font-medium text-[var(--text-primary)]">No city data yet</p>
                 <p className="mt-1 text-xs text-[var(--text-tertiary)]">Complete onboarding and add places to see your city on the map.</p>
                 {isAuthenticated && (
-                  <Link href="/dashboard/onboarding" className="mt-4 inline-flex items-center gap-1 h-8 px-4 text-xs font-medium bg-[var(--green-500)] text-white rounded-md hover:bg-[var(--green-400)] transition-colors">
-                    Go to Onboarding
+                  <Link href="/dashboard/mydata" className="mt-4 inline-flex items-center gap-1 h-8 px-4 text-xs font-medium bg-[var(--green-500)] text-white rounded-md hover:bg-[var(--green-400)] transition-colors">
+                    Go to Dashboard
                   </Link>
                 )}
               </div>

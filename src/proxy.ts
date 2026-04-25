@@ -92,25 +92,10 @@ export default auth((req) => {
       return NextResponse.next();
     }
 
-    // No city → must onboard
-    if (!cityId && !pathname.startsWith('/dashboard/onboarding')) {
-      return NextResponse.redirect(new URL('/dashboard/onboarding', req.url));
-    }
-
-    // Not onboarding complete → must onboard
-    if (!onboardingComplete && !pathname.startsWith('/dashboard/onboarding') && !pathname.startsWith('/dashboard/waiting')) {
-      return NextResponse.redirect(new URL('/dashboard/onboarding', req.url));
-    }
-
-    // Onboarding complete → redirect away from onboarding
-    if (onboardingComplete && pathname.startsWith('/dashboard/onboarding')) {
-      return NextResponse.redirect(new URL('/dashboard/mydata', req.url));
-    }
-
     // Default dashboard redirect by role
     if (pathname === '/dashboard') {
       const roleDefaultRoute: Record<string, string> = {
-        CITY_ADMIN: '/dashboard/mydata',
+        CITY_ADMIN: '/dashboard/map',
         URBAN_PLANNER: '/dashboard/mydata',
         CITY_COUNCIL: '/dashboard/scenarios',
         MUNICIPAL_COMMISSIONER: '/dashboard/commissioner',

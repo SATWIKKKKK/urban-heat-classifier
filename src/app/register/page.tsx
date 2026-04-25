@@ -92,7 +92,7 @@ export default function RegisterPage() {
         // Show signup toast
         setSignupToast({ role: form.role, name: form.name });
         await new Promise(resolve => setTimeout(resolve, 2000));
-        router.push('/dashboard/onboarding');
+        router.push('/dashboard/map');
       }
     } catch {
       setError('An unexpected error occurred');
@@ -136,7 +136,7 @@ export default function RegisterPage() {
 
             {/* Google OAuth */}
             <button
-              onClick={() => signIn('google', { callbackUrl: '/dashboard/onboarding' })}
+              onClick={() => signIn('google', { callbackUrl: '/dashboard/map' })}
               className="w-full flex items-center justify-center gap-3 px-4 py-3.5 glass-card hover:border-white/15 rounded-xl transition-all text-white font-medium group"
             >
               <svg width="20" height="20" viewBox="0 0 24 24">

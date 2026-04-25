@@ -11,8 +11,8 @@ export default async function MyDataPage() {
   const userId = session.user.id;
   const cityId = session.user.cityId;
 
-  if (!cityId) redirect('/dashboard/onboarding');
-
+  if (!cityId) redirect('/dashboard');
+  
   const city = await prisma.city.findUnique({
     where: { id: cityId },
     include: {
@@ -21,7 +21,7 @@ export default async function MyDataPage() {
     },
   });
 
-  if (!city) redirect('/dashboard/onboarding');
+  if (!city) redirect('/dashboard');
 
   const places = await prisma.place.findMany({
     where: { cityId },

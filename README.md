@@ -93,3 +93,42 @@ If you want to enable Google Maps Places Autocomplete:
 - **AI**: Google Gemini 1.5 Flash
 - **Styling**: Tailwind CSS 4
 - **Testing**: Playwright
+
+### Setting Up Google OAuth
+
+1. Go to [console.cloud.google.com](https://console.cloud.google.com)
+2. Select your project (or create a new one)
+3. Go to **APIs & Services** → **Credentials**
+4. Click **Create Credentials** → **OAuth 2.0 Client ID**
+5. **Application type**: Web application
+6. Add **Authorized JavaScript origins**:
+   - `http://localhost:3000`
+7. Add **Authorized redirect URIs**:
+   - `http://localhost:3000/api/auth/callback/google`
+8. Copy the **Client ID** and **Client Secret**
+9. Add to `.env.local`:
+   ```env
+   GOOGLE_CLIENT_ID=your_client_id_here
+   GOOGLE_CLIENT_SECRET=your_client_secret_here
+   ```
+10. Go to **OAuth consent screen**
+11. Add your email as a test user
+12. Set publishing status to **"Testing"** (not Production) until you are ready to go live
+
+### Common OAuth Errors
+
+**OAuthCallback error:**
+Check that the redirect URI in Google Console matches exactly.
+Must be: `http://localhost:3000/api/auth/callback/google`
+
+**redirect_uri_mismatch:**
+The URI in Google Console does not match your app.
+Copy the exact URI from the error message and add it to Authorized redirect URIs in Google Console.
+
+**Access blocked (app not verified):**
+Add your email as a test user in the OAuth consent screen.
+
+**Access blocked (organization restricted):**
+Your project User Type is set to "Internal". Go to the OAuth Consent Screen 
+in Google Console and click "Make External", then add your email to the 
+Test Users list.

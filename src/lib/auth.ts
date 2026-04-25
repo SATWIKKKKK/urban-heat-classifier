@@ -30,9 +30,21 @@ async function createUniqueCitySlug(baseName: string) {
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
   providers: [
+    /*
+      GOOGLE CLOUD CONSOLE CONFIGURATION:
+      The OAuth client must have these exact URIs:
+      
+      Authorized JavaScript origins:
+        http://localhost:3000
+        
+      Authorized redirect URIs:
+        http://localhost:3000/api/auth/callback/google
+        
+      If these are wrong in Google Cloud Console, OAuth will fail with redirect_uri_mismatch error.
+    */
     Google({
-      clientId: process.env.GOOGLE_CLIENT_ID,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+      clientId: process.env.GOOGLE_CLIENT_ID!,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
     }),
     Credentials({
       name: 'credentials',
@@ -120,160 +132,124 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   callbacks: {
     async signIn({ user, account }) {
       if (account?.provider === 'google') {
-        const email = user.email?.toLowerCase().trim();
-        if (!email) {
-          return false;
-        }
-
         try {
+          const email = user.email;
+          if (!email) return false;
+          
           const existingUser = await prisma.user.findUnique({
             where: { email },
-            include: { city: { include: { onboardingState: true } } },
           });
-
+          
           if (existingUser) {
-            if (existingUser.passwordHash) {
-              return `/login?error=${encodeURIComponent(
-                'This email uses password login. Please sign in with your email and password.'
-              )}`;
-            }
-
             await prisma.user.update({
-              where: { id: existingUser.id },
-              data: { lastLoginAt: new Date() },
+              where: { email },
+              data: { lastLoginAt: new Date() }
             });
-
             return true;
           }
-
-          const displayName = user.name?.trim() || email.split('@')[0];
-          const firstName = displayName.split(' ')[0] || 'New';
-          const cityName = `${firstName}'s City`;
-          const slug = await createUniqueCitySlug(cityName);
-
-          await prisma.$transaction(async (tx) => {
-            const city = await tx.city.create({
-              data: {
-                name: cityName,
-                slug,
-              },
-            });
-
-            const createdUser = await tx.user.create({
-              data: {
-                email,
-                name: displayName,
-                image: user.image ?? null,
-                cityId: city.id,
-                role: 'CITY_ADMIN',
-                lastLoginAt: new Date(),
-              },
-            });
-
-            await tx.onboardingState.create({
-              data: {
-                cityId: city.id,
-              },
-            });
-
-            await tx.auditLog.create({
-              data: {
-                userId: createdUser.id,
-                action: 'USER_REGISTERED_GOOGLE',
-                resourceType: 'User',
-                resourceId: createdUser.id,
-                afterValue: JSON.stringify({ email, role: 'CITY_ADMIN', cityName }),
-              },
-            });
+          
+          const newUser = await prisma.user.create({
+            data: {
+              email,
+              name: user.name ?? email.split('@')[0],
+              passwordHash: null,
+              lastLoginAt: new Date(),
+            }
           });
+          
+          const cityName = `${user.name ?? 'My'}'s City`;
+          const city = await prisma.city.create({
+            data: {
+              name: cityName,
+              slug: cityName.toLowerCase()
+                .replace(/[^a-z0-9]/g, '-')
+                .replace(/-+/g, '-')
+                .substring(0, 50) + '-' + Date.now(),
+              country: 'India',
+              currency: 'INR',
+            }
+          });
+          
+          // Update user with role and cityId since UserRole model doesn't exist
+          await prisma.user.update({
+            where: { id: newUser.id },
+            data: {
+              role: 'CITY_ADMIN',
+              cityId: city.id,
+            }
+          });
+          
+          await prisma.onboardingState.create({
+            data: {
+              cityId: city.id,
+              isComplete: true,
+            }
+          });
+          
+          return true;
         } catch (error) {
-          console.error('[Auth] Google signIn DB error:', error);
-          return `/login?error=${encodeURIComponent('Sign-in failed. Please try again.')}`;
+          console.error('Google signIn error:', error);
+          return false;
         }
       }
-
       return true;
     },
-    async jwt({ token, user, account, trigger, session }) {
-      if (user) {
-        // Store email in token so we can look up the DB user on every refresh
-        token.email = user.email?.toLowerCase().trim() ?? token.email;
-        token.role = (user as typeof user & { role?: string }).role;
-        token.cityId = (user as typeof user & { cityId?: string | null }).cityId ?? null;
-        token.userId = user.id;
-        token.onboardingComplete =
-          (user as typeof user & { onboardingComplete?: boolean }).onboardingComplete ?? false;
+    
+    async session({ session, token }) {
+      if (session.user && token) {
+        session.user.id = token.sub as string;
+        
+        // Fetch user role and city from DB on every session check
+        const userFromDb = await prisma.user.findUnique({
+          where: { id: token.sub as string },
+          select: {
+            role: true,
+            cityId: true,
+            city: {
+              select: {
+                onboardingState: {
+                  select: { isComplete: true }
+                }
+              }
+            }
+          }
+        });
+        
+        if (userFromDb) {
+          session.user.role = userFromDb.role;
+          session.user.cityId = userFromDb.cityId ?? undefined;
+          session.user.onboardingComplete = userFromDb.city?.onboardingState?.isComplete ?? false;
+        }
       }
-
-      // Always refresh role/cityId/onboardingComplete from DB so stale JWTs
-      // (e.g. after a reseed or city change) pick up the latest values.
-      // Runs on every auth() call for both credentials and Google users.
-      if (!user && token.userId) {
-        try {
+      return session;
+    },
+    
+    async jwt({ token, user, account }) {
+      if (user) {
+        if (account?.provider === 'google') {
+          // For Google, the 'user.id' is the Google ID. 
+          // We need our database ID for the 'sub'.
           const dbUser = await prisma.user.findUnique({
-            where: { id: token.userId as string },
-            select: {
-              id: true,
-              role: true,
-              cityId: true,
-              city: { select: { onboardingState: { select: { isComplete: true } } } },
-            },
+            where: { email: user.email! },
+            select: { id: true }
           });
           if (dbUser) {
-            token.role = dbUser.role;
-            token.cityId = dbUser.cityId;
-            token.onboardingComplete = dbUser.city?.onboardingState?.isComplete ?? false;
+            token.sub = dbUser.id;
           }
-        } catch (error) {
-          console.error('[Auth] jwt DB refresh error:', error);
+        } else {
+          token.sub = user.id;
         }
       }
-
-      // On initial Google sign-in: fetch the DB user to get role, cityId, onboardingComplete.
-      // token.email is now reliably set above (and normalized to lowercase).
-      if (account?.provider === 'google') {
-        const lookupEmail = (token.email as string | undefined)?.toLowerCase().trim();
-        if (lookupEmail) {
-          try {
-            const dbUser = await prisma.user.findUnique({
-              where: { email: lookupEmail },
-              include: { city: { include: { onboardingState: true } } },
-            });
-
-            if (dbUser) {
-              token.userId = dbUser.id;
-              token.role = dbUser.role;
-              token.cityId = dbUser.cityId;
-              token.onboardingComplete = dbUser.city?.onboardingState?.isComplete ?? false;
-            } else {
-              console.error('[Auth] Google jwt: DB user not found for email:', lookupEmail);
-            }
-          } catch (error) {
-            console.error('[Auth] Google jwt DB lookup error:', error);
-          }
-        }
-      }
-
-      if (trigger === 'update' && session) {
-        token.role = session.role || token.role;
-        token.cityId = session.cityId || token.cityId;
-        token.onboardingComplete =
-          session.onboardingComplete ?? token.onboardingComplete;
-      }
-
       return token;
-    },
-    async session({ session, token }) {
-      if (session.user) {
-        session.user.id = token.userId as string;
-        session.user.role = token.role as string;
-        session.user.cityId = token.cityId as string | null;
-        session.user.onboardingComplete =
-          (token.onboardingComplete as boolean | undefined) ?? false;
-      }
-
-      return session;
     },
     authorized: authConfig.callbacks?.authorized,
   },
+  pages: {
+    signIn: '/login',
+    error: '/auth-error',
+  },
 });
+
+if (process.env.NODE_ENV === 'production' && !process.env.NEXTAUTH_URL) {
+  console.warn('NEXTAUTH_URL is not set in production. OAuth callbacks may fail.');
+}

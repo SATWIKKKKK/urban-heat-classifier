@@ -40,6 +40,9 @@ const indiaCrisisStats = [
 export default async function HomePage() {
   const session = await auth();
   if (session?.user) {
+    if (session.user.role === 'CITY_ADMIN') {
+      redirect('/dashboard/map');
+    }
     redirect('/dashboard');
   }
 

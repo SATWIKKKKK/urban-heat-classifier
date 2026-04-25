@@ -18,7 +18,7 @@ export async function GET() {
 
   const roleRedirects: Record<string, string> = {
     SUPER_ADMIN: '/dashboard/admin',
-    CITY_ADMIN: onboardingComplete ? '/dashboard/map' : '/dashboard/onboarding',
+    CITY_ADMIN: '/dashboard/map',
     URBAN_PLANNER: onboardingComplete ? '/dashboard/map' : '/dashboard/waiting',
     CITY_COUNCIL: '/dashboard/scenarios',
     MUNICIPAL_COMMISSIONER: '/dashboard/commissioner',

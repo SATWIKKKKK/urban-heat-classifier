@@ -16,8 +16,8 @@ export default async function DashboardPage() {
     redirect('/dashboard/scenarios');
   }
 
-  if (session.user.role === 'CITY_ADMIN' && !session.user.onboardingComplete) {
-    redirect('/dashboard/onboarding');
+  if (session.user.role === 'CITY_ADMIN') {
+    redirect('/dashboard/map');
   }
 
   if (session.user.role === 'URBAN_PLANNER' && !session.user.onboardingComplete) {
