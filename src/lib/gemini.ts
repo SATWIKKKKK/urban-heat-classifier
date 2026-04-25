@@ -152,6 +152,11 @@ ${ctx.councilNotes ? 'COUNCIL / COMMISSIONER NOTES:\n' + ctx.councilNotes + '\n'
 INSTRUCTIONS:
 Generate a structured report with EXACTLY these three sections. Write plain text only — no markdown, no asterisks, no hashtags, no bullet-point symbols at line starts.
 
+  FORMAT GUIDELINES:
+  - When reporting temperature reductions or ΔT values, do NOT emit a standalone negative token like "- 42" on its own line.
+  - Prefer the phrasing "X°C reduction" (e.g., "3.4°C reduction") for readability; if a negative delta is needed in technical notation, use "ΔT = -3.4°C" in parentheses only.
+  - Avoid any stray short numeric tokens colored or highlighted — embed numbers within clear phrases.
+
 EXECUTIVE SUMMARY:
 Write 4-6 sentences. Open with the single most impactful statistic. State what this plan is, the total investment, the projected lives saved, and the temperature reduction. End with why this matters specifically for ${ctx.cityName} given India's extreme heat trends.
 

@@ -40,9 +40,31 @@ export async function updatePlaceAction(id: string, data: Partial<z.infer<typeof
   return place;
 }
 
-export async function deletePlaceAction(id: string) {
-  await prisma.place.delete({ where: { id } });
-  revalidatePath('/dashboard/places');
+export async function deletePlaceAction(id: string, cityId: string): Promise<{ success: boolean; error?: string }> {
+  const session = await auth();
+  if (!session?.user?.id) return { success: false, error: 'Unauthorized' };
+  try {
+    const place = await prisma.place.findUnique({ where: { id }, select: { id: true, cityId: true } });
+    if (!place) return { success: false, error: 'Place not found' };
+    if (place.cityId !== cityId) return { success: false, error: 'Forbidden' };
+    await prisma.heatMeasurement.deleteMany({ where: { placeId: id } });
+    await prisma.intervention.deleteMany({ where: { placeId: id } });
+    await prisma.place.delete({ where: { id } });
+    await prisma.auditLog.create({
+      data: {
+        userId: session.user.id,
+        action: 'DELETE_PLACE',
+        resourceType: 'Place',
+        resourceId: id,
+      },
+    });
+    revalidatePath('/dashboard/mydata');
+    revalidatePath('/dashboard/places');
+    revalidatePath('/map');
+    return { success: true };
+  } catch (e) {
+    return { success: false, error: 'Failed to delete place' };
+  }
 }
 
 // ── Heat Measurement Actions ──

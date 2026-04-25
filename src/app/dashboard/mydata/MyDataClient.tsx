@@ -3,7 +3,7 @@
 import { useState, useTransition, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { addPlaceAction, addHeatMeasurementAction, updatePlaceAction } from '@/lib/actions';
+import { addPlaceAction, addHeatMeasurementAction, updatePlaceAction, deletePlaceAction } from '@/lib/actions';
 
 // ─── Interfaces ──────────────────────────────────────────────────────────────
 interface CityData {
@@ -32,13 +32,11 @@ interface StatsData {
 interface CompletenessItem { placeId: string; placeName: string; checks: Record<string, boolean>; pct: number }
 interface CompletenessData { items: CompletenessItem[]; overall: number }
 interface ScenarioData { id: string; name: string; status: string; interventionCount: number; createdAt: string }
-interface ReportData { id: string; title: string; status: string; generatedAt: string; generatedBy: string | null }
-interface AuditData { id: string; action: string; resourceType: string | null; createdAt: string; userName: string | null }
+
 interface Props {
   city: CityData; places: PlaceData[]; stats: StatsData;
   completeness: CompletenessData; teamCount: number;
-  scenarios: ScenarioData[]; reports: ReportData[];
-  auditLogs: AuditData[]; userId: string; cityId: string;
+  scenarios: ScenarioData[]; userId: string; cityId: string;
 }
 
 // ─── Vulnerability colour map ────────────────────────────────────────────────
@@ -64,7 +62,7 @@ function useNominatimSearch() {
       try {
         const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&addressdetails=1&limit=5`);
         if (res.ok) setResults(await res.json());
-      } catch (e) {}
+      } catch {}
     }, 500);
     return () => clearTimeout(t);
   }, [query]);
@@ -110,283 +108,46 @@ function CircularProgress({ percentage }: { percentage: number }) {
   );
 }
 
-// ─── Place Card ───────────────────────────────────────────────────────────────
-interface CardProps {
-  place: PlaceData;
-  expanded: boolean;
-  onToggle: () => void;
-  addDataOpen: boolean;
-  onOpenAddData: () => void;
-  onCloseAddData: () => void;
-  onSubmitMeas: (e: React.FormEvent<HTMLFormElement>) => void;
-  isPending: boolean;
-  index: number;
-}
-
-function PlaceCard({ place, expanded, onToggle, addDataOpen, onOpenAddData, onCloseAddData, onSubmitMeas, isPending, index }: CardProps) {
-  const v = vl(place.vulnerabilityLevel);
-  const latest = place.heatMeasurements[0];
-  const temps  = place.heatMeasurements.map(m => m.avgTemp);
-  const trend = temps.length >= 2 ? temps[0] - (temps.slice(1).reduce((a,b)=>a+b,0)/(temps.length-1)) : null;
-
-  const hasHeatData = place.heatMeasurements.length > 0;
-  const hasVuln = place.vulnerabilityScore != null;
-
-  return (
-    <div
-      className="group relative flex flex-col border rounded-[16px] overflow-hidden transition-all duration-200 hover:-translate-y-[1px] hover:shadow-[0_8px_32px_rgba(0,0,0,0.3)] animate-fade-in"
-      style={{ animationDelay: `${index * 80}ms`, opacity: 0, animationFillMode: 'forwards', animationName: 'revealUp', background: v.grad, borderColor: v.border }}
-    >
-      <div className="relative z-10 flex flex-col flex-1">
-        {/* ── Header ── */}
-        <div className="px-[20px] pt-[20px] cursor-pointer select-none" onClick={onToggle}>
-          <div className="flex items-start justify-between gap-2 mb-1">
-            <h3 className="text-[16px] font-bold text-[var(--text-primary)] leading-snug tracking-[-0.02em]">{place.name}</h3>
-            {place.vulnerabilityLevel && (
-              <span className="shrink-0 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full" style={{ color: v.color, backgroundColor: v.bg, boxShadow: `0 0 8px ${v.color}40` }}>
-                {place.vulnerabilityLevel}
-              </span>
-            )}
-          </div>
-          <div className="flex items-start justify-between gap-2 mt-3">
-            
-            {hasVuln && !hasHeatData ? (
-              <div className="flex flex-col">
-                <div>
-                  <span className="text-[42px] font-extrabold leading-none tracking-[-0.05em]" style={{ color: v.color }}>
-                    {Math.round(place.vulnerabilityScore!)}
-                  </span>
-                </div>
-                <div className="flex flex-col mt-1">
-                  <span className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: v.color }}>vulnerability score</span>
-                  <span className="text-[12px] font-medium text-[var(--text-primary)] mt-1">
-                    {place.vulnerabilityLevel === 'CRITICAL' ? 'CRITICAL risk — immediate action required' :
-                     place.vulnerabilityLevel === 'HIGH' ? 'HIGH risk — intervention recommended' :
-                     place.vulnerabilityLevel === 'MODERATE' ? 'MODERATE risk — consider interventions' :
-                     'LOW risk — monitoring only'}
-                  </span>
-                  <span className="text-[10px] text-[var(--text-tertiary)] mt-1">Based on climate estimates</span>
-                </div>
-              </div>
-            ) : hasHeatData && latest ? (
-              <div className="flex flex-col">
-                <div>
-                  <span className="text-[42px] font-extrabold leading-none tracking-[-0.05em]" style={{ color: v.color }}>
-                    {latest.avgTemp.toFixed(1)}
-                  </span>
-                  <span className="text-[20px] font-extrabold leading-none tracking-[-0.05em] align-super" style={{ color: v.color, opacity: 0.6 }}>
-                    °C
-                  </span>
-                </div>
-                <div className="flex items-center gap-2 mt-1">
-                  <span className="text-[11px] text-[var(--text-tertiary)]">
-                    max {latest.maxTemp != null ? latest.maxTemp.toFixed(1) : '—'}°C
-                  </span>
-                </div>
-                {trend !== null && (
-                  <div className="mt-1" style={{ color: trend > 0.5 ? '#ef4444' : trend < -0.5 ? '#22c55e' : 'var(--text-tertiary)' }}>
-                    <span className="text-[10px] font-medium">
-                      {trend > 0.5 ? `↑ ${trend.toFixed(1)}°C warmer than avg` : trend < -0.5 ? `↓ ${Math.abs(trend).toFixed(1)}°C cooler than avg` : '→ Stable temperature'}
-                    </span>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="flex flex-col mt-4">
-                <div className="flex items-center gap-1.5 mb-2">
-                  <span className="material-symbols-outlined text-[16px] text-[var(--text-tertiary)]">cloud_off</span>
-                  <span className="text-[13px] text-[var(--text-secondary)] font-medium">No data yet</span>
-                </div>
-                <span className="text-[11px] text-[var(--text-tertiary)] mb-3">Add heat data or generate a scenario to see vulnerability analysis</span>
-                <div className="flex gap-2">
-                  <button onClick={e => { e.stopPropagation(); onOpenAddData(); }} className="px-2.5 py-1 text-[10px] font-semibold bg-[#3b82f6]/10 border border-[#3b82f6]/20 rounded text-[#60a5fa] hover:bg-[#3b82f6]/20 transition-colors">
-                    + Add Data
-                  </button>
-                  <Link href={`/dashboard/scenarios/new?placeId=${place.id}`} onClick={e => e.stopPropagation()} className="px-2.5 py-1 text-[10px] font-semibold bg-[rgba(34,197,94,0.1)] text-[#22c55e] border border-[rgba(34,197,94,0.2)] rounded hover:bg-[rgba(34,197,94,0.2)] transition-colors">
-                    Build Scenario →
-                  </Link>
-                </div>
-              </div>
-            )}
-            
-            {hasHeatData && <Sparkline data={temps} color={v.color} />}
-          </div>
-        </div>
-
-        {/* ── Stats strip ── */}
-        <div className="mx-[20px] mt-[16px] rounded-[10px] bg-[var(--bg-elevated)] border border-[var(--border)] overflow-hidden">
-          <div className="grid grid-cols-4 divide-x divide-[var(--border)]">
-            {[
-              { val: place.population != null ? `${(place.population / 1000).toFixed(0)}k` : '—', lbl: 'pop', highlightColor: '#60a5fa' },
-              { val: place.areaSqkm   != null ? `${place.areaSqkm.toFixed(1)}`            : '—', lbl: 'km²', highlightColor: '#34d399' },
-              { val: latest?.treeCanopyPct != null ? `${latest.treeCanopyPct.toFixed(0)}%` : '—', lbl: 'canopy', highlightColor: latest?.treeCanopyPct != null ? (latest.treeCanopyPct < 15 ? '#ef4444' : latest.treeCanopyPct <= 30 ? '#f97316' : '#22c55e') : null },
-              { val: String(place.heatMeasurements.length), lbl: 'logs', highlightColor: '#c084fc' },
-            ].map(({ val, lbl, highlightColor }) => (
-              <div key={lbl} className="flex flex-col items-center py-[10px] gap-0.5">
-                <span className="text-[13px] font-semibold tabular-nums" style={{ color: highlightColor || 'var(--text-primary)' }}>{val}</span>
-                <span className="text-[9px] text-[var(--text-tertiary)] uppercase tracking-wider">{lbl}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="flex-1" />
-
-        {place.vulnerabilityScore != null && (
-          <div className="mx-[12px] mb-[8px] mt-[12px] px-[12px] py-[6px] bg-[var(--bg-elevated)] rounded-[6px] border border-[var(--border)]">
-            <span className="text-[10px] text-[var(--text-secondary)]">
-              {place.vulnerabilityScore >= 80 ? "🌍 Among top 15% most heat-vulnerable places globally" :
-               place.vulnerabilityScore >= 60 ? "⚠️ Above global urban heat average" :
-               place.vulnerabilityScore >= 40 ? "📊 Near global urban heat average" :
-               "✓ Below global urban heat average"}
-            </span>
-          </div>
-        )}
-
-        {/* ── Action row ── */}
-        <div className="px-[12px] py-[8px] border-t border-[var(--border)] bg-[var(--bg-base)]/50 backdrop-blur-sm flex items-center gap-1">
-          <button
-            onClick={onToggle}
-            className="flex items-center gap-1 px-2 py-1 rounded-md text-[10px] text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-elevated)] transition-colors"
-          >
-            <span className="material-symbols-outlined text-sm leading-none">{expanded ? 'keyboard_arrow_up' : 'keyboard_arrow_down'}</span>
-            {expanded ? 'Hide' : `${place.heatMeasurements.length} readings`}
-          </button>
-          <div className="flex-1" />
-          <button
-            onClick={e => { e.stopPropagation(); onOpenAddData(); }}
-            className="flex items-center gap-1 px-2 py-1 rounded-md text-[10px] text-[var(--text-tertiary)] hover:text-[#3b82f6] hover:bg-[rgba(59,130,246,0.08)] transition-colors"
-          >
-            <span className="material-symbols-outlined text-sm leading-none">add_circle</span>
-            Data
-          </button>
-          <Link
-            href={`/dashboard/map?placeId=${place.id}`}
-            onClick={e => e.stopPropagation()}
-            className="flex items-center gap-1 px-2 py-1 rounded-md text-[10px] text-[var(--text-tertiary)] hover:text-[#06b6d4] hover:bg-[rgba(6,182,212,0.08)] transition-colors"
-          >
-            <span className="material-symbols-outlined text-sm leading-none">map</span>
-            Map
-          </Link>
-          <Link
-            href={`/dashboard/scenarios/new?placeId=${place.id}`}
-            onClick={e => e.stopPropagation()}
-            className="ml-1 flex items-center gap-1 px-[10px] py-[4px] rounded-[8px] text-[11px] font-semibold transition-all"
-            style={{ 
-              backgroundColor: 'rgba(34,197,94,0.12)', 
-              borderColor: 'rgba(34,197,94,0.30)', 
-              borderWidth: '1px', 
-              color: '#22c55e' 
-            }}
-            onMouseEnter={e => {
-              e.currentTarget.style.backgroundColor = 'rgba(34,197,94,0.20)';
-              e.currentTarget.style.borderColor = 'rgba(34,197,94,0.50)';
-              e.currentTarget.style.boxShadow = '0 0 12px rgba(34,197,94,0.15)';
-            }}
-            onMouseLeave={e => {
-              e.currentTarget.style.backgroundColor = 'rgba(34,197,94,0.12)';
-              e.currentTarget.style.borderColor = 'rgba(34,197,94,0.30)';
-              e.currentTarget.style.boxShadow = 'none';
-            }}
-          >
-            <span className="material-symbols-outlined text-sm leading-none">science</span>
-            Scenario
-          </Link>
-        </div>
-
-        {/* ── Expanded: measurements table ── */}
-        {expanded && (
-          <div className="border-t border-[var(--border)] bg-gradient-to-b from-[var(--bg-base)] to-transparent relative z-10">
-            {addDataOpen && (
-              <form
-                onSubmit={onSubmitMeas}
-                className="bg-[var(--bg-elevated)] border border-[var(--border-strong)] rounded-[12px] m-[12px] p-[16px]"
-                onClick={e => e.stopPropagation()}
-              >
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
-                  <input name="date" type="date" required className={IC} />
-                  <input name="avgTemp" type="number" step="0.1" required placeholder="Avg °C *" className={IC} />
-                  <input name="maxTemp" type="number" step="0.1" required placeholder="Max °C *" className={IC} />
-                  <input name="minTemp" type="number" step="0.1" placeholder="Min °C" className={IC} />
-                  <input name="treeCanopyPct" type="number" step="0.1" placeholder="Canopy %" className={IC} />
-                  <input name="imperviousSurfacePct" type="number" step="0.1" placeholder="Impervious %" className={IC} />
-                  <input name="dataSource" placeholder="Source" className={IC} />
-                </div>
-                <div className="flex gap-2 items-center justify-end">
-                  <button type="button" onClick={onCloseAddData}
-                    className="px-3 py-1.5 text-xs text-[var(--text-tertiary)] hover:text-[var(--text-primary)] transition-colors">
-                    Cancel
-                  </button>
-                  <button type="submit" disabled={isPending}
-                    className="px-4 py-1.5 text-xs bg-[var(--green-500)] text-white rounded-[8px] hover:bg-[var(--green-400)] disabled:opacity-50 transition-colors font-semibold shadow-[0_0_12px_rgba(34,197,94,0.2)]">
-                    Save
-                  </button>
-                </div>
-              </form>
-            )}
-
-            {place.heatMeasurements.length > 0 ? (
-              <div className="overflow-x-auto">
-                <table className="w-full text-xs">
-                  <thead className="bg-[var(--bg-base)] sticky top-0 z-10">
-                    <tr className="border-b border-[var(--border)]">
-                      {['Date', 'Avg °C', 'Max °C', 'Canopy', 'Source'].map((h, idx) => (
-                        <th key={h} className={`py-2 px-3 font-normal text-[9px] uppercase tracking-widest text-[var(--text-tertiary)] ${idx === 0 ? 'text-left' : 'text-right'}`}>{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {place.heatMeasurements.slice(0, 6).map((m, idx) => (
-                      <tr key={m.id} className={`border-b border-[var(--border)]/30 hover:bg-[var(--bg-surface)] transition-colors ${idx % 2 === 0 ? 'bg-[rgba(255,255,255,0.01)]' : ''}`}>
-                        <td className="py-1.5 px-3 text-[var(--text-secondary)]">
-                          {new Date(m.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: '2-digit' })}
-                        </td>
-                        <td className="py-1.5 px-3 text-right font-semibold tabular-nums" style={{ color: v.color }}>
-                          {m.avgTemp.toFixed(1)}
-                        </td>
-                        <td className="py-1.5 px-3 text-right tabular-nums text-[var(--text-secondary)]">
-                          {m.maxTemp != null ? m.maxTemp.toFixed(1) : '—'}
-                        </td>
-                        <td className="py-1.5 px-3 text-right text-[var(--text-secondary)]">
-                          {m.treeCanopyPct != null ? `${m.treeCanopyPct.toFixed(0)}%` : '—'}
-                        </td>
-                        <td className="py-1.5 px-3 text-right">
-                          <span className="text-[9px] bg-[var(--bg-elevated)] text-[var(--text-tertiary)] px-1.5 py-0.5 rounded">
-                            {m.dataSource}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              !addDataOpen && <p className="p-4 text-center text-xs text-[var(--text-tertiary)]">No measurements recorded yet.</p>
-            )}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
 // ─── Main Component ───────────────────────────────────────────────────────────
 export default function MyDataClient(props: Props) {
-  const { city, places, stats, completeness, scenarios, auditLogs, cityId } = props;
+  const { city, places, stats, completeness, scenarios, cityId } = props;
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
   // UI state
-  const [expandedPlace, setExpandedPlace] = useState<string | null>(null);
   const [addDataFor,    setAddDataFor]    = useState<string | null>(null);
   const [showAddPlace,  setShowAddPlace]  = useState(false);
   const [error,         setError]         = useState('');
+  const [toast,         setToast]         = useState('');
+  const [selectedPlace, setSelectedPlace] = useState<PlaceData | null>(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [scenarioLoading, setScenarioLoading] = useState<string | null>(null);
+  const [addPlaceTab, setAddPlaceTab] = useState<'search' | 'manual'>('search');
   
   // Search state
   const { query: searchQuery, setQuery: setSearchQuery, results: searchResults, setResults: setSearchResults } = useNominatimSearch();
-  const [showManual, setShowManual] = useState(false);
   const [lat, setLat] = useState<number | null>(null);
   const [lng, setLng] = useState<number | null>(null);
+
+  // Toast helper
+  function showToast(msg: string) {
+    setToast(msg);
+    setTimeout(() => setToast(''), 4000);
+  }
+
+  // Escape key to close popup
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') {
+        if (deleteConfirmId) { setDeleteConfirmId(null); return; }
+        if (selectedPlace) { setSelectedPlace(null); return; }
+        if (showAddPlace) setShowAddPlace(false);
+      }
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [deleteConfirmId, selectedPlace, showAddPlace]);
 
   // Scroll state
   const [showStickyHeader, setShowStickyHeader] = useState(false);
@@ -449,6 +210,10 @@ export default function MyDataClient(props: Props) {
           throw new Error(data.error ?? 'Failed to add place');
         }
         const data = await res.json();
+        // Close modal immediately
+        setShowAddPlace(false);
+        setSearchQuery(''); setLat(null); setLng(null); setAddPlaceTab('search');
+        showToast('Place added — fetching climate data...');
         await updatePlaceAction(data.placeId, {
           population:    fd.get('population')   ? Number(fd.get('population'))   : undefined,
           areaSqkm:      fd.get('areaSqkm')     ? Number(fd.get('areaSqkm'))     : undefined,
@@ -456,6 +221,7 @@ export default function MyDataClient(props: Props) {
           pctElderly:    fd.get('pctElderly')   ? Number(fd.get('pctElderly'))   : undefined,
           pctChildren:   fd.get('pctChildren')  ? Number(fd.get('pctChildren'))  : undefined,
         });
+        setTimeout(() => startTransition(() => router.refresh()), 3000);
       } else {
         await addPlaceAction({
           cityId,
@@ -466,10 +232,11 @@ export default function MyDataClient(props: Props) {
           pctElderly:    fd.get('pctElderly')   ? Number(fd.get('pctElderly'))   : undefined,
           pctChildren:   fd.get('pctChildren')  ? Number(fd.get('pctChildren'))  : undefined,
         });
+        setShowAddPlace(false);
+        setSearchQuery(''); setLat(null); setLng(null); setAddPlaceTab('search');
+        showToast('Place added successfully');
+        startTransition(() => router.refresh());
       }
-      setShowAddPlace(false);
-      setSearchQuery(''); setLat(null); setLng(null); setShowManual(false);
-      startTransition(() => router.refresh());
     } catch (err) { setError(err instanceof Error ? err.message : 'Failed to add place'); }
   }
 
@@ -492,19 +259,61 @@ export default function MyDataClient(props: Props) {
     } catch (err) { setError(err instanceof Error ? err.message : 'Failed to add measurement'); }
   }
 
-  // ── Render ────────────────────────────────────────────────────────────────
+  async function handleDeletePlace(placeId: string) {
+    setIsDeleting(true);
+    try {
+      const result = await deletePlaceAction(placeId, cityId);
+      if (result.success) {
+        setDeleteConfirmId(null);
+        setSelectedPlace(null);
+        showToast('Place deleted successfully');
+        startTransition(() => router.refresh());
+      } else {
+        setError(result.error ?? 'Failed to delete place');
+      }
+    } catch {
+      setError('Failed to delete place');
+    } finally {
+      setIsDeleting(false);
+    }
+  }
+
   return (
     <div className="flex flex-col gap-6 pb-20 relative" style={{
-      background: `radial-gradient(ellipse 80% 40% at 20% 0%, rgba(34,197,94,0.04) 0%, transparent 60%),
-                   radial-gradient(ellipse 60% 30% at 80% 100%, rgba(59,130,246,0.03) 0%, transparent 60%),
-                   var(--bg-base)`
+      background: '#000000',
+      position: 'relative',
+      overflow: 'hidden',
     }}>
+      {/* Corner flash animations */}
+      <div style={{
+        position: 'absolute', top: 0, left: 0,
+        width: '400px', height: '400px',
+        background: 'radial-gradient(circle at top left, rgba(34,197,94,0.12) 0%, transparent 70%)',
+        animation: 'cornerPulse 4s ease-in-out infinite',
+        pointerEvents: 'none', zIndex: 0,
+      }} />
+      <div style={{
+        position: 'absolute', bottom: 0, right: 0,
+        width: '350px', height: '350px',
+        background: 'radial-gradient(circle at bottom right, rgba(59,130,246,0.08) 0%, transparent 70%)',
+        animation: 'cornerPulse 5s ease-in-out infinite 1.5s',
+        pointerEvents: 'none', zIndex: 0,
+      }} />
+      <div style={{
+        position: 'absolute', top: '40%', right: '10%',
+        width: '300px', height: '300px',
+        background: 'radial-gradient(circle at center, rgba(168,85,247,0.06) 0%, transparent 70%)',
+        animation: 'cornerPulse 6s ease-in-out infinite 3s',
+        pointerEvents: 'none', zIndex: 0,
+      }} />
+      {/* Main content above corner flashes */}
+      <div style={{ position: 'relative', zIndex: 1 }}>
 
       {/* ── Sticky Header ── */}
       <div 
         className={`fixed top-[60px] left-0 right-0 z-40 h-[40px] bg-[var(--bg-base)]/80 backdrop-blur-sm border-b border-[var(--border)] flex items-center px-6 transition-opacity duration-300 pointer-events-none md:pl-[280px] ${showStickyHeader ? 'opacity-100' : 'opacity-0'}`}
       >
-        <span className="text-xs font-semibold text-[var(--text-primary)]">Data Hub</span>
+        <span className="text-xs font-semibold text-[var(--text-primary)]">Heat Intelligence Center</span>
         <span className="text-xs text-[var(--text-tertiary)] mx-2">·</span>
         <span className="text-xs text-[var(--text-secondary)]">{city.name}</span>
       </div>
@@ -523,28 +332,9 @@ export default function MyDataClient(props: Props) {
         style={{ background: 'linear-gradient(to bottom, var(--bg-surface) 0%, transparent 100%)' }}
       >
         <div className="flex flex-col">
-          <div className="flex items-center gap-1.5 mb-2">
-            <span className="material-symbols-outlined text-[var(--text-tertiary)] text-[14px]" style={{ fontVariationSettings: "'FILL' 1" }}>storage</span>
-            <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-[var(--text-tertiary)]">My Data</span>
-          </div>
-          <h1 className="text-[32px] font-bold tracking-[-0.03em] text-[var(--text-primary)] leading-tight">Data Hub</h1>
-          <div className="flex items-center gap-2 text-[13px] text-[var(--text-secondary)] mt-1">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--green-400)] opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-[var(--green-500)]"></span>
-            </span>
-            <span className="material-symbols-outlined text-[14px]">location_on</span>
-            {city.name}{city.state ? `, ${city.state}` : ''} &middot; {city.country}
-          </div>
+          <h1 className="text-[32px] font-bold tracking-[-0.03em] text-[var(--text-primary)] leading-tight">Heat Intelligence Center</h1>
         </div>
         <div className="flex items-center gap-3 shrink-0">
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-[var(--bg-surface)] border border-[var(--border)]">
-            <span className="relative flex h-1.5 w-1.5">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--green-400)] opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-[var(--green-500)]"></span>
-            </span>
-            <span className="text-[11px] text-[var(--green-400)] font-medium">Live</span>
-          </div>
           <button
             onClick={() => setShowAddPlace(true)}
             className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[var(--green-500)] text-white text-xs font-semibold transition-all hover:bg-[var(--green-400)] shadow-[0_0_20px_rgba(34,197,94,0.25)] hover:shadow-[0_0_28px_rgba(34,197,94,0.40)]"
@@ -577,19 +367,13 @@ export default function MyDataClient(props: Props) {
       {/* ── KPI ROW ─────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {([
-          { icon: 'location_on', label: 'Total Places',    val: String(stats.totalPlaces),                                                     accent: '#3b82f6', valColor: '#60a5fa', context: 'monitored locations', bgGlow: 'rgba(59,130,246,0.06)' },
-          { icon: 'thermostat',  label: 'Avg Temperature', val: avgTemp != null ? `${avgTemp.toFixed(1)}°C` : '—',                  accent: '#f97316', valColor: '#fb923c', context: 'latest readings average', bgGlow: 'rgba(249,115,22,0.06)' },
-          { icon: 'groups',      label: 'Vulnerable Pop',  val: vulnerablePop > 0 ? `${(vulnerablePop / 1000).toFixed(0)}k` : '—',      accent: '#ef4444', valColor: '#f87171', context: 'in HIGH/CRITICAL zones', bgGlow: 'rgba(239,68,68,0.06)' },
-          { icon: 'sensors',     label: 'Monitored Zones', val: `${activePlaces} / ${stats.totalPlaces}`,                                   accent: '#22c55e', valColor: '#4ade80', context: 'zones with active data', bgGlow: 'rgba(34,197,94,0.06)' },
-        ] as const).map(({ icon, label, val, accent, valColor, context, bgGlow }) => (
+          { label: 'Total Places',    val: String(stats.totalPlaces),                                                     accent: '#3b82f6', valColor: '#60a5fa', context: 'monitored locations', bgGlow: 'rgba(59,130,246,0.06)' },
+          { label: 'Avg Temperature', val: avgTemp != null ? `${avgTemp.toFixed(1)}°C` : '—',                  accent: '#f97316', valColor: '#fb923c', context: 'latest readings average', bgGlow: 'rgba(249,115,22,0.06)' },
+          { label: 'Vulnerable Pop',  val: vulnerablePop > 0 ? `${(vulnerablePop / 1000).toFixed(0)}k` : '—',      accent: '#ef4444', valColor: '#f87171', context: 'in HIGH/CRITICAL zones', bgGlow: 'rgba(239,68,68,0.06)' },
+          { label: 'Monitored Zones', val: `${activePlaces} / ${stats.totalPlaces}`,                                   accent: '#22c55e', valColor: '#4ade80', context: 'zones with active data', bgGlow: 'rgba(34,197,94,0.06)' },
+        ] as const).map(({ label, val, accent, valColor, context, bgGlow }) => (
           <div key={label} className="bg-[var(--bg-surface)] border-r border-b border-l border-[var(--border)] rounded-[16px] p-[20px] flex flex-col relative overflow-hidden group" style={{ borderTop: `2px solid ${accent}`, background: `linear-gradient(180deg, ${bgGlow} 0%, transparent 40%), var(--bg-surface)` }}>
-            {/* Background Icon */}
-            <span className="material-symbols-outlined absolute top-[12px] right-[12px] text-[48px] text-white opacity-[0.04] pointer-events-none select-none transition-transform group-hover:scale-110" style={{ fontVariationSettings: "'FILL' 1" }}>
-              {icon}
-            </span>
-            
             <div className="flex items-center gap-[6px] relative z-10">
-              <span className="material-symbols-outlined text-[14px]" style={{ color: accent, fontVariationSettings: "'FILL' 1" }}>{icon}</span>
               <span className="text-[9px] text-[var(--text-tertiary)] uppercase tracking-[0.12em] font-semibold">{label}</span>
             </div>
             
@@ -681,7 +465,7 @@ export default function MyDataClient(props: Props) {
       {/* ── MAIN CONTENT ────────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mt-2">
 
-        {/* ── Place cards (left 8) ── */}
+        {/* ── Places table (left 8) ── */}
         <div className="lg:col-span-8 flex flex-col gap-4">
 
           {/* Result count line */}
@@ -716,32 +500,115 @@ export default function MyDataClient(props: Props) {
                     : <span>We couldn&apos;t find any places matching <span className="text-[var(--text-primary)]">&ldquo;{query}&rdquo;</span>. Try a different name or clear the filter.</span>
                   }
                 </p>
+                {places.length === 0 && (
+                  <button onClick={() => setShowAddPlace(true)} className="mt-4 px-5 py-2.5 bg-[var(--green-500)] text-white rounded-[10px] text-[13px] font-semibold hover:bg-[var(--green-400)] transition-colors shadow-[0_0_20px_rgba(34,197,94,0.25)]">
+                    Add First Place
+                  </button>
+                )}
               </div>
-              {places.length === 0 && (
-                <button
-                  onClick={() => setShowAddPlace(true)}
-                  className="mt-4 px-6 py-2.5 text-[13px] font-semibold bg-[var(--green-500)] text-white rounded-[10px] hover:bg-[var(--green-400)] transition-all shadow-[0_0_20px_rgba(34,197,94,0.25)] hover:shadow-[0_0_28px_rgba(34,197,94,0.40)]"
-                >
-                  Add your first place
-                </button>
-              )}
             </div>
           )}
 
-          {/* Card grid */}
+          {/* Places table */}
           {filtered.length > 0 && (
-            <div className={`grid gap-4 ${filtered.length === 1 ? 'grid-cols-1' : 'grid-cols-1 sm:grid-cols-2'}`}>
-              {filtered.map((p, i) => (
-                <PlaceCard
-                  key={p.id} place={p} expanded={expandedPlace === p.id}
-                  onToggle={() => setExpandedPlace(expandedPlace === p.id ? null : p.id)}
-                  addDataOpen={addDataFor === p.id}
-                  onOpenAddData={() => { setExpandedPlace(p.id); setAddDataFor(p.id); }}
-                  onCloseAddData={() => setAddDataFor(null)}
-                  onSubmitMeas={e => handleAddMeasurement(e, p.id)}
-                  isPending={isPending} index={i}
-                />
-              ))}
+            <div className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-[16px] overflow-hidden">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-[var(--border)] bg-[var(--bg-elevated)]">
+                    {['Name', 'Vulnerability', 'Avg Temp', 'Canopy', 'Population', 'Actions'].map((h, i) => (
+                      <th key={h} className={`py-3 px-4 text-[9px] uppercase tracking-widest font-semibold text-[var(--text-tertiary)] ${i === 0 ? 'text-left' : i < 5 ? 'text-right' : 'text-center'}`}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.map((p, i) => {
+                    const v = vl(p.vulnerabilityLevel);
+                    const latest = p.heatMeasurements[0];
+                    const canopy = latest?.treeCanopyPct;
+                    const isDeleteRow = deleteConfirmId === p.id;
+                    return (
+                      <>
+                        <tr
+                          key={p.id}
+                          onClick={() => !isDeleteRow && setSelectedPlace(p)}
+                          className={`border-b border-[var(--border)]/50 cursor-pointer transition-colors hover:bg-[var(--bg-elevated)] ${i % 2 === 0 ? '' : 'bg-[rgba(255,255,255,0.01)]'} ${isDeleteRow ? 'bg-[rgba(239,68,68,0.05)]' : ''}`}
+                        >
+                          <td className="py-3 px-4">
+                            <span className="text-[13px] font-semibold text-[var(--text-primary)]">{p.name}</span>
+                          </td>
+                          <td className="py-3 px-4 text-right">
+                            {p.vulnerabilityLevel ? (
+                              <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full" style={{ color: v.color, backgroundColor: v.bg }}>
+                                {p.vulnerabilityLevel}
+                              </span>
+                            ) : <span className="text-[var(--text-tertiary)] text-xs">—</span>}
+                          </td>
+                          <td className="py-3 px-4 text-right">
+                            <span className="text-[13px] font-semibold tabular-nums" style={{ color: latest ? v.color : 'var(--text-tertiary)' }}>
+                              {latest ? `${latest.avgTemp.toFixed(1)}°C` : '—'}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4 text-right">
+                            <span className={`text-[12px] tabular-nums ${canopy != null ? (canopy < 15 ? 'text-[#ef4444]' : canopy <= 30 ? 'text-[#f97316]' : 'text-[#22c55e]') : 'text-[var(--text-tertiary)]'}`}>
+                              {canopy != null ? `${canopy.toFixed(0)}%` : '—'}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4 text-right">
+                            <span className="text-[12px] text-[var(--text-secondary)] tabular-nums">
+                              {p.population != null ? `${(p.population / 1000).toFixed(0)}k` : '—'}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4">
+                            <div className="flex items-center justify-center gap-1" onClick={e => e.stopPropagation()}>
+                              <Link href={`/dashboard/map?placeId=${p.id}`} title="View on Map"
+                                className="w-7 h-7 flex items-center justify-center rounded-md text-[var(--text-tertiary)] hover:text-[#06b6d4] hover:bg-[rgba(6,182,212,0.1)] transition-colors">
+                                <span className="material-symbols-outlined text-[16px]">map</span>
+                              </Link>
+                              <button
+                                title="Build Scenario"
+                                onClick={() => { setScenarioLoading(p.id); router.push(`/dashboard/scenarios/new?placeId=${p.id}`); }}
+                                disabled={scenarioLoading === p.id}
+                                className="w-7 h-7 flex items-center justify-center rounded-md text-[var(--text-tertiary)] hover:text-[#22c55e] hover:bg-[rgba(34,197,94,0.1)] transition-colors disabled:opacity-50"
+                              >
+                                {scenarioLoading === p.id
+                                  ? <span className="w-3 h-3 border-2 border-[#22c55e] border-t-transparent rounded-full animate-spin" />
+                                  : <span className="material-symbols-outlined text-[16px]">science</span>}
+                              </button>
+                              <button
+                                title="Delete place"
+                                onClick={() => setDeleteConfirmId(deleteConfirmId === p.id ? null : p.id)}
+                                className="w-7 h-7 flex items-center justify-center rounded-md text-[var(--text-tertiary)] hover:text-[#ef4444] hover:bg-[rgba(239,68,68,0.1)] transition-colors"
+                              >
+                                <span className="material-symbols-outlined text-[16px]">delete</span>
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                        {isDeleteRow && (
+                          <tr key={`${p.id}-del`} className="bg-[rgba(239,68,68,0.06)] border-b border-[var(--border)]/50">
+                            <td colSpan={6} className="px-4 py-3">
+                              <div className="flex items-center justify-between gap-4">
+                                <span className="text-[12px] text-[#f87171]">
+                                  Delete <strong>{p.name}</strong>? All heat measurements and interventions will be permanently removed.
+                                </span>
+                                <div className="flex items-center gap-2 shrink-0">
+                                  <button onClick={() => setDeleteConfirmId(null)} className="px-3 py-1.5 text-[11px] border border-[var(--border)] rounded-[8px] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors">
+                                    Cancel
+                                  </button>
+                                  <button onClick={() => handleDeletePlace(p.id)} disabled={isDeleting}
+                                    className="px-3 py-1.5 text-[11px] bg-[#ef4444] text-white rounded-[8px] hover:bg-[#dc2626] disabled:opacity-50 transition-colors font-semibold">
+                                    {isDeleting ? 'Deleting…' : 'Confirm Delete'}
+                                  </button>
+                                </div>
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
           )}
         </div>
@@ -855,216 +722,312 @@ export default function MyDataClient(props: Props) {
             </div>
           </div>
 
-          {/* Recent scenarios */}
-          {scenarios.length > 0 && (
-            <div className="bg-[var(--bg-surface)] border-r border-b border-l border-[var(--border)] border-t-[2px] border-t-[#eab308] rounded-[16px] p-5 flex flex-col gap-3">
-              <div className="flex items-center justify-between mb-1">
-                <h2 className="text-[10px] font-semibold uppercase tracking-widest text-[#eab308] flex items-center gap-1.5 border-l-2 border-[#eab308] pl-2">
-                  <span className="material-symbols-outlined text-[14px]">history</span>
-                  Recent Scenarios
-                </h2>
-                <Link href="/dashboard/scenarios" className="text-[10px] font-semibold hover:underline" style={{ color: '#eab308' }}>
-                  View all
-                </Link>
-              </div>
-              <div className="flex flex-col gap-2">
-                {scenarios.slice(0, 4).map(s => {
-                  const sc: Record<string, string> = { APPROVED: '#22c55e', SUBMITTED: '#eab308', DRAFT: 'var(--text-tertiary)', REJECTED: '#ef4444' };
-                  return (
-                    <Link key={s.id} href={`/dashboard/scenarios/${s.id}`} className="group flex items-center justify-between gap-2 px-3 py-2.5 bg-[var(--bg-elevated)] rounded-[10px] border border-[var(--border)] hover:bg-[var(--bg-base)] hover:border-[var(--border-strong)] transition-all duration-150 hover:translate-x-[2px]">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: sc[s.status] ?? 'var(--text-tertiary)' }} />
-                        <span className="text-[12px] font-medium text-[var(--text-primary)] truncate transition-colors group-hover:text-[var(--green-400)]">{s.name}</span>
-                      </div>
-                      <span className="shrink-0 px-2 py-0.5 text-[9px] font-bold uppercase rounded border" style={{ color: sc[s.status] ?? 'var(--text-tertiary)', backgroundColor: `${sc[s.status] ?? 'var(--text-tertiary)'}1a`, borderColor: `${sc[s.status] ?? 'var(--text-tertiary)'}4d` }}>
-                        {s.status.replace('_', ' ')}
-                      </span>
-                    </Link>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* Quick links */}
-          <div className="bg-[var(--bg-surface)] border-r border-b border-l border-[var(--border)] border-t-[2px] border-t-[#a855f7] rounded-[16px] overflow-hidden flex flex-col">
-            <div className="px-5 pt-4 pb-3">
-              <h2 className="text-[10px] font-semibold uppercase tracking-widest text-[#a855f7] flex items-center gap-1.5 border-l-2 border-[#a855f7] pl-2">
-                <span className="material-symbols-outlined text-[14px]">link</span>
-                Quick Links
-              </h2>
-            </div>
-            <div className="flex flex-col">
-              {[
-                { href: '/dashboard/map',       icon: 'map',         label: 'Open Map'      },
-                { href: '/dashboard/scenarios', icon: 'science',     label: 'All Scenarios' },
-                { href: '/dashboard/reports',   icon: 'summarize',   label: 'Reports'       },
-                { href: '/dashboard/data',      icon: 'upload_file', label: 'Import Data'   },
-              ].map(({ href, icon, label }) => (
-                <Link
-                  key={href} href={href}
-                  className="group relative flex items-center gap-3 px-5 py-3 text-[13px] text-[var(--text-secondary)] hover:bg-[var(--bg-elevated)] hover:text-[var(--text-primary)] transition-colors border-t border-[var(--border)]"
-                >
-                  <div className="absolute left-0 top-0 bottom-0 w-[2px] bg-[#a855f7] opacity-0 group-hover:opacity-100 transition-opacity duration-150" />
-                  <span className="material-symbols-outlined text-[16px] text-[#a855f7] transition-all group-hover:text-[#c084fc] group-hover:scale-110" style={{ fontVariationSettings: "'FILL' 0" }}>{icon}</span>
-                  <span className="font-medium">{label}</span>
-                  <span className="ml-auto material-symbols-outlined text-[16px] text-[#a855f7] transition-transform duration-150 group-hover:translate-x-[2px] group-hover:text-[#c084fc]">chevron_right</span>
-                </Link>
-              ))}
-            </div>
-          </div>
-          
-          {/* Recent Activity */}
-          {auditLogs.length > 0 && (
-            <div className="bg-[var(--bg-surface)] border-r border-b border-l border-[var(--border)] border-t-[2px] border-t-[#06b6d4] rounded-[16px] p-5 flex flex-col gap-3">
-              <h2 className="text-[10px] font-semibold uppercase tracking-widest text-[#06b6d4] flex items-center gap-1.5 border-l-2 border-[#06b6d4] pl-2">
-                <span className="material-symbols-outlined text-[14px]">history</span>
-                Recent Activity
-              </h2>
-              <div className="flex flex-col gap-3 mt-1">
-                {auditLogs.map(log => {
-                  let color = '#22c55e'; // default green
-                  let text = 'Performed an action';
-                  if (log.action === 'CREATE') {
-                    color = '#22c55e';
-                    text = `Added a new ${log.resourceType?.toLowerCase() || 'item'}`;
-                    if (log.resourceType === 'Place') text = 'Added a new place';
-                    if (log.resourceType === 'HeatMeasurement') text = 'Recorded temperature data';
-                    if (log.resourceType === 'Scenario') text = 'Generated scenario';
-                    if (log.resourceType === 'Report') text = 'Created PDF report';
-                  } else if (log.action === 'UPDATE') {
-                    color = '#3b82f6';
-                    text = `Updated ${log.resourceType?.toLowerCase() || 'item'}`;
-                  } else if (log.action === 'DELETE') {
-                    color = '#ef4444';
-                    text = `Deleted ${log.resourceType?.toLowerCase() || 'item'}`;
-                  } else if (log.action === 'LOGIN') {
-                    color = '#a855f7';
-                    text = 'Logged in';
-                  } else if (log.action === 'GENERATE') {
-                    color = '#f97316';
-                    text = `Generated ${log.resourceType?.toLowerCase() || 'content'}`;
-                  }
-                  
-                  return (
-                    <div key={log.id} className="flex items-start gap-3">
-                      <div className="w-2 h-2 rounded-full mt-1.5 shrink-0" style={{ backgroundColor: color }} />
-                      <div className="flex flex-col">
-                        <span className="text-[12px] text-[var(--text-primary)]">{text}</span>
-                        <span className="text-[10px] text-[var(--text-tertiary)]">
-                          {new Date(log.createdAt).toLocaleDateString()}
-                        </span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
           
         </div>
       </div>
 
+      {/* ── TOAST ── */}
+      {toast && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] px-5 py-3 bg-[var(--bg-elevated)] border border-[rgba(34,197,94,0.30)] rounded-[12px] text-[13px] text-[#22c55e] font-medium shadow-2xl animate-fade-in flex items-center gap-2">
+          <span className="material-symbols-outlined text-[16px]">check_circle</span>
+          {toast}
+        </div>
+      )}
+
+      {/* ── PLACE DETAIL POPUP ── */}
+      {selectedPlace && (() => {
+        const p = selectedPlace;
+        const v = vl(p.vulnerabilityLevel);
+        const latest = p.heatMeasurements[0];
+        const temps = p.heatMeasurements.map(m => m.avgTemp);
+        return (
+          <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setSelectedPlace(null)}>
+            <div
+              style={{ width: 'min(680px, 95vw)', maxHeight: '85vh', borderTop: `3px solid ${v.color}` }}
+              className="bg-[var(--bg-elevated)] border border-[var(--border-strong)] rounded-[20px] flex flex-col overflow-hidden shadow-2xl"
+              onClick={e => e.stopPropagation()}
+            >
+              {/* Sticky header */}
+              <div className="flex items-start justify-between p-5 border-b border-[var(--border)] sticky top-0 bg-[var(--bg-elevated)] z-10">
+                <div className="flex flex-col gap-1">
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-[18px] font-bold text-[var(--text-primary)]">{p.name}</h2>
+                    {p.vulnerabilityLevel && (
+                      <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full" style={{ color: v.color, backgroundColor: v.bg }}>
+                        {p.vulnerabilityLevel}
+                      </span>
+                    )}
+                  </div>
+                  {p.population && <span className="text-[12px] text-[var(--text-tertiary)]">Population: {(p.population / 1000).toFixed(0)}k</span>}
+                </div>
+                <button onClick={() => setSelectedPlace(null)} className="w-8 h-8 flex items-center justify-center rounded-full bg-[var(--bg-surface)] border border-[var(--border)] text-[var(--text-tertiary)] hover:text-[var(--text-primary)] transition-colors">
+                  <span className="material-symbols-outlined text-[16px]">close</span>
+                </button>
+              </div>
+
+              {/* Body */}
+              <div className="overflow-y-auto flex-1 p-5 flex flex-col gap-5">
+                {/* Temperature + sparkline */}
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex flex-col">
+                    {latest ? (
+                      <>
+                        <span className="text-[48px] font-extrabold leading-none tracking-[-0.04em]" style={{ color: v.color }}>{latest.avgTemp.toFixed(1)}<span className="text-[24px] align-super opacity-60">°C</span></span>
+                        <span className="text-[11px] text-[var(--text-tertiary)] mt-1">Max: {latest.maxTemp?.toFixed(1) ?? '—'}°C &middot; {new Date(latest.date).toLocaleDateString()}</span>
+                      </>
+                    ) : p.vulnerabilityScore != null ? (
+                      <>
+                        <span className="text-[48px] font-extrabold leading-none tracking-[-0.04em]" style={{ color: v.color }}>{Math.round(p.vulnerabilityScore)}</span>
+                        <span className="text-[11px] text-[var(--text-tertiary)] mt-1 uppercase tracking-wide font-semibold">Vulnerability Score</span>
+                      </>
+                    ) : (
+                      <span className="text-[14px] text-[var(--text-tertiary)]">No data yet</span>
+                    )}
+                  </div>
+                  {temps.length >= 2 && <Sparkline data={temps} color={v.color} />}
+                </div>
+
+                {/* Stats strip */}
+                <div className="grid grid-cols-4 rounded-[10px] bg-[var(--bg-surface)] border border-[var(--border)] divide-x divide-[var(--border)] overflow-hidden">
+                  {[
+                    { val: p.population != null ? `${(p.population / 1000).toFixed(0)}k` : '—', lbl: 'pop' },
+                    { val: p.areaSqkm != null ? `${p.areaSqkm.toFixed(1)}` : '—', lbl: 'km²' },
+                    { val: latest?.treeCanopyPct != null ? `${latest.treeCanopyPct.toFixed(0)}%` : '—', lbl: 'canopy' },
+                    { val: String(p.heatMeasurements.length), lbl: 'logs' },
+                  ].map(({ val, lbl }) => (
+                    <div key={lbl} className="flex flex-col items-center py-3 gap-0.5">
+                      <span className="text-[13px] font-semibold text-[var(--text-primary)] tabular-nums">{val}</span>
+                      <span className="text-[9px] uppercase tracking-wider text-[var(--text-tertiary)]">{lbl}</span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Measurement history */}
+                {p.heatMeasurements.length > 0 && (
+                  <div className="flex flex-col gap-2">
+                    <h3 className="text-[10px] uppercase tracking-widest text-[var(--text-tertiary)] font-semibold">Measurement History</h3>
+                    <div className="overflow-x-auto rounded-[10px] border border-[var(--border)]">
+                      <table className="w-full text-xs">
+                        <thead className="bg-[var(--bg-surface)]">
+                          <tr className="border-b border-[var(--border)]">
+                            {['Date', 'Avg °C', 'Max °C', 'Canopy', 'Source'].map((h, i) => (
+                              <th key={h} className={`py-2 px-3 text-[9px] uppercase tracking-widest font-normal text-[var(--text-tertiary)] ${i === 0 ? 'text-left' : 'text-right'}`}>{h}</th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {p.heatMeasurements.map((m, idx) => (
+                            <tr key={m.id} className={`border-b border-[var(--border)]/30 hover:bg-[var(--bg-surface)] transition-colors ${idx % 2 === 0 ? '' : 'bg-[rgba(255,255,255,0.01)]'}`}>
+                              <td className="py-1.5 px-3 text-[var(--text-secondary)]">{new Date(m.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: '2-digit' })}</td>
+                              <td className="py-1.5 px-3 text-right font-semibold tabular-nums" style={{ color: v.color }}>{m.avgTemp.toFixed(1)}</td>
+                              <td className="py-1.5 px-3 text-right tabular-nums text-[var(--text-secondary)]">{m.maxTemp != null ? m.maxTemp.toFixed(1) : '—'}</td>
+                              <td className="py-1.5 px-3 text-right text-[var(--text-secondary)]">{m.treeCanopyPct != null ? `${m.treeCanopyPct.toFixed(0)}%` : '—'}</td>
+                              <td className="py-1.5 px-3 text-right"><span className="text-[9px] bg-[var(--bg-elevated)] text-[var(--text-tertiary)] px-1.5 py-0.5 rounded">{m.dataSource}</span></td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                {/* Add data inline */}
+                {addDataFor === p.id ? (
+                  <form onSubmit={e => handleAddMeasurement(e, p.id)} className="bg-[var(--bg-surface)] border border-[var(--border-strong)] rounded-[12px] p-4 flex flex-col gap-3">
+                    <h3 className="text-[11px] uppercase tracking-widest text-[var(--text-tertiary)] font-semibold">Add Measurement</h3>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                      <input name="date" type="date" required className={IC} />
+                      <input name="avgTemp" type="number" step="0.1" required placeholder="Avg °C *" className={IC} />
+                      <input name="maxTemp" type="number" step="0.1" required placeholder="Max °C *" className={IC} />
+                      <input name="minTemp" type="number" step="0.1" placeholder="Min °C" className={IC} />
+                      <input name="treeCanopyPct" type="number" step="0.1" placeholder="Canopy %" className={IC} />
+                      <input name="imperviousSurfacePct" type="number" step="0.1" placeholder="Impervious %" className={IC} />
+                      <input name="dataSource" placeholder="Source" className={IC} />
+                    </div>
+                    <div className="flex gap-2 justify-end">
+                      <button type="button" onClick={() => setAddDataFor(null)} className="px-3 py-1.5 text-xs text-[var(--text-tertiary)] hover:text-[var(--text-primary)]">Cancel</button>
+                      <button type="submit" disabled={isPending} className="px-4 py-1.5 text-xs bg-[var(--green-500)] text-white rounded-[8px] disabled:opacity-50 font-semibold">Save</button>
+                    </div>
+                  </form>
+                ) : null}
+              </div>
+
+              {/* Footer */}
+              <div className="flex items-center gap-2 p-4 border-t border-[var(--border)] bg-[var(--bg-surface)]">
+                {deleteConfirmId === `popup-${p.id}` ? (
+                  <div className="flex items-center justify-between w-full gap-4">
+                    <span className="text-[12px] text-[#f87171]">Permanently delete <strong>{p.name}</strong>?</span>
+                    <div className="flex gap-2">
+                      <button onClick={() => setDeleteConfirmId(null)} className="px-3 py-1.5 text-[11px] border border-[var(--border)] rounded-[8px] text-[var(--text-secondary)] hover:text-[var(--text-primary)]">Cancel</button>
+                      <button onClick={() => handleDeletePlace(p.id)} disabled={isDeleting} className="px-3 py-1.5 text-[11px] bg-[#ef4444] text-white rounded-[8px] disabled:opacity-50 font-semibold">
+                        {isDeleting ? 'Deleting…' : 'Confirm Delete'}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <button onClick={() => setDeleteConfirmId(`popup-${p.id}`)} className="px-3 py-2 text-[11px] text-[#ef4444] border border-[rgba(239,68,68,0.30)] rounded-[8px] hover:bg-[rgba(239,68,68,0.08)] transition-colors font-medium">
+                      Delete
+                    </button>
+                    <div className="flex-1" />
+                    <button onClick={() => setAddDataFor(addDataFor === p.id ? null : p.id)} className="px-3 py-2 text-[11px] font-medium text-[#60a5fa] border border-[rgba(59,130,246,0.30)] rounded-[8px] hover:bg-[rgba(59,130,246,0.08)] transition-colors">
+                      + Add Data
+                    </button>
+                    <Link href={`/dashboard/map?placeId=${p.id}`} className="px-3 py-2 text-[11px] font-medium text-[#06b6d4] border border-[rgba(6,182,212,0.30)] rounded-[8px] hover:bg-[rgba(6,182,212,0.08)] transition-colors">
+                      View Map
+                    </Link>
+                    <button
+                      onClick={() => { setScenarioLoading(p.id); router.push(`/dashboard/scenarios/new?placeId=${p.id}`); }}
+                      disabled={scenarioLoading === p.id}
+                      className="px-3 py-2 text-[11px] font-semibold text-[#22c55e] border border-[rgba(34,197,94,0.30)] rounded-[8px] hover:bg-[rgba(34,197,94,0.1)] transition-colors disabled:opacity-50 flex items-center gap-1.5"
+                    >
+                      {scenarioLoading === p.id
+                        ? <><span className="w-3 h-3 border-2 border-[#22c55e] border-t-transparent rounded-full animate-spin" />Loading…</>
+                        : 'Build Scenario →'}
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* ── ADD PLACE MODAL ──────────────────────────────────────────────── */}
       {showAddPlace && (
         <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in" onClick={() => setShowAddPlace(false)}>
-          <div className="bg-[var(--bg-elevated)] border border-[var(--border-strong)] border-t-2 border-t-[rgba(34,197,94,0.40)] rounded-[20px] p-[24px] max-w-[440px] w-full shadow-2xl animate-scale-in" onClick={e => e.stopPropagation()}>
-            <div className="flex items-start justify-between mb-6">
+          <div className="bg-[var(--bg-elevated)] border border-[var(--border-strong)] border-t-2 border-t-[rgba(34,197,94,0.40)] rounded-[20px] p-[24px] max-w-[480px] w-full shadow-2xl animate-scale-in" onClick={e => e.stopPropagation()}>
+            <div className="flex items-start justify-between mb-5">
               <div>
                 <h2 className="text-[17px] font-bold text-[var(--text-primary)] flex items-center gap-2">
                   <span className="material-symbols-outlined text-[#22c55e] text-[18px]">add_location_alt</span>
                   Add a Place
                 </h2>
-                <p className="text-[12px] text-[var(--text-tertiary)] mt-1">Enter details to start tracking heat vulnerability</p>
+                <p className="text-[12px] text-[var(--text-tertiary)] mt-1">Track heat vulnerability for a new location</p>
               </div>
-              <button onClick={() => setShowAddPlace(false)} className="text-[var(--text-tertiary)] hover:text-[var(--text-primary)] transition-colors bg-[var(--bg-surface)] border border-[var(--border)] rounded-full w-8 h-8 flex items-center justify-center hover:border-[var(--border-strong)]">
+              <button onClick={() => setShowAddPlace(false)} className="text-[var(--text-tertiary)] hover:text-[var(--text-primary)] bg-[var(--bg-surface)] border border-[var(--border)] rounded-full w-8 h-8 flex items-center justify-center">
                 <span className="material-symbols-outlined text-[16px]">close</span>
               </button>
             </div>
-            
-            <form onSubmit={handleAddPlace} className="flex flex-col gap-4">
-              {/* Search Flow */}
-              <div className="flex flex-col gap-1 relative">
-                <label className="text-[10px] uppercase tracking-wide text-[var(--text-tertiary)] font-semibold ml-1">Search Location</label>
-                <input 
-                  value={searchQuery}
-                  onChange={e => setSearchQuery(e.target.value)}
-                  placeholder="Search for a place (e.g. Bolpur, Dharavi)" 
-                  className={IC} 
-                />
-                {searchResults.length > 0 && (
-                  <div className="absolute top-full mt-1 w-full bg-[var(--bg-elevated)] border border-[var(--border)] rounded-[8px] overflow-hidden z-50 shadow-[0_8px_32px_rgba(0,0,0,0.5)]">
-                    {searchResults.map(r => (
-                      <button 
-                        key={r.place_id} type="button"
-                        onClick={() => {
-                           const name = r.display_name.split(',')[0];
-                           setLat(parseFloat(r.lat));
-                           setLng(parseFloat(r.lon));
-                           setSearchResults([]);
-                           setSearchQuery(r.display_name);
-                           setShowManual(true);
-                           const form = document.getElementById('add-place-form') as HTMLFormElement;
-                           if (form) {
-                             const nameInput = form.elements.namedItem('name') as HTMLInputElement;
-                             if (nameInput) nameInput.value = name;
-                           }
-                        }}
-                        className="w-full text-left px-3 py-2 text-[12px] hover:bg-[var(--bg-surface)] border-b border-[var(--border)] last:border-b-0 text-[var(--text-primary)]"
-                      >
-                        {r.display_name}
-                      </button>
-                    ))}
-                  </div>
-                )}
-                {lat && lng && (
-                  <div className="mt-2 p-2 bg-[rgba(34,197,94,0.05)] border border-[rgba(34,197,94,0.2)] rounded">
-                    <p className="text-[11px] text-[#22c55e]">📍 {Math.abs(lat).toFixed(2)}°{lat>=0?'N':'S'}, {Math.abs(lng).toFixed(2)}°{lng>=0?'E':'W'}</p>
-                    <p className="text-[10px] text-[var(--text-tertiary)] mt-1">Coordinates saved. Temperature data will be fetched automatically when you save.</p>
-                  </div>
-                )}
-              </div>
-              
-              <button type="button" onClick={() => setShowManual(!showManual)} className="text-[11px] text-[var(--text-tertiary)] underline hover:text-[var(--text-primary)] text-left block">
-                {showManual ? 'Hide manual fields' : 'Or enter manually'}
-              </button>
 
-              <div id="add-place-form" className={`flex flex-col gap-4 ${showManual ? 'block' : 'hidden'}`}>
-                <div className="flex flex-col gap-1">
-                  <label className="text-[10px] uppercase tracking-wide text-[var(--text-tertiary)] font-semibold ml-1">Place Name</label>
-                  <input name="name" required placeholder="e.g. Downtown Core" className={IC} />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="flex flex-col gap-1">
-                    <label className="text-[10px] uppercase tracking-wide text-[var(--text-tertiary)] font-semibold ml-1">Population</label>
-                    <input name="population" type="number" placeholder="Total people" className={IC} />
+            {/* Tabs */}
+            <div className="flex gap-1 mb-5 bg-[var(--bg-surface)] p-1 rounded-[10px] border border-[var(--border)]">
+              <button
+                type="button"
+                onClick={() => setAddPlaceTab('search')}
+                className={`flex-1 py-2 text-[12px] font-semibold rounded-[8px] transition-colors flex items-center justify-center gap-1.5 ${addPlaceTab === 'search' ? 'bg-[var(--bg-elevated)] text-[var(--text-primary)] shadow-sm' : 'text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]'}`}
+              >
+                <span className="material-symbols-outlined text-[14px]">search</span> Search
+              </button>
+              <button
+                type="button"
+                onClick={() => setAddPlaceTab('manual')}
+                className={`flex-1 py-2 text-[12px] font-semibold rounded-[8px] transition-colors flex items-center justify-center gap-1.5 ${addPlaceTab === 'manual' ? 'bg-[var(--bg-elevated)] text-[var(--text-primary)] shadow-sm' : 'text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]'}`}
+              >
+                <span className="material-symbols-outlined text-[14px]">edit</span> Manual
+              </button>
+            </div>
+
+            <form onSubmit={handleAddPlace} className="flex flex-col gap-4">
+              {addPlaceTab === 'search' ? (
+                <>
+                  <div className="flex flex-col gap-1 relative">
+                    <label className="text-[10px] uppercase tracking-wide text-[var(--text-tertiary)] font-semibold ml-1">Search Location</label>
+                    <input
+                      value={searchQuery}
+                      onChange={e => setSearchQuery(e.target.value)}
+                      placeholder="Search for a place (e.g. Bolpur, Dharavi)"
+                      className={IC}
+                    />
+                    {searchResults.length > 0 && (
+                      <div className="absolute top-full mt-1 w-full bg-[var(--bg-elevated)] border border-[var(--border)] rounded-[8px] overflow-hidden z-50 shadow-[0_8px_32px_rgba(0,0,0,0.5)]">
+                        {searchResults.map(r => (
+                          <button
+                            key={r.place_id} type="button"
+                            onClick={() => {
+                                setLat(parseFloat(r.lat));
+                              setLng(parseFloat(r.lon));
+                              setSearchResults([]);
+                              setSearchQuery(r.display_name);
+                            }}
+                            className="w-full text-left px-3 py-2 text-[12px] hover:bg-[var(--bg-surface)] border-b border-[var(--border)] last:border-b-0 text-[var(--text-primary)]"
+                          >
+                            {r.display_name}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    {lat && lng && (
+                      <div className="mt-2 p-2 bg-[rgba(34,197,94,0.05)] border border-[rgba(34,197,94,0.2)] rounded-[8px]">
+                        <p className="text-[11px] text-[#22c55e]">📍 {Math.abs(lat).toFixed(4)}°{lat >= 0 ? 'N' : 'S'}, {Math.abs(lng).toFixed(4)}°{lng >= 0 ? 'E' : 'W'}</p>
+                        <p className="text-[10px] text-[var(--text-tertiary)] mt-0.5">Temperature data will be fetched automatically</p>
+                      </div>
+                    )}
                   </div>
+                  {lat && lng && (
+                    <>
+                      <div className="flex flex-col gap-1">
+                        <label className="text-[10px] uppercase tracking-wide text-[var(--text-tertiary)] font-semibold ml-1">Place Name (auto-filled)</label>
+                        <input name="name" required placeholder="Name" defaultValue={searchQuery.split(',')[0]} className={IC} />
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="flex flex-col gap-1">
+                          <label className="text-[10px] uppercase tracking-wide text-[var(--text-tertiary)] font-semibold ml-1">Population</label>
+                          <input name="population" type="number" placeholder="Total people" className={IC} />
+                        </div>
+                        <div className="flex flex-col gap-1">
+                          <label className="text-[10px] uppercase tracking-wide text-[var(--text-tertiary)] font-semibold ml-1">Area (km²)</label>
+                          <input name="areaSqkm" type="number" step="0.01" placeholder="Size" className={IC} />
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </>
+              ) : (
+                <>
                   <div className="flex flex-col gap-1">
-                    <label className="text-[10px] uppercase tracking-wide text-[var(--text-tertiary)] font-semibold ml-1">Area (km²)</label>
-                    <input name="areaSqkm" type="number" step="0.01" placeholder="Size" className={IC} />
+                    <label className="text-[10px] uppercase tracking-wide text-[var(--text-tertiary)] font-semibold ml-1">Place Name</label>
+                    <input name="name" required placeholder="e.g. Downtown Core" className={IC} />
                   </div>
-                  <div className="flex flex-col gap-1">
-                    <label className="text-[10px] uppercase tracking-wide text-[var(--text-tertiary)] font-semibold ml-1">Median Income</label>
-                    <input name="medianIncome" type="number" placeholder="Local currency" className={IC} />
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="flex flex-col gap-1">
+                      <label className="text-[10px] uppercase tracking-wide text-[var(--text-tertiary)] font-semibold ml-1">Population</label>
+                      <input name="population" type="number" placeholder="Total people" className={IC} />
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <label className="text-[10px] uppercase tracking-wide text-[var(--text-tertiary)] font-semibold ml-1">Area (km²)</label>
+                      <input name="areaSqkm" type="number" step="0.01" placeholder="Size" className={IC} />
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <label className="text-[10px] uppercase tracking-wide text-[var(--text-tertiary)] font-semibold ml-1">Median Income</label>
+                      <input name="medianIncome" type="number" placeholder="Local currency" className={IC} />
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <label className="text-[10px] uppercase tracking-wide text-[var(--text-tertiary)] font-semibold ml-1">% Elderly</label>
+                      <input name="pctElderly" type="number" step="0.1" placeholder="Over 65s" className={IC} />
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <label className="text-[10px] uppercase tracking-wide text-[var(--text-tertiary)] font-semibold ml-1">% Children</label>
+                      <input name="pctChildren" type="number" step="0.1" placeholder="Under 15s" className={IC} />
+                    </div>
                   </div>
-                  <div className="flex flex-col gap-1">
-                    <label className="text-[10px] uppercase tracking-wide text-[var(--text-tertiary)] font-semibold ml-1">% Elderly</label>
-                    <input name="pctElderly" type="number" step="0.1" placeholder="Over 65s" className={IC} />
-                  </div>
-                </div>
-              </div>
-              <div className="flex gap-3 pt-4 mt-2 border-t border-[var(--border)]">
+                </>
+              )}
+
+              {error && <p className="text-[12px] text-[var(--critical)]">{error}</p>}
+              <div className="flex gap-3 pt-4 mt-1 border-t border-[var(--border)]">
                 <button type="button" onClick={() => setShowAddPlace(false)} className="flex-1 h-[40px] text-[13px] font-medium text-[var(--text-secondary)] border border-[var(--border)] rounded-[10px] hover:border-[var(--border-strong)] hover:bg-[var(--bg-surface)] transition-colors">
                   Cancel
                 </button>
-                <button type="submit" disabled={isPending} className="flex-1 h-[40px] text-[13px] bg-[var(--green-500)] text-white rounded-[10px] hover:bg-[var(--green-400)] disabled:opacity-50 transition-all font-semibold shadow-[0_0_16px_rgba(34,197,94,0.25)] hover:shadow-[0_0_24px_rgba(34,197,94,0.40)]">
-                  Save Place
+                <button type="submit" disabled={isPending || (addPlaceTab === 'search' && !lat)} className="flex-1 h-[40px] text-[13px] bg-[var(--green-500)] text-white rounded-[10px] hover:bg-[var(--green-400)] disabled:opacity-50 transition-all font-semibold shadow-[0_0_16px_rgba(34,197,94,0.25)]">
+                  {isPending ? 'Saving…' : 'Save Place'}
                 </button>
               </div>
             </form>
           </div>
         </div>
       )}
+      </div>{/* end main content wrapper */}
     </div>
   );
 }

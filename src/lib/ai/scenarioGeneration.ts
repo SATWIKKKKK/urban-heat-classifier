@@ -72,7 +72,6 @@ export interface GeneratedStrategy {
 
 export interface ScenarioGenerationResult {
   scenarioA: GeneratedScenario;
-  scenarioB: GeneratedScenario;
 }
 
 // ── Currency mapping ──────────────────────────────────────────────────────────
@@ -370,11 +369,9 @@ export async function generateScenarios(
   const hasKey = Boolean(process.env.AICREDITS_API_KEY || process.env.OPENAI_API_KEY || process.env.OPENROUTER_API_KEY);
   if (!hasKey) throw new Error('AI API key not configured (AICREDITS/OPENAI/OPENROUTER)');
 
-  // Call A first, then B (sequential to avoid rate limits)
   const scenarioA = await callOnce(buildSinglePrompt(input, 'A'));
-  const scenarioB = await callOnce(buildSinglePrompt(input, 'B', scenarioA.name));
 
-  return { scenarioA, scenarioB };
+  return { scenarioA };
 }
 
 export { getCurrency, STRATEGY_NAMES };

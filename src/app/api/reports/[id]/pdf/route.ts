@@ -69,10 +69,11 @@ export async function GET(
   // ── Scenario stats row (if linked) ───────────────────────────────────────
   if (report.scenario) {
     const sc = report.scenario;
+    const coolingVal = sc.totalProjectedTempReductionC != null ? `${Math.abs(sc.totalProjectedTempReductionC).toFixed(1)}°C reduction` : 'N/A';
     builder.addStatRow([
       { label: 'Est. Budget', value: sc.totalEstimatedCostUsd != null ? `$${(sc.totalEstimatedCostUsd / 1_000_000).toFixed(1)}M` : 'N/A' },
       { label: 'Lives Protected', value: sc.totalProjectedLivesSaved != null ? String(sc.totalProjectedLivesSaved) : 'N/A', accent: true },
-      { label: 'Cooling', value: sc.totalProjectedTempReductionC != null ? `-${sc.totalProjectedTempReductionC.toFixed(1)} \u00b0C` : 'N/A', accent: true },
+      { label: 'Cooling', value: coolingVal, accent: true },
       { label: 'CO\u2082 Reduction', value: sc.projectedCo2ReductionTons != null ? `${sc.projectedCo2ReductionTons.toFixed(0)}t` : 'N/A' },
     ]);
   }

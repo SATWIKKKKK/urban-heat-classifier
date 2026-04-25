@@ -170,11 +170,10 @@ export async function POST(request: Request) {
 
     const currency = getCurrency(countryCode);
 
-    // Save both scenarios to DB
+    // Save scenario to DB
     const savedScenarios = [];
     for (const [key, scenario] of Object.entries({
       scenarioA: result.scenarioA,
-      scenarioB: result.scenarioB,
     })) {
       // Create the scenario
       const dbScenario = await prisma.scenario.create({

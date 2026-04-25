@@ -1,5 +1,6 @@
 'use client';
 
+import { Suspense } from 'react';
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useSession } from 'next-auth/react';
@@ -38,7 +39,7 @@ function quickEstimate(selected: StrategyKey[], population: number, baselineTemp
 
 // ── Component ───────────────────────────────────────────────────────────────
 
-export default function ScenarioBuilderPage() {
+function ScenarioBuilderContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { data: session } = useSession();
@@ -140,8 +141,7 @@ export default function ScenarioBuilderPage() {
     'Analyzing location data...',
     'Evaluating selected strategies...',
     'Running climate simulation...',
-    'Generating Scenario A (Recommended)...',
-    'Generating Scenario B (Alternative)...',
+    'Generating Scenario (Recommended)...',
     'Building implementation plan...',
     'Calculating cost projections...',
     'Finalizing report...',
@@ -212,7 +212,7 @@ export default function ScenarioBuilderPage() {
               <span className="material-symbols-outlined text-3xl text-[#22c55e] animate-pulse">auto_awesome</span>
             </div>
             <h2 className="text-xl font-bold text-white mb-2">Generating Your Scenario</h2>
-            <p className="text-sm text-neutral-400">Our AI is analyzing your location and building two complete plans...</p>
+            <p className="text-sm text-neutral-400">Our AI is analyzing your location and building a complete plan...</p>
           </div>
 
           <div className="space-y-3 text-left mb-8">
@@ -411,5 +411,24 @@ export default function ScenarioBuilderPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+function ScenarioBuilderSkeleton() {
+  return (
+    <div className="min-h-screen bg-[#09090b] flex items-center justify-center">
+      <div className="flex flex-col items-center gap-4">
+        <div className="w-10 h-10 border-2 border-[#22c55e] border-t-transparent rounded-full animate-spin" />
+        <p className="text-sm text-neutral-400">Loading scenario builder…</p>
+      </div>
+    </div>
+  );
+}
+
+export default function ScenarioBuilderPage() {
+  return (
+    <Suspense fallback={<ScenarioBuilderSkeleton />}>
+      <ScenarioBuilderContent />
+    </Suspense>
   );
 }

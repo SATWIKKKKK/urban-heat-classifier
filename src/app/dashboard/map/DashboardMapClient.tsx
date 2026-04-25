@@ -233,6 +233,14 @@ export default function DashboardMapPage() {
 
   useEffect(() => {
     if (!mapRef.current || !payload?.city.lat || !isLoaded) return;
+    const placeId = searchParams.get('placeId');
+    if (placeId && payload.places.length > 0) {
+      const target = payload.places.find(p => p.id === placeId);
+      if (target) {
+        flyToPlace(target);
+        return;
+      }
+    }
     if (payload.places.length > 0) {
       const bounds = new google.maps.LatLngBounds();
       payload.places.forEach(p => extendBoundsWithPlace(bounds, p));
@@ -241,6 +249,7 @@ export default function DashboardMapPage() {
       mapRef.current.setCenter({ lat: payload.city.lat, lng: payload.city.lng });
       mapRef.current.setZoom(13);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [payload, isLoaded]);
 
   useEffect(() => {
@@ -702,18 +711,36 @@ export default function DashboardMapPage() {
           </div>
         )}
 
-        {/* Map type toggle */}
-        <GlassCard className="flex flex-col overflow-hidden">
-          <p className="text-[9px] font-medium uppercase tracking-wider text-neutral-500 px-3 pt-2 pb-1">Map Style</p>
+        {/* Map style compact pill */}
+        <div style={{
+          display: 'flex',
+          background: 'rgba(10,10,10,0.85)',
+          border: '1px solid var(--border)',
+          borderRadius: '9999px',
+          padding: '3px',
+          gap: '2px',
+          backdropFilter: 'blur(8px)',
+          boxShadow: '0 4px 16px rgba(0,0,0,0.4)',
+          alignSelf: 'flex-start',
+        }}>
           {MAP_TYPE_OPTIONS.map(({ id, label }) => (
-            <button key={id} onClick={() => setMapType(id)}
-              className={`px-3 py-2 text-[10px] font-semibold uppercase tracking-wider transition-colors ${
-                mapType === id ? 'bg-[#22c55e] text-white' : 'text-neutral-500 hover:text-neutral-200 hover:bg-white/[0.04]'
-              }`}>
+            <button key={id} onClick={() => setMapType(id)} style={{
+              padding: '4px 10px',
+              borderRadius: '9999px',
+              fontSize: '10px',
+              fontWeight: 500,
+              textTransform: 'uppercase',
+              letterSpacing: '0.05em',
+              transition: 'all 150ms',
+              background: mapType === id ? 'rgba(255,255,255,0.12)' : 'transparent',
+              color: mapType === id ? 'white' : 'rgba(255,255,255,0.4)',
+              border: 'none',
+              cursor: 'pointer',
+            }}>
               {label}
             </button>
           ))}
-        </GlassCard>
+        </div>
 
 
 

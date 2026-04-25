@@ -219,3 +219,19 @@ h1, h2, h3, h4, h5, h6 {
 .orb-primary { background: #69f6b8; }
 .orb-secondary { background: #699cff; }
 .orb-tertiary { background: #ff8439; }
+
+/* ── Corner Pulse animation (MyData background flashes) ── */
+@keyframes cornerPulse {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+/* ── Print styles ── */
+@media print {
+  /* The report detail page manages its own print isolation via #report-print-content.
+     These rules are a safe baseline for any other pages that might print. */
+  nav, header, aside, .no-print, button { display: none !important; }
+  body { background: white !important; color: black !important; }
+  h1, h2, h3 { color: black !important; }
+  .page-break { page-break-before: always; }
+}

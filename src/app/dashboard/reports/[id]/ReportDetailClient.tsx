@@ -3,14 +3,26 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 
+/** Strip AI artefacts: lines that are nothing but a bare negative number, e.g. "- 42" */
+function cleanText(text: string | null | undefined): string {
+  if (!text) return '';
+  return text
+    .replace(/^[\s]*-\s*\d+(\.\d+)?\s*$/gm, '')  // remove lone "- 42" lines
+    .replace(/\n{3,}/g, '\n\n')                    // collapse 3+ newlines → 2
+    .trim();
+}
+
 export default function ReportDetailClient({ report, download }: { report: any; download: boolean }) {
   const [activeTab, setActiveTab] = useState<'overview' | 'strategies' | 'impact' | 'implementation'>('overview');
+  const [showToast, setShowToast] = useState(false);
   
   useEffect(() => {
     if (download && report.content) {
+      setShowToast(true);
       document.title = report.title || 'Report';
       const timer = setTimeout(() => {
         window.print();
+        setShowToast(false);
       }, 500);
       return () => clearTimeout(timer);
     }
@@ -54,16 +66,28 @@ export default function ReportDetailClient({ report, download }: { report: any; 
 
   return (
     <>
+      {/* PDF download toast */}
+      {showToast && (
+        <div className="no-print fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] flex items-center gap-3 px-5 py-3 rounded-xl bg-[#09090b] border border-[rgba(34,197,94,0.30)] shadow-[0_8px_32px_rgba(0,0,0,0.6)] text-sm text-white animate-fade-in">
+          <span className="material-symbols-outlined text-[#22c55e] text-base" style={{ fontVariationSettings: "'FILL' 1" }}>picture_as_pdf</span>
+          Preparing PDF download...
+        </div>
+      )}
       <style>{`
         @media print {
-          body { -webkit-print-color-adjust: exact; print-color-adjust: exact; background: white !important; }
-          .no-print { display: none !important; }
-          .print-break { page-break-before: always; }
-          .bg-\\[\\#09090b\\] { background: white !important; }
-          .text-white { color: black !important; }
-          .text-neutral-400, .text-neutral-500, .text-neutral-600 { color: #666 !important; }
-          .border-white\\/\\[0\\.06\\] { border-color: #ddd !important; }
-          .bg-\\[\\#111113\\] { background: #f9f9f9 !important; }
+          /* Isolate: hide everything, then reveal only the print div */
+          body * { visibility: hidden !important; }
+          #report-print-content,
+          #report-print-content * { visibility: visible !important; }
+          #report-print-content {
+            position: fixed !important;
+            top: 0 !important; left: 0 !important;
+            width: 100% !important; height: auto !important;
+            z-index: 99999 !important;
+            background: #fff !important;
+            color: #111 !important;
+          }
+          * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
         }
       `}</style>
 
@@ -227,6 +251,150 @@ export default function ReportDetailClient({ report, download }: { report: any; 
               </div>
             </div>
           )}
+        </div>
+      </div>
+
+      {/* ── Hidden print-only div ─────────────────────────────────────────────
+          Visible only during window.print(). Contains a clean white-background
+          version of the full report with no dark theme, no green colours, and
+          no layout chrome. This is what the browser renders to PDF. */}
+      <div id="report-print-content" style={{ display: 'none' }}>
+        <div style={{ padding: '48px 56px', maxWidth: '740px', margin: '0 auto', fontFamily: 'Georgia, "Times New Roman", serif', fontSize: '11pt', lineHeight: '1.65', color: '#111' }}>
+
+          {/* ── Cover header ── */}
+          <div style={{ borderBottom: '2pt solid #111', paddingBottom: '18px', marginBottom: '28px' }}>
+            <p style={{ margin: '0 0 6px', fontSize: '9pt', color: '#666', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+              Urban Heat Intelligence · HeatPlan
+            </p>
+            <h1 style={{ margin: '0 0 6px', fontSize: '20pt', fontWeight: 'bold', color: '#000', lineHeight: 1.2 }}>
+              {report.title}
+            </h1>
+            <p style={{ margin: 0, fontSize: '10pt', color: '#444' }}>
+              {place?.name ? `${place.name} · ` : ''}
+              {scenario?.name ? `${scenario.name} · ` : ''}
+              Generated {new Date(report.generatedAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+            </p>
+          </div>
+
+          {/* ── Key metrics row ── */}
+          <div style={{ display: 'flex', gap: '10px', marginBottom: '36px', flexWrap: 'wrap' }}>
+            {[
+              { label: 'Temperature Reduction', value: `${contentData?.stats?.tempReductionC != null ? contentData.stats.tempReductionC.toFixed(1) : (scenario?.totalProjectedTempReductionC?.toFixed(1) ?? '—')}°C` },
+              { label: 'Lives Protected / yr', value: contentData?.stats?.livesSaved != null ? String(Math.round(contentData.stats.livesSaved)) : (scenario?.totalProjectedLivesSaved != null ? String(scenario.totalProjectedLivesSaved) : '—') },
+              { label: 'CO₂ Offset', value: `${contentData?.stats?.co2ReductionTons != null ? contentData.stats.co2ReductionTons.toFixed(1) : (scenario?.projectedCo2ReductionTons?.toFixed(1) ?? '—')} t/yr` },
+              { label: 'Total Investment', value: `${sym}${fmt(contentData?.stats?.totalCostLocal ?? scenario?.totalEstimatedCostUsd ?? 0)}` },
+            ].map(s => (
+              <div key={s.label} style={{ flex: '1 1 140px', border: '1pt solid #ccc', padding: '10px 14px', minWidth: '120px' }}>
+                <div style={{ fontSize: '8pt', color: '#666', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '6px' }}>{s.label}</div>
+                <div style={{ fontSize: '16pt', fontWeight: 'bold', color: '#000' }}>{s.value}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* ── Executive Summary ── */}
+          {contentData.executiveSummary && (
+            <div style={{ marginBottom: '32px', pageBreakInside: 'avoid' }}>
+              <h2 style={{ fontSize: '13pt', fontWeight: 'bold', color: '#000', margin: '0 0 8px', paddingBottom: '6px', borderBottom: '1pt solid #ccc' }}>
+                Executive Summary
+              </h2>
+              <p style={{ margin: 0, whiteSpace: 'pre-wrap', color: '#222' }}>{cleanText(contentData.executiveSummary)}</p>
+            </div>
+          )}
+
+          {/* ── Proposed Strategies ── */}
+          {Array.isArray(contentData.strategies) && contentData.strategies.length > 0 && (
+            <div style={{ marginBottom: '32px' }}>
+              <h2 style={{ fontSize: '13pt', fontWeight: 'bold', color: '#000', margin: '0 0 16px', paddingBottom: '6px', borderBottom: '1pt solid #ccc' }}>
+                Proposed Cooling Strategies
+              </h2>
+              {contentData.strategies.map((s: any, i: number) => (
+                <div key={i} style={{ marginBottom: '20px', paddingBottom: '20px', borderBottom: i < contentData.strategies.length - 1 ? '0.5pt solid #e5e5e5' : 'none', pageBreakInside: 'avoid' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '6px' }}>
+                    <div>
+                      <strong style={{ fontSize: '11pt', color: '#000' }}>{s.name}</strong>
+                      {s.type && <span style={{ marginLeft: '10px', fontSize: '9pt', color: '#666', textTransform: 'uppercase' }}>{String(s.type).replace(/_/g, ' ')}</span>}
+                    </div>
+                    {s.totalCostLocal != null && (
+                      <span style={{ fontSize: '11pt', fontWeight: 'bold', color: '#000' }}>{sym}{Number(s.totalCostLocal).toLocaleString()}</span>
+                    )}
+                  </div>
+                  {s.description && <p style={{ margin: '0 0 8px', fontSize: '10pt', color: '#333' }}>{cleanText(s.description)}</p>}
+                  <div style={{ display: 'flex', gap: '20px', fontSize: '9pt', color: '#444' }}>
+                    {s.quantity != null && <span>Quantity: <strong>{s.quantity}</strong> units</span>}
+                    {s.unitCostLocal != null && <span>Unit cost: <strong>{sym}{Number(s.unitCostLocal).toLocaleString()}</strong></span>}
+                    {s.tempReductionC != null && <span>Cooling: <strong>{Number(s.tempReductionC).toFixed(2)}°C reduction</strong></span>}
+                    {s.co2ReductionTons != null && <span>CO₂: <strong>{Number(s.co2ReductionTons).toFixed(1)} t/yr offset</strong></span>}
+                  </div>
+                  {s.placementNotes && (
+                    <p style={{ margin: '8px 0 0', fontSize: '9pt', color: '#555', fontStyle: 'italic' }}>
+                      Placement: {cleanText(s.placementNotes)}
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* ── Impact Analysis ── */}
+          {contentData.impactAnalysis && (
+            <div style={{ marginBottom: '32px', pageBreakBefore: 'always' }}>
+              <h2 style={{ fontSize: '13pt', fontWeight: 'bold', color: '#000', margin: '0 0 8px', paddingBottom: '6px', borderBottom: '1pt solid #ccc' }}>
+                Impact Analysis
+              </h2>
+              <p style={{ margin: 0, whiteSpace: 'pre-wrap', color: '#222' }}>{cleanText(contentData.impactAnalysis)}</p>
+            </div>
+          )}
+
+          {/* ── Risk Factors ── */}
+          {Array.isArray(contentData.riskFactors) && contentData.riskFactors.length > 0 && (
+            <div style={{ marginBottom: '32px', pageBreakInside: 'avoid' }}>
+              <h2 style={{ fontSize: '13pt', fontWeight: 'bold', color: '#000', margin: '0 0 8px', paddingBottom: '6px', borderBottom: '1pt solid #ccc' }}>
+                Risk Factors
+              </h2>
+              <ul style={{ margin: 0, paddingLeft: '20px', color: '#222' }}>
+                {contentData.riskFactors.map((r: string, i: number) => (
+                  <li key={i} style={{ marginBottom: '6px', fontSize: '10pt' }}>{cleanText(r)}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {/* ── Implementation Plan ── */}
+          {contentData.implementationPlan && (
+            <div style={{ marginBottom: '32px', pageBreakBefore: 'always' }}>
+              <h2 style={{ fontSize: '13pt', fontWeight: 'bold', color: '#000', margin: '0 0 8px', paddingBottom: '6px', borderBottom: '1pt solid #ccc' }}>
+                Implementation Plan
+              </h2>
+              <p style={{ margin: 0, whiteSpace: 'pre-wrap', color: '#222' }}>{cleanText(contentData.implementationPlan)}</p>
+            </div>
+          )}
+
+          {/* ── Recommendations ── */}
+          {contentData.recommendations && (
+            <div style={{ marginBottom: '32px', pageBreakInside: 'avoid' }}>
+              <h2 style={{ fontSize: '13pt', fontWeight: 'bold', color: '#000', margin: '0 0 8px', paddingBottom: '6px', borderBottom: '1pt solid #ccc' }}>
+                Recommendations
+              </h2>
+              <p style={{ margin: 0, whiteSpace: 'pre-wrap', color: '#222' }}>{cleanText(contentData.recommendations)}</p>
+            </div>
+          )}
+
+          {/* ── Monitoring Plan ── */}
+          {contentData.monitoringPlan && (
+            <div style={{ marginBottom: '40px', pageBreakInside: 'avoid' }}>
+              <h2 style={{ fontSize: '13pt', fontWeight: 'bold', color: '#000', margin: '0 0 8px', paddingBottom: '6px', borderBottom: '1pt solid #ccc' }}>
+                Monitoring Plan
+              </h2>
+              <p style={{ margin: 0, whiteSpace: 'pre-wrap', color: '#222' }}>{cleanText(contentData.monitoringPlan)}</p>
+            </div>
+          )}
+
+          {/* ── Footer ── */}
+          <div style={{ borderTop: '1pt solid #ccc', paddingTop: '10px', display: 'flex', justifyContent: 'space-between', fontSize: '8pt', color: '#888' }}>
+            <span>HeatPlan · Urban Heat Intelligence Platform</span>
+            <span>{place?.name ? `${place.name} Heat Mitigation Report · ` : ''}{new Date(report.generatedAt).toLocaleDateString()}</span>
+          </div>
+
         </div>
       </div>
     </>

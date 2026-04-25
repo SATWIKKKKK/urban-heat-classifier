@@ -42,20 +42,6 @@ export default async function MyDataPage() {
     take: 10,
   });
 
-  const reports = await prisma.report.findMany({
-    where: { cityId },
-    include: { generatedBy: { select: { name: true } } },
-    orderBy: { generatedAt: 'desc' },
-    take: 10,
-  });
-
-  const auditLogs = await prisma.auditLog.findMany({
-    where: { userId },
-    orderBy: { createdAt: 'desc' },
-    take: 10,
-    include: { user: { select: { name: true } } },
-  });
-
   // Compute stats
   const totalPlaces = places.length;
   const totalMeasurements = places.reduce((s, p) => s + p.heatMeasurements.length, 0);
@@ -154,20 +140,6 @@ export default async function MyDataPage() {
           status: s.status,
           interventionCount: s.scenarioInterventions.length,
           createdAt: s.createdAt.toISOString(),
-        }))}
-        reports={reports.map((r) => ({
-          id: r.id,
-          title: r.title,
-          status: r.status,
-          generatedAt: r.generatedAt.toISOString(),
-          generatedBy: r.generatedBy?.name ?? null,
-        }))}
-        auditLogs={auditLogs.map((a) => ({
-          id: a.id,
-          action: a.action,
-          resourceType: a.resourceType,
-          createdAt: a.createdAt.toISOString(),
-          userName: a.user?.name ?? null,
         }))}
         userId={userId}
         cityId={cityId}

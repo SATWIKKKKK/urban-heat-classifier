@@ -4,13 +4,13 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useSession, signOut } from 'next-auth/react';
 import { useState, useRef, useEffect } from 'react';
+import { Bell, ChevronDown, User, Database, LogOut, PanelRight } from 'lucide-react';
 
 const ALL_NAV_ITEMS = [
   { label: 'My Data', href: '/dashboard/mydata', icon: 'person', roles: ['CITY_ADMIN', 'URBAN_PLANNER', 'SUPER_ADMIN', 'CITY_COUNCIL', 'MUNICIPAL_COMMISSIONER', 'WARD_OFFICER', 'SDMA_OBSERVER', 'NGO_FIELD_WORKER', 'DATA_ANALYST', 'CITIZEN_REPORTER'] },
   { label: 'Map', href: '/dashboard/map', icon: 'map', roles: ['CITY_ADMIN', 'URBAN_PLANNER', 'SUPER_ADMIN', 'CITY_COUNCIL', 'SDMA_OBSERVER', 'DATA_ANALYST', 'CITIZEN_REPORTER'] },
   { label: 'Scenarios', href: '/dashboard/scenarios', icon: 'compare_arrows', roles: ['CITY_ADMIN', 'URBAN_PLANNER', 'SUPER_ADMIN', 'CITY_COUNCIL', 'MUNICIPAL_COMMISSIONER', 'SDMA_OBSERVER', 'DATA_ANALYST', 'CITIZEN_REPORTER'] },
   { label: 'Reports', href: '/dashboard/reports', icon: 'assessment', roles: ['CITY_ADMIN', 'URBAN_PLANNER', 'SUPER_ADMIN', 'CITY_COUNCIL', 'MUNICIPAL_COMMISSIONER', 'SDMA_OBSERVER', 'DATA_ANALYST'] },
-  { label: 'Data Management', href: '/dashboard/data', icon: 'storage', roles: ['CITY_ADMIN', 'SUPER_ADMIN', 'DATA_ANALYST'] },
   { label: 'Settings', href: '/dashboard/settings', icon: 'settings', roles: ['CITY_ADMIN', 'URBAN_PLANNER', 'SUPER_ADMIN', 'CITY_COUNCIL', 'MUNICIPAL_COMMISSIONER', 'WARD_OFFICER', 'SDMA_OBSERVER', 'NGO_FIELD_WORKER', 'DATA_ANALYST', 'CITIZEN_REPORTER'] },
 ];
 
@@ -94,73 +94,139 @@ export default function GlobalNavbar({ accentColor = 'var(--green-400)', activeH
             </nav>
           </div>
 
-          {/* Right: actions + user + hamburger */}
+          {/* Right: notifications + role pill + user + sidebar toggle */}
           <div className="flex items-center gap-2 shrink-0">
             {rightActions}
 
-            {/* Role badge with colorful stripes */}
+            {/* Bell notification button */}
+            <div className="relative">
+              <button
+                style={{
+                  width: '34px', height: '34px', borderRadius: '50%',
+                  background: 'transparent',
+                  border: '1px solid var(--border)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  color: 'var(--text-secondary)',
+                  cursor: 'pointer',
+                  transition: 'all 150ms',
+                }}
+                className="hover:bg-[var(--bg-elevated)] hover:border-[var(--border-strong)]"
+                aria-label="Notifications"
+              >
+                <Bell size={16} />
+              </button>
+              <span style={{
+                position: 'absolute', top: '7px', right: '7px',
+                width: '6px', height: '6px', borderRadius: '50%',
+                background: '#ef4444',
+                pointerEvents: 'none',
+              }} />
+            </div>
+
+            {/* Role pill */}
             {role && (
-              <div className="hidden sm:flex items-center">
-                <div className="flex items-stretch rounded-lg overflow-hidden mr-2">
-                  <div className="flex flex-col w-2">
-                    <span className="block h-1/3 bg-[var(--green-500)]" />
-                    <span className="block h-1/3 bg-[var(--green-400)]" />
-                    <span className="block h-1/3 bg-[var(--green-500)]/80" />
-                  </div>
-                  <span className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest bg-white/5 border border-white/10 text-[var(--text-secondary)] rounded-r-lg whitespace-nowrap">
-                    {role.replace(/_/g, ' ')}
-                  </span>
-                </div>
+              <div className="hidden sm:flex items-center" style={{
+                background: 'var(--bg-elevated)',
+                border: '1px solid var(--border)',
+                borderRadius: '9999px',
+                padding: '4px 10px 4px 8px',
+                gap: '6px',
+                cursor: 'default',
+              }}>
+                <span style={{
+                  width: '6px', height: '6px', borderRadius: '50%', flexShrink: 0,
+                  background:
+                    role === 'SUPER_ADMIN' ? '#f97316' :
+                    role === 'CITY_ADMIN' ? '#22c55e' :
+                    role === 'URBAN_PLANNER' ? '#3b82f6' :
+                    role === 'CITY_COUNCIL' ? '#a855f7' : '#22c55e',
+                }} />
+                <span style={{
+                  fontSize: '11px', fontWeight: 500, textTransform: 'uppercase',
+                  letterSpacing: '0.06em', color: 'var(--text-secondary)', whiteSpace: 'nowrap',
+                }}>
+                  {role.replace(/_/g, ' ')}
+                </span>
               </div>
             )}
 
-            {/* User dropdown */}
+            {/* User profile button */}
             {session?.user ? (
               <div ref={userMenuRef} className="relative">
                 <button
                   onClick={() => setUserMenuOpen(!userMenuOpen)}
-                  className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all text-sm text-white"
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: '8px',
+                    padding: '5px 10px 5px 6px',
+                    borderRadius: '10px',
+                    background: 'var(--bg-elevated)',
+                    border: '1px solid var(--border)',
+                    cursor: 'pointer',
+                    transition: 'all 150ms',
+                  }}
+                  className="hover:border-[var(--border-strong)]"
                 >
-                  <span className="material-symbols-outlined text-base" style={{ fontVariationSettings: "'FILL' 1" }}>account_circle</span>
-                  <span className="hidden md:block text-xs font-semibold max-w-[120px] truncate">{session.user.name ?? session.user.email}</span>
-                  <span className={`material-symbols-outlined text-sm transition-transform ${userMenuOpen ? 'rotate-180' : ''}`}>expand_more</span>
+                  <div style={{
+                    width: '28px', height: '28px', borderRadius: '50%',
+                    background: 'linear-gradient(135deg, #22c55e, #16a34a)',
+                    display: 'grid', placeItems: 'center',
+                    fontSize: '11px', fontWeight: 700, color: 'white',
+                    border: '1.5px solid rgba(34,197,94,0.40)',
+                    flexShrink: 0,
+                  }}>
+                    {(session.user.name ?? session.user.email ?? 'U')[0].toUpperCase()}
+                  </div>
+                  <span className="hidden md:block" style={{
+                    fontSize: '13px', fontWeight: 500, color: 'var(--text-primary)',
+                    maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                  }}>
+                    {session.user.name ?? session.user.email}
+                  </span>
+                  <ChevronDown size={14} style={{
+                    color: 'var(--text-tertiary)',
+                    transition: 'transform 150ms',
+                    transform: userMenuOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+                    flexShrink: 0,
+                  }} />
                 </button>
                 {userMenuOpen && (
-                  <div className="absolute right-0 top-full mt-2 w-56 glass-overlay border border-white/10 rounded-xl overflow-hidden shadow-2xl z-[60]">
-                    <div className="px-4 py-3 border-b border-white/10 flex items-center gap-3 bg-gradient-to-r from-[var(--green-500)]/10 via-[var(--green-400)]/8 to-[var(--green-500)]/6">
-                      <span className="inline-flex items-center justify-center rounded-full h-8 w-8 bg-[var(--green-400)]/12 text-[var(--green-400)]">
-                        <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>auto_awesome</span>
-                      </span>
-                      <div>
-                        <div className="text-xs font-semibold text-white truncate">{session.user.name ?? '—'}</div>
-                        <div className="text-[10px] text-[var(--text-tertiary)] truncate mt-0.5">{session.user.email}</div>
-                      </div>
-                    </div>
+                  <div style={{
+                    position: 'absolute', right: 0, top: 'calc(100% + 8px)',
+                    background: 'var(--bg-elevated)',
+                    border: '1px solid var(--border-strong)',
+                    borderRadius: '12px',
+                    padding: '6px',
+                    minWidth: '180px',
+                    boxShadow: '0 16px 40px rgba(0,0,0,0.4)',
+                    zIndex: 60,
+                  }}>
                     <Link
                       href="/dashboard/settings"
                       onClick={() => setUserMenuOpen(false)}
-                      className="flex items-center gap-2.5 px-4 py-2.5 text-xs text-[var(--text-secondary)] hover:text-white hover:bg-white/5 transition-all"
+                      className="flex items-center gap-2 px-3 py-2 rounded-lg text-[13px] text-[var(--text-secondary)] hover:bg-[var(--bg-overlay)] hover:text-[var(--text-primary)] transition-colors"
+                      style={{ textDecoration: 'none' }}
                     >
-                      <span className="material-symbols-outlined text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>manage_accounts</span>
-                      View Profile
+                      <User size={14} />
+                      Profile Settings
                     </Link>
                     <Link
-                      href="/dashboard/settings"
+                      href="/dashboard/mydata"
                       onClick={() => setUserMenuOpen(false)}
-                      className="flex items-center gap-2.5 px-4 py-2.5 text-xs text-[var(--text-secondary)] hover:text-white hover:bg-white/5 transition-all"
+                      className="flex items-center gap-2 px-3 py-2 rounded-lg text-[13px] text-[var(--text-secondary)] hover:bg-[var(--bg-overlay)] hover:text-[var(--text-primary)] transition-colors"
+                      style={{ textDecoration: 'none' }}
                     >
-                      <span className="material-symbols-outlined text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>settings</span>
-                      Settings
+                      <Database size={14} />
+                      My Data
                     </Link>
-                    <div className="border-t border-white/10">
-                      <button
-                        onClick={() => { setUserMenuOpen(false); void signOut({ callbackUrl: '/login' }); }}
-                        className="w-full flex items-center gap-2.5 px-4 py-2.5 text-xs text-[var(--critical)] hover:bg-[var(--critical)]/10 transition-all"
-                      >
-                        <span className="material-symbols-outlined text-sm">logout</span>
-                        Sign Out
-                      </button>
-                    </div>
+                    <div style={{ margin: '4px 0', height: '1px', background: 'var(--border)' }} />
+                    <button
+                      onClick={() => { setUserMenuOpen(false); void signOut({ callbackUrl: '/login' }); }}
+                      className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-[13px] text-[var(--text-secondary)] hover:bg-[rgba(239,68,68,0.08)] hover:text-[#ef4444] transition-colors"
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left' }}
+                    >
+                      <LogOut size={14} />
+                      Sign Out
+                    </button>
                   </div>
                 )}
               </div>
@@ -168,15 +234,23 @@ export default function GlobalNavbar({ accentColor = 'var(--green-400)', activeH
               <Link href="/login" className="px-4 py-2 text-xs border border-white/10 text-white font-semibold rounded-xl hover:bg-white/5 transition-all">Sign In</Link>
             )}
 
-            {/* Hamburger with colorful stripes */}
+            {/* Sidebar toggle */}
             <button
               onClick={() => setMenuOpen(true)}
-              className="flex flex-col justify-center items-center gap-[4px] h-9 w-9 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all shrink-0"
+              style={{
+                width: '34px', height: '34px', borderRadius: '8px',
+                background: menuOpen ? 'rgba(34,197,94,0.10)' : 'var(--bg-elevated)',
+                border: menuOpen ? '1px solid rgba(34,197,94,0.30)' : '1px solid var(--border)',
+                color: menuOpen ? '#22c55e' : 'var(--text-secondary)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                cursor: 'pointer',
+                transition: 'all 150ms',
+                flexShrink: 0,
+              }}
+              className={menuOpen ? '' : 'hover:bg-[var(--bg-overlay)] hover:border-[var(--border-strong)] hover:text-[var(--text-primary)]'}
               aria-label="Open menu"
             >
-              <span className="block h-[2px] w-5 bg-[var(--green-500)] rounded-full transition-all" />
-              <span className="block h-[2px] w-4 bg-[var(--green-400)] rounded-full transition-all" />
-              <span className="block h-[2px] w-5 bg-[var(--green-500)]/80 rounded-full transition-all" />
+              <PanelRight size={18} />
             </button>
           </div>
         </div>
