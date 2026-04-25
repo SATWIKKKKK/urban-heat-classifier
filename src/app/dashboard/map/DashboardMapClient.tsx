@@ -172,6 +172,14 @@ export default function DashboardMapPage() {
   const [citySaved, setCitySaved] = useState(false);
   const [showSaveSuccess, setShowSaveSuccess] = useState(false);
 
+  /* nav: place name pre-loaded from URL query param */
+  const [navPlaceName, setNavPlaceName] = useState<string | null>(() => {
+    // Read immediately from URL on first render (SSR-safe via typeof check)
+    if (typeof window === 'undefined') return null;
+    const p = new URLSearchParams(window.location.search).get('placeName');
+    return p ? decodeURIComponent(p) : null;
+  });
+
   const inspectorPlace = selectedPlace ?? payload?.places[0] ?? null;
   const hasInspector = !!(searchedPlace || inspectorPlace);
 
@@ -300,6 +308,16 @@ export default function DashboardMapPage() {
     if (!searchInputRef.current || !searchedPlace) return;
     searchInputRef.current.value = searchedPlace.name;
   }, [searchedPlace]);
+
+  /* Set input value from placeName URL param once the Autocomplete input is rendered */
+  useEffect(() => {
+    if (!isLoaded || !searchInputRef.current) return;
+    const placeName = new URLSearchParams(window.location.search).get('placeName');
+    if (placeName && !searchedPlace) {
+      searchInputRef.current.value = decodeURIComponent(placeName);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoaded]);
 
   /* Persist searched place to sessionStorage so it survives reload */
   useEffect(() => {
@@ -608,12 +626,15 @@ export default function DashboardMapPage() {
           </button>
         </div>
 
-        <GlassCard className="w-full flex items-center px-4 py-2.5 gap-3">
+        <div className="w-full flex flex-col gap-1">
+        <GlassCard className={`w-full flex items-center px-4 py-2.5 gap-3 transition-all duration-200${navPlaceName && !searchedPlace ? ' shadow-[0_0_0_2px_rgba(34,197,94,0.35),0_8px_32px_rgba(0,0,0,0.4)]' : ''}`}>
           <span className="material-symbols-outlined text-lg text-neutral-400 shrink-0">search</span>
           {isLoaded ? (
             <Autocomplete onLoad={a => { autocompleteRef.current = a; }} onPlaceChanged={onPlaceChanged} className="flex-1">
               <input ref={searchInputRef} type="text" placeholder="Search any city or location worldwide…"
-                className="w-full bg-transparent text-sm text-white placeholder:text-neutral-500 focus:outline-none" />
+                className="w-full bg-transparent text-sm text-white placeholder:text-neutral-500 focus:outline-none"
+                onFocus={() => setNavPlaceName(null)}
+                onChange={() => setNavPlaceName(null)} />
             </Autocomplete>
           ) : (
             <input type="text" placeholder={loadError ? 'Google Maps failed' : 'Loading Maps…'} disabled
@@ -633,6 +654,13 @@ export default function DashboardMapPage() {
             <span className="shrink-0 text-xs text-[#22c55e] font-medium whitespace-nowrap">✓ Saved</span>
           )}
         </GlassCard>
+        {navPlaceName && !searchedPlace && (
+          <div className="flex items-center gap-1 px-2">
+            <span className="material-symbols-outlined text-[12px] text-[#22c55e]" style={{ fontVariationSettings: "'FILL' 1" }}>location_on</span>
+            <span className="text-[10px] text-[#22c55e]">Showing: {navPlaceName}</span>
+          </div>
+        )}
+        </div>
 
         {/* No-city banner — only shows when needed, visible in document flow */}
         {noCityData && !searchedPlace && (

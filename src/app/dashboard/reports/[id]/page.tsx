@@ -1,16 +1,15 @@
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import { prisma } from '@/lib/db';
+import { auth } from '@/lib/auth';
 import ReportDetailClient from './ReportDetailClient';
 
 export default async function ReportDetailPage({
   params,
-  searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
   const { id } = await params;
-  const resolvedSearchParams = await searchParams;
+  const session = await auth();
 
   const report = await prisma.report.findUnique({
     where: { id },
@@ -21,21 +20,29 @@ export default async function ReportDetailPage({
             include: {
               intervention: {
                 include: {
-                  place: true
-                }
-              }
-            }
-          }
-        }
-      }
-    }
+                  place: {
+                    select: {
+                      id: true, name: true,
+                      vulnerabilityLevel: true, vulnerabilityScore: true,
+                      population: true, areaSqkm: true,
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
   });
 
-  if (!report) {
-    notFound();
+  if (!report) notFound();
+
+  // DRAFT reports require login
+  if (report.status === 'DRAFT') {
+    if (!session?.user?.id) redirect('/login');
   }
 
-  const download = resolvedSearchParams.download === 'true';
-
-  return <ReportDetailClient report={report as any} download={download} />;
+  return <ReportDetailClient report={report as any} />;
 }
+

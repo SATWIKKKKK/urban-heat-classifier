@@ -560,7 +560,7 @@ export default function MyDataClient(props: Props) {
                           </td>
                           <td className="py-3 px-4">
                             <div className="flex items-center justify-center gap-1" onClick={e => e.stopPropagation()}>
-                              <Link href={`/dashboard/map?placeId=${p.id}`} title="View on Map"
+                              <Link href={`/dashboard/map?placeId=${p.id}&placeName=${encodeURIComponent(p.name)}`} title="View on Map"
                                 className="w-7 h-7 flex items-center justify-center rounded-md text-[var(--text-tertiary)] hover:text-[#06b6d4] hover:bg-[rgba(6,182,212,0.1)] transition-colors">
                                 <span className="material-symbols-outlined text-[16px]">map</span>
                               </Link>
@@ -873,7 +873,7 @@ export default function MyDataClient(props: Props) {
                     <button onClick={() => setAddDataFor(addDataFor === p.id ? null : p.id)} className="px-3 py-2 text-[11px] font-medium text-[#60a5fa] border border-[rgba(59,130,246,0.30)] rounded-[8px] hover:bg-[rgba(59,130,246,0.08)] transition-colors">
                       + Add Data
                     </button>
-                    <Link href={`/dashboard/map?placeId=${p.id}`} className="px-3 py-2 text-[11px] font-medium text-[#06b6d4] border border-[rgba(6,182,212,0.30)] rounded-[8px] hover:bg-[rgba(6,182,212,0.08)] transition-colors">
+                    <Link href={`/dashboard/map?placeId=${p.id}&placeName=${encodeURIComponent(p.name)}`} className="px-3 py-2 text-[11px] font-medium text-[#06b6d4] border border-[rgba(6,182,212,0.30)] rounded-[8px] hover:bg-[rgba(6,182,212,0.08)] transition-colors">
                       View Map
                     </Link>
                     <button

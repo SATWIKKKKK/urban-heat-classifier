@@ -1,402 +1,549 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 
-/** Strip AI artefacts: lines that are nothing but a bare negative number, e.g. "- 42" */
-function cleanText(text: string | null | undefined): string {
-  if (!text) return '';
-  return text
-    .replace(/^[\s]*-\s*\d+(\.\d+)?\s*$/gm, '')  // remove lone "- 42" lines
-    .replace(/\n{3,}/g, '\n\n')                    // collapse 3+ newlines → 2
-    .trim();
+/* ── Helpers ─────────────────────────────────────────────────────────────────── */
+
+function safe(primary: unknown, ...fallbacks: unknown[]): string {
+  for (const v of [primary, ...fallbacks]) {
+    if (v !== null && v !== undefined && String(v).trim() !== '') return String(v);
+  }
+  return '';
 }
 
-export default function ReportDetailClient({ report, download }: { report: any; download: boolean }) {
-  const [activeTab, setActiveTab] = useState<'overview' | 'strategies' | 'impact' | 'implementation'>('overview');
-  const [showToast, setShowToast] = useState(false);
-  
-  useEffect(() => {
-    if (download && report.content) {
-      setShowToast(true);
-      document.title = report.title || 'Report';
-      const timer = setTimeout(() => {
-        window.print();
-        setShowToast(false);
-      }, 500);
-      return () => clearTimeout(timer);
-    }
-  }, [download, report]);
+function fmt(n: number | null | undefined, sym = ''): string {
+  if (n == null) return '—';
+  const abs = Math.abs(n);
+  if (abs >= 10_000_000) return `${sym}${(n / 10_000_000).toFixed(1)} Cr`;
+  if (abs >= 100_000)    return `${sym}${(n / 100_000).toFixed(1)} L`;
+  if (abs >= 1_000)      return `${sym}${(n / 1_000).toFixed(1)}K`;
+  return `${sym}${n.toFixed(0)}`;
+}
 
-  if (!report.content) {
+const VULN: Record<string, { color: string; bg: string; border: string }> = {
+  CRITICAL: { color: '#ef4444', bg: 'rgba(239,68,68,0.10)', border: 'rgba(239,68,68,0.25)' },
+  HIGH:     { color: '#f97316', bg: 'rgba(249,115,22,0.10)', border: 'rgba(249,115,22,0.25)' },
+  MODERATE: { color: '#eab308', bg: 'rgba(234,179,8,0.10)',  border: 'rgba(234,179,8,0.25)' },
+  LOW:      { color: '#22c55e', bg: 'rgba(34,197,94,0.10)',  border: 'rgba(34,197,94,0.25)' },
+};
+function vl(level: string | null | undefined) { return VULN[level ?? ''] ?? VULN['LOW']; }
+
+/* ── Section wrapper ──────────────────────────────────────────────────────────── */
+function Section({ title, icon, children, className = '' }: {
+  title: string; icon: string; children: React.ReactNode; className?: string;
+}) {
+  return (
+    <div className={`report-section ${className}`}>
+      <div className="flex items-center gap-2 mb-4">
+        <span
+          className="material-symbols-outlined text-[18px] text-[var(--text-tertiary)]"
+          style={{ fontVariationSettings: "'FILL' 1" }}
+        >
+          {icon}
+        </span>
+        <h2 className="text-[13px] font-bold uppercase tracking-[0.06em] text-[var(--text-secondary)]">{title}</h2>
+      </div>
+      {children}
+    </div>
+  );
+}
+
+/* ── Main component ───────────────────────────────────────────────────────────── */
+export default function ReportDetailClient({ report }: { report: any }) {
+  const [copied, setCopied] = useState(false);
+
+  /* Parse content */
+  let c: any = null;
+  try {
+    c = typeof report.content === 'string' ? JSON.parse(report.content) : report.content;
+  } catch { c = null; }
+
+  const scenario = report.scenario;
+  const place = scenario?.scenarioInterventions?.[0]?.intervention?.place ?? null;
+  const vulnLevel: string | null = place?.vulnerabilityLevel ?? null;
+  const vc = vl(vulnLevel);
+  const sym: string = c?.stats?.currencySymbol ?? '₹';
+
+  /* Key stats — try multiple field names */
+  const tempReduction =
+    c?.stats?.tempReductionC ??
+    c?.keyStats?.tempReduction ??
+    scenario?.totalProjectedTempReductionC ??
+    null;
+  const livesSaved =
+    c?.stats?.livesSaved ??
+    c?.keyStats?.livesSaved ??
+    scenario?.totalProjectedLivesSaved ??
+    null;
+  const co2 =
+    c?.stats?.co2ReductionTons ??
+    c?.keyStats?.co2ReductionTons ??
+    scenario?.projectedCo2ReductionTons ??
+    null;
+  const totalCost =
+    c?.stats?.totalCostLocal ??
+    c?.keyStats?.totalCostCrore ??
+    c?.keyStats?.totalCost ??
+    scenario?.totalEstimatedCostUsd ??
+    null;
+  const payback =
+    c?.keyStats?.paybackYears ??
+    c?.stats?.paybackYears ??
+    null;
+
+  const executiveSummary = safe(
+    c?.executiveSummary, c?.executive_summary, c?.summary, ''
+  );
+  const heatProblem = safe(
+    c?.whyThisPlaceNeedsAction, c?.why_this_place_needs_action, c?.heatProblem, ''
+  );
+  const impactText = safe(
+    c?.impactProjections, c?.impactAnalysis, c?.impact_analysis, ''
+  );
+  const financialText = safe(
+    c?.financialAnalysis, c?.financial_analysis, c?.fundingSources, ''
+  );
+  const implementationText = safe(
+    c?.implementationPlan, c?.implementation_plan, ''
+  );
+  const monitoringText = safe(c?.monitoringPlan, c?.monitoring_plan, '');
+  const recommendations: string | any[] =
+    c?.recommendations ?? c?.nextSteps ?? c?.next_steps ?? '';
+  const references: string | any[] = c?.references ?? '';
+  const strategies: any[] = Array.isArray(c?.strategies) ? c.strategies : [];
+  const timeline: any[] = Array.isArray(c?.implementationTimeline)
+    ? c.implementationTimeline
+    : Array.isArray(c?.implementation_timeline)
+      ? c.implementation_timeline
+      : [];
+
+  const handleShare = async () => {
+    await navigator.clipboard.writeText(window.location.href);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handlePrint = () => {
+    const prev = document.title;
+    document.title = report.title ?? 'Heat Mitigation Report';
+    window.print();
+    setTimeout(() => { document.title = prev; }, 3000);
+  };
+
+  /* No content guard */
+  if (!c) {
     return (
-      <div className="min-h-[60vh] flex flex-col items-center justify-center text-center gap-4">
-        <div className="w-12 h-12 rounded-full bg-neutral-900 border border-neutral-800 flex items-center justify-center">
-          <span className="material-symbols-outlined text-neutral-500">article</span>
+      <div className="min-h-[60vh] flex flex-col items-center justify-center text-center gap-5 px-4">
+        <div className="w-14 h-14 rounded-2xl bg-[var(--bg-surface)] border border-[var(--border)] flex items-center justify-center">
+          <span className="material-symbols-outlined text-[var(--text-tertiary)] text-2xl">error_outline</span>
         </div>
         <div>
-          <h2 className="text-lg font-semibold text-white">Report content not available</h2>
-          <p className="text-sm text-neutral-400 mt-1 max-w-sm">This report was generated but no content was saved. You need to regenerate it from the scenario.</p>
+          <h2 className="text-base font-semibold text-[var(--text-primary)]">Report content unavailable</h2>
+          <p className="mt-1.5 text-sm text-[var(--text-secondary)] max-w-sm">
+            The report data could not be loaded. This may happen if the scenario generation was interrupted.
+            Please regenerate the scenario.
+          </p>
         </div>
-        {report.scenarioId ? (
-          <Link href={`/dashboard/scenarios/${report.scenarioId}`} className="px-4 py-2 bg-[#22c55e] text-white text-sm font-semibold rounded-lg hover:bg-[#16a34a] transition-colors">
+        {report.scenarioId && (
+          <Link href={`/dashboard/scenarios/${report.scenarioId}`}
+            className="px-5 py-2 bg-[var(--bg-surface)] border border-[rgba(34,197,94,0.35)] text-[#22c55e] text-sm font-semibold rounded-lg hover:bg-[rgba(34,197,94,0.06)] transition-colors">
             Go to Scenario
           </Link>
-        ) : null}
+        )}
       </div>
     );
   }
 
-  let contentData: any = {};
-  try {
-    contentData = JSON.parse(report.content);
-  } catch (e) {}
-
-  const scenario = report.scenario;
-  const place = scenario?.scenarioInterventions?.[0]?.intervention?.place;
-  const sym = contentData?.stats?.currencySymbol ?? '$';
-  const fmt = (n: number) => n >= 1_000_000 ? `${(n / 1_000_000).toFixed(1)}M` : n >= 1000 ? `${(n / 1000).toFixed(0)}K` : (n ?? 0).toFixed(0);
-
-  const triggerDownload = () => {
-    document.title = report.title || 'Report';
-    setTimeout(() => {
-      window.print();
-    }, 100);
-  };
-
   return (
     <>
-      {/* PDF download toast */}
-      {showToast && (
-        <div className="no-print fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] flex items-center gap-3 px-5 py-3 rounded-xl bg-[#09090b] border border-[rgba(34,197,94,0.30)] shadow-[0_8px_32px_rgba(0,0,0,0.6)] text-sm text-white animate-fade-in">
-          <span className="material-symbols-outlined text-[#22c55e] text-base" style={{ fontVariationSettings: "'FILL' 1" }}>picture_as_pdf</span>
-          Preparing PDF download...
-        </div>
-      )}
-      <style>{`
-        @media print {
-          /* Isolate: hide everything, then reveal only the print div */
-          body * { visibility: hidden !important; }
-          #report-print-content,
-          #report-print-content * { visibility: visible !important; }
-          #report-print-content {
-            position: fixed !important;
-            top: 0 !important; left: 0 !important;
-            width: 100% !important; height: auto !important;
-            z-index: 99999 !important;
-            background: #fff !important;
-            color: #111 !important;
-          }
-          * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-        }
-      `}</style>
+      {/* ── Sticky action bar ─────────────────────────────────────────────────── */}
+      <div
+        className="report-action-bar sticky top-0 z-20 flex items-center gap-3 px-4 sm:px-6 h-[52px] bg-[var(--bg-surface)] border-b border-[var(--border)]"
+        data-no-print
+      >
+        {/* Back */}
+        <Link
+          href="/dashboard/reports"
+          className="flex items-center gap-1 text-[12px] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors shrink-0"
+        >
+          <span className="material-symbols-outlined text-[16px]">arrow_back</span>
+          <span className="hidden sm:inline">Reports</span>
+        </Link>
 
-      <div className="flex flex-col gap-6 max-w-5xl mx-auto">
-        {/* Page header (above the report) */}
-        <div className="flex items-center justify-between no-print">
-          <div className="flex flex-col gap-1">
-            <Link href="/dashboard/reports" className="text-xs text-neutral-500 hover:text-white flex items-center gap-1 mb-1 w-fit">
-              <span className="material-symbols-outlined text-sm">arrow_back</span>
-              Reports
-            </Link>
-            <h1 className="text-2xl font-bold text-white tracking-tight">{report.title}</h1>
-            <div className="flex items-center gap-3 text-sm text-neutral-400">
-              {place && (
-                <div className="flex items-center gap-2">
-                  <span className="material-symbols-outlined text-sm">location_on</span>
-                  {place.name}
-                  {place.vulnerabilityLevel && (
-                    <span className="text-[10px] uppercase font-bold px-1.5 py-0.5 rounded" style={{
-                      backgroundColor: place.vulnerabilityLevel === 'CRITICAL' ? 'rgba(239,68,68,0.2)' :
-                                       place.vulnerabilityLevel === 'HIGH' ? 'rgba(249,115,22,0.2)' :
-                                       place.vulnerabilityLevel === 'MODERATE' ? 'rgba(234,179,8,0.2)' : 'rgba(34,197,94,0.2)',
-                      color: place.vulnerabilityLevel === 'CRITICAL' ? '#ef4444' :
-                             place.vulnerabilityLevel === 'HIGH' ? '#f97316' :
-                             place.vulnerabilityLevel === 'MODERATE' ? '#eab308' : '#22c55e',
-                    }}>
-                      {place.vulnerabilityLevel}
-                    </span>
-                  )}
-                </div>
-              )}
-              <span>•</span>
-              <span>Generated {new Date(report.generatedAt).toLocaleDateString()}</span>
-            </div>
-          </div>
-          <button onClick={triggerDownload} className="px-4 py-2 bg-[#22c55e] text-white text-sm font-semibold rounded-lg hover:bg-[#16a34a] transition-colors flex items-center gap-2">
-            <span className="material-symbols-outlined text-sm">download</span>
-            Download PDF
+        {/* Title — hidden on mobile */}
+        <span className="hidden sm:block flex-1 text-[13px] font-semibold text-[var(--text-primary)] truncate text-center px-2">
+          {report.title}
+        </span>
+        <div className="flex-1 sm:hidden" />
+
+        {/* Actions */}
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            onClick={handleShare}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-medium text-[var(--text-secondary)] border border-[var(--border)] rounded-lg hover:border-[var(--border-strong)] hover:text-[var(--text-primary)] transition-colors"
+          >
+            <span className="material-symbols-outlined text-[14px]">link</span>
+            <span className="hidden sm:inline">{copied ? 'Copied!' : 'Share Link'}</span>
           </button>
-        </div>
-
-        {/* Stats hero */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-2">
-          {[
-            { label: 'Temp Reduction', value: `${contentData?.stats?.tempReductionC?.toFixed(1) ?? scenario?.totalProjectedTempReductionC?.toFixed(1) ?? '0'}°C`, color: '#22c55e', icon: 'thermostat' },
-            { label: 'Lives Saved/yr', value: `${contentData?.stats?.livesSaved?.toFixed(0) ?? scenario?.totalProjectedLivesSaved ?? '0'}`, color: '#3b82f6', icon: 'favorite' },
-            { label: 'CO₂ Offset', value: `${contentData?.stats?.co2ReductionTons?.toFixed(1) ?? scenario?.projectedCo2ReductionTons?.toFixed(1) ?? '0'} t/yr`, color: '#10b981', icon: 'eco' },
-            { label: 'Total Cost', value: `${sym}${fmt(contentData?.stats?.totalCostLocal ?? scenario?.totalEstimatedCostUsd ?? 0)}`, color: '#f59e0b', icon: 'payments' },
-          ].map(stat => (
-            <div key={stat.label} className="rounded-xl border border-white/[0.06] bg-[#111113] p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <span className="material-symbols-outlined text-base" style={{ color: stat.color, fontVariationSettings: "'FILL' 1" }}>{stat.icon}</span>
-                <span className="text-[10px] font-medium uppercase tracking-wider text-neutral-500">{stat.label}</span>
-              </div>
-              <div className="text-xl font-bold text-white">{stat.value}</div>
-            </div>
-          ))}
-        </div>
-
-        {/* Tabs */}
-        <div className="flex gap-1 no-print overflow-x-auto">
-          {([
-            { key: 'overview', label: 'Overview', icon: 'description' },
-            { key: 'strategies', label: 'Strategies', icon: 'category' },
-            { key: 'impact', label: 'Impact Analysis', icon: 'analytics' },
-            { key: 'implementation', label: 'Implementation', icon: 'timeline' },
-          ] as const).map(tab => (
-            <button key={tab.key} onClick={() => setActiveTab(tab.key)}
-              className={`px-4 py-2 text-xs font-medium rounded-lg transition-colors flex items-center gap-1.5 whitespace-nowrap ${
-                activeTab === tab.key
-                  ? 'bg-[#22c55e] text-white'
-                  : 'text-neutral-400 hover:text-white hover:bg-white/[0.04]'
-              }`}>
-              <span className="material-symbols-outlined text-sm">{tab.icon}</span>{tab.label}
-            </button>
-          ))}
-        </div>
-
-        {/* Content */}
-        <div className="space-y-6">
-          {/* Overview tab */}
-          {(activeTab === 'overview' || (typeof window !== 'undefined' && window.matchMedia?.('print')?.matches)) && (
-            <div className="rounded-xl border border-white/[0.06] bg-[#111113] p-6">
-              <h2 className="text-lg font-semibold text-white mb-1">{scenario?.name || report.title}</h2>
-              {scenario?.description && <p className="text-sm text-neutral-400 mb-4">{scenario.description}</p>}
-              <div className="prose prose-sm prose-invert max-w-none">
-                <h3 className="text-sm font-semibold text-white mt-4 mb-2">Executive Summary</h3>
-                <div className="text-sm text-neutral-300 leading-relaxed whitespace-pre-wrap">{contentData.executiveSummary}</div>
-              </div>
-            </div>
-          )}
-
-          {/* Strategies tab */}
-          {(activeTab === 'strategies' || (typeof window !== 'undefined' && window.matchMedia?.('print')?.matches)) && contentData?.strategies && (
-            <div className="space-y-3">
-              <h3 className="text-lg font-semibold text-white mb-3 no-print">Proposed Strategies</h3>
-              {contentData.strategies.map((strategy: any, i: number) => (
-                <div key={i} className="rounded-xl border border-white/[0.06] bg-[#111113] p-4 print-break">
-                  <div className="flex items-start justify-between mb-3">
-                    <div>
-                      <h3 className="text-sm font-semibold text-white">{strategy.name}</h3>
-                      <span className="text-[10px] font-medium uppercase tracking-wide text-neutral-500">{strategy.type.replace(/_/g, ' ')}</span>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-sm font-bold text-white">{sym}{strategy.totalCostLocal?.toLocaleString()}</div>
-                      <div className="text-[10px] text-neutral-500">{strategy.quantity} units × {sym}{strategy.unitCostLocal?.toLocaleString()}</div>
-                    </div>
-                  </div>
-                  <p className="text-xs text-neutral-400 mb-3">{strategy.description}</p>
-                  <div className="grid grid-cols-2 gap-2 text-xs">
-                    <div className="rounded-lg bg-[#09090b] px-3 py-2"><span className="text-neutral-500">Cooling</span> <span className="font-medium text-[#22c55e] ml-1">-{strategy.tempReductionC?.toFixed(2)}°C</span></div>
-                    <div className="rounded-lg bg-[#09090b] px-3 py-2"><span className="text-neutral-500">CO₂</span> <span className="font-medium text-white ml-1">-{strategy.co2ReductionTons?.toFixed(1)} t/yr</span></div>
-                  </div>
-                  {strategy.placementNotes && (
-                    <div className="mt-3 text-[11px] text-neutral-500 bg-[#09090b] rounded-lg p-3">
-                      <span className="font-medium text-neutral-400">Placement: </span>{strategy.placementNotes}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Impact tab */}
-          {(activeTab === 'impact' || (typeof window !== 'undefined' && window.matchMedia?.('print')?.matches)) && (
-            <div className="space-y-4 print-break">
-              <div className="rounded-xl border border-white/[0.06] bg-[#111113] p-6">
-                <h3 className="text-sm font-semibold text-white mb-3">Impact Analysis</h3>
-                <div className="text-sm text-neutral-300 leading-relaxed whitespace-pre-wrap">{contentData.impactAnalysis}</div>
-              </div>
-              {contentData.riskFactors?.length > 0 && (
-                <div className="rounded-xl border border-white/[0.06] bg-[#111113] p-6">
-                  <h3 className="text-sm font-semibold text-white mb-3">Risk Factors</h3>
-                  <div className="space-y-2">
-                    {contentData.riskFactors.map((risk: string, i: number) => (
-                      <div key={i} className="flex items-start gap-2 text-sm">
-                        <span className="material-symbols-outlined text-orange-400 text-base mt-0.5">warning</span>
-                        <span className="text-neutral-300">{risk}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Implementation tab */}
-          {(activeTab === 'implementation' || (typeof window !== 'undefined' && window.matchMedia?.('print')?.matches)) && (
-            <div className="space-y-4 print-break">
-              <div className="rounded-xl border border-white/[0.06] bg-[#111113] p-6">
-                <h3 className="text-sm font-semibold text-white mb-3">Implementation Plan</h3>
-                <div className="text-sm text-neutral-300 leading-relaxed whitespace-pre-wrap">{contentData.implementationPlan}</div>
-              </div>
-              <div className="rounded-xl border border-white/[0.06] bg-[#111113] p-6">
-                <h3 className="text-sm font-semibold text-white mb-3">Recommendations</h3>
-                <div className="text-sm text-neutral-300 leading-relaxed whitespace-pre-wrap">{contentData.recommendations}</div>
-              </div>
-              <div className="rounded-xl border border-white/[0.06] bg-[#111113] p-6">
-                <h3 className="text-sm font-semibold text-white mb-3">Monitoring Plan</h3>
-                <div className="text-sm text-neutral-300 leading-relaxed whitespace-pre-wrap">{contentData.monitoringPlan}</div>
-              </div>
-            </div>
-          )}
+          <button
+            onClick={handlePrint}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-semibold text-[#22c55e] border border-[rgba(34,197,94,0.35)] rounded-lg hover:bg-[rgba(34,197,94,0.06)] transition-colors"
+          >
+            <span className="material-symbols-outlined text-[14px]">print</span>
+            <span className="hidden sm:inline">Print / Save PDF</span>
+          </button>
         </div>
       </div>
 
-      {/* ── Hidden print-only div ─────────────────────────────────────────────
-          Visible only during window.print(). Contains a clean white-background
-          version of the full report with no dark theme, no green colours, and
-          no layout chrome. This is what the browser renders to PDF. */}
-      <div id="report-print-content" style={{ display: 'none' }}>
-        <div style={{ padding: '48px 56px', maxWidth: '740px', margin: '0 auto', fontFamily: 'Georgia, "Times New Roman", serif', fontSize: '11pt', lineHeight: '1.65', color: '#111' }}>
+      {/* ── Report content ─────────────────────────────────────────────────────── */}
+      <div className="report-content-area mx-auto px-4 sm:px-6 py-10" style={{ maxWidth: 780 }}>
 
-          {/* ── Cover header ── */}
-          <div style={{ borderBottom: '2pt solid #111', paddingBottom: '18px', marginBottom: '28px' }}>
-            <p style={{ margin: '0 0 6px', fontSize: '9pt', color: '#666', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-              Urban Heat Intelligence · HeatPlan
-            </p>
-            <h1 style={{ margin: '0 0 6px', fontSize: '20pt', fontWeight: 'bold', color: '#000', lineHeight: 1.2 }}>
-              {report.title}
+        {/* ── SECTION 1: Header ── */}
+        <div className="report-section mb-10 pb-8 border-b border-[var(--border)]">
+          <div className="flex flex-wrap items-start gap-3 mb-2">
+            <h1 className="text-[28px] font-bold tracking-tight text-[var(--text-primary)] leading-tight flex-1">
+              {place?.name ?? scenario?.name ?? report.title}
             </h1>
-            <p style={{ margin: 0, fontSize: '10pt', color: '#444' }}>
-              {place?.name ? `${place.name} · ` : ''}
-              {scenario?.name ? `${scenario.name} · ` : ''}
-              Generated {new Date(report.generatedAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
-            </p>
+            {vulnLevel && (
+              <span
+                className="shrink-0 mt-1 text-[11px] font-bold uppercase px-2.5 py-1 rounded-lg"
+                style={{ background: vc.bg, color: vc.color, border: `1px solid ${vc.border}` }}
+              >
+                {vulnLevel}
+              </span>
+            )}
           </div>
+          <p className="text-[13px] text-[var(--text-secondary)] mb-4">
+            {report.title}
+          </p>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] text-[var(--text-tertiary)]">
+            <span className="flex items-center gap-1">
+              <span className="material-symbols-outlined text-[13px]">calendar_today</span>
+              Generated {new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(report.generatedAt))}
+            </span>
+            <span>·</span>
+            <span>HeatPlan AI</span>
+            {report.status === 'PUBLISHED' && (
+              <>
+                <span>·</span>
+                <span className="text-[#22c55e] font-medium">Published</span>
+              </>
+            )}
+          </div>
+        </div>
 
-          {/* ── Key metrics row ── */}
-          <div style={{ display: 'flex', gap: '10px', marginBottom: '36px', flexWrap: 'wrap' }}>
-            {[
-              { label: 'Temperature Reduction', value: `${contentData?.stats?.tempReductionC != null ? contentData.stats.tempReductionC.toFixed(1) : (scenario?.totalProjectedTempReductionC?.toFixed(1) ?? '—')}°C` },
-              { label: 'Lives Protected / yr', value: contentData?.stats?.livesSaved != null ? String(Math.round(contentData.stats.livesSaved)) : (scenario?.totalProjectedLivesSaved != null ? String(scenario.totalProjectedLivesSaved) : '—') },
-              { label: 'CO₂ Offset', value: `${contentData?.stats?.co2ReductionTons != null ? contentData.stats.co2ReductionTons.toFixed(1) : (scenario?.projectedCo2ReductionTons?.toFixed(1) ?? '—')} t/yr` },
-              { label: 'Total Investment', value: `${sym}${fmt(contentData?.stats?.totalCostLocal ?? scenario?.totalEstimatedCostUsd ?? 0)}` },
-            ].map(s => (
-              <div key={s.label} style={{ flex: '1 1 140px', border: '1pt solid #ccc', padding: '10px 14px', minWidth: '120px' }}>
-                <div style={{ fontSize: '8pt', color: '#666', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '6px' }}>{s.label}</div>
-                <div style={{ fontSize: '16pt', fontWeight: 'bold', color: '#000' }}>{s.value}</div>
+        {/* ── SECTION 2: Key Metrics Strip ── */}
+        <div className="report-section grid grid-cols-2 sm:grid-cols-4 gap-3 mb-10">
+          {[
+            { label: 'Temp Reduction', value: tempReduction != null ? `${Number(tempReduction).toFixed(1)}°C` : '—', icon: 'thermostat', color: '#22c55e' },
+            { label: 'Lives Protected / yr', value: livesSaved != null ? String(Math.round(Number(livesSaved))) : '—', icon: 'favorite', color: '#3b82f6' },
+            { label: 'CO₂ Offset', value: co2 != null ? `${Number(co2).toFixed(1)} t/yr` : '—', icon: 'eco', color: '#10b981' },
+            ...(payback != null
+              ? [{ label: 'Payback Period', value: `${payback} yrs`, icon: 'payments', color: '#f59e0b' }]
+              : [{ label: 'Total Investment', value: fmt(totalCost, sym), icon: 'payments', color: '#f59e0b' }]
+            ),
+          ].map((stat) => (
+            <div key={stat.label}
+              className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-2xl p-4 flex flex-col gap-2">
+              <div className="flex items-center gap-1.5">
+                <span
+                  className="material-symbols-outlined text-[16px]"
+                  style={{ color: stat.color, fontVariationSettings: "'FILL' 1" }}
+                >
+                  {stat.icon}
+                </span>
+                <span className="text-[9px] font-semibold uppercase tracking-[0.08em] text-[var(--text-tertiary)]">
+                  {stat.label}
+                </span>
               </div>
-            ))}
-          </div>
-
-          {/* ── Executive Summary ── */}
-          {contentData.executiveSummary && (
-            <div style={{ marginBottom: '32px', pageBreakInside: 'avoid' }}>
-              <h2 style={{ fontSize: '13pt', fontWeight: 'bold', color: '#000', margin: '0 0 8px', paddingBottom: '6px', borderBottom: '1pt solid #ccc' }}>
-                Executive Summary
-              </h2>
-              <p style={{ margin: 0, whiteSpace: 'pre-wrap', color: '#222' }}>{cleanText(contentData.executiveSummary)}</p>
+              <span className="text-[22px] font-extrabold tracking-tight text-[var(--text-primary)] tabular-nums">
+                {stat.value}
+              </span>
             </div>
-          )}
+          ))}
+        </div>
 
-          {/* ── Proposed Strategies ── */}
-          {Array.isArray(contentData.strategies) && contentData.strategies.length > 0 && (
-            <div style={{ marginBottom: '32px' }}>
-              <h2 style={{ fontSize: '13pt', fontWeight: 'bold', color: '#000', margin: '0 0 16px', paddingBottom: '6px', borderBottom: '1pt solid #ccc' }}>
-                Proposed Cooling Strategies
-              </h2>
-              {contentData.strategies.map((s: any, i: number) => (
-                <div key={i} style={{ marginBottom: '20px', paddingBottom: '20px', borderBottom: i < contentData.strategies.length - 1 ? '0.5pt solid #e5e5e5' : 'none', pageBreakInside: 'avoid' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '6px' }}>
+        {/* ── SECTION 3: Executive Summary ── */}
+        {executiveSummary && (
+          <Section title="Executive Summary" icon="summarize" className="mb-8">
+            <div className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-2xl p-6">
+              <p className="text-[15px] text-[var(--text-secondary)] leading-relaxed">
+                {executiveSummary}
+              </p>
+            </div>
+          </Section>
+        )}
+
+        {/* ── SECTION 4: The Heat Problem ── */}
+        {heatProblem && (
+          <Section title="The Heat Problem" icon="local_fire_department" className="mb-8">
+            <div className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-2xl p-6">
+              <p className="text-[14px] text-[var(--text-secondary)] leading-relaxed whitespace-pre-wrap">
+                {heatProblem}
+              </p>
+            </div>
+          </Section>
+        )}
+
+        {/* ── SECTION 5: Proposed Strategies ── */}
+        {strategies.length > 0 && (
+          <Section title="Proposed Cooling Strategies" icon="park" className="mb-8">
+            <div className="flex flex-col gap-4">
+              {strategies.map((s: any, i: number) => (
+                <div key={i} className="report-strategy-card bg-[var(--bg-surface)] border border-[var(--border)] rounded-2xl p-5">
+                  {/* Header */}
+                  <div className="flex items-start justify-between gap-3 mb-3">
                     <div>
-                      <strong style={{ fontSize: '11pt', color: '#000' }}>{s.name}</strong>
-                      {s.type && <span style={{ marginLeft: '10px', fontSize: '9pt', color: '#666', textTransform: 'uppercase' }}>{String(s.type).replace(/_/g, ' ')}</span>}
+                      <h3 className="text-[14px] font-bold text-[var(--text-primary)]">{s.name}</h3>
+                      {s.type && (
+                        <span className="text-[10px] uppercase tracking-wide text-[var(--text-tertiary)] font-medium">
+                          {String(s.type).replace(/_/g, ' ')}
+                        </span>
+                      )}
+                      {s.location && (
+                        <p className="text-[12px] italic text-[var(--text-tertiary)] mt-0.5">{s.location}</p>
+                      )}
                     </div>
-                    {s.totalCostLocal != null && (
-                      <span style={{ fontSize: '11pt', fontWeight: 'bold', color: '#000' }}>{sym}{Number(s.totalCostLocal).toLocaleString()}</span>
+                    <div className="text-right shrink-0">
+                      {s.totalCostLocal != null && (
+                        <div className="text-[14px] font-bold text-[var(--text-primary)]">
+                          {sym}{Number(s.totalCostLocal).toLocaleString()}
+                        </div>
+                      )}
+                      {s.quantity != null && s.unitCostLocal != null && (
+                        <div className="text-[10px] text-[var(--text-tertiary)]">
+                          {s.quantity} × {sym}{Number(s.unitCostLocal).toLocaleString()}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  {s.description && (
+                    <p className="text-[12px] text-[var(--text-secondary)] mb-3 leading-relaxed">{s.description}</p>
+                  )}
+                  {/* Detail grid */}
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-[11px]">
+                    {s.coverageArea != null && (
+                      <div className="bg-[var(--bg-elevated)] rounded-lg px-3 py-2">
+                        <div className="text-[var(--text-tertiary)] mb-0.5">Coverage</div>
+                        <div className="font-medium text-[var(--text-primary)]">{s.coverageArea}</div>
+                      </div>
+                    )}
+                    {s.tempReductionC != null && (
+                      <div className="bg-[var(--bg-elevated)] rounded-lg px-3 py-2">
+                        <div className="text-[var(--text-tertiary)] mb-0.5">Cooling</div>
+                        <div className="font-medium text-[#22c55e]">−{Number(s.tempReductionC).toFixed(2)}°C</div>
+                      </div>
+                    )}
+                    {s.co2ReductionTons != null && (
+                      <div className="bg-[var(--bg-elevated)] rounded-lg px-3 py-2">
+                        <div className="text-[var(--text-tertiary)] mb-0.5">CO₂ Offset</div>
+                        <div className="font-medium text-[var(--text-primary)]">{Number(s.co2ReductionTons).toFixed(1)} t/yr</div>
+                      </div>
+                    )}
+                    {s.beneficiaries != null && (
+                      <div className="bg-[var(--bg-elevated)] rounded-lg px-3 py-2">
+                        <div className="text-[var(--text-tertiary)] mb-0.5">Beneficiaries</div>
+                        <div className="font-medium text-[var(--text-primary)]">{Number(s.beneficiaries).toLocaleString()}</div>
+                      </div>
+                    )}
+                    {s.timeline != null && (
+                      <div className="bg-[var(--bg-elevated)] rounded-lg px-3 py-2">
+                        <div className="text-[var(--text-tertiary)] mb-0.5">Timeline</div>
+                        <div className="font-medium text-[var(--text-primary)]">{s.timeline}</div>
+                      </div>
+                    )}
+                    {s.fundingSource != null && (
+                      <div className="bg-[var(--bg-elevated)] rounded-lg px-3 py-2 col-span-2 sm:col-span-3">
+                        <div className="text-[var(--text-tertiary)] mb-0.5">Funding Source</div>
+                        <div className="font-medium text-[var(--text-primary)]">{s.fundingSource}</div>
+                      </div>
                     )}
                   </div>
-                  {s.description && <p style={{ margin: '0 0 8px', fontSize: '10pt', color: '#333' }}>{cleanText(s.description)}</p>}
-                  <div style={{ display: 'flex', gap: '20px', fontSize: '9pt', color: '#444' }}>
-                    {s.quantity != null && <span>Quantity: <strong>{s.quantity}</strong> units</span>}
-                    {s.unitCostLocal != null && <span>Unit cost: <strong>{sym}{Number(s.unitCostLocal).toLocaleString()}</strong></span>}
-                    {s.tempReductionC != null && <span>Cooling: <strong>{Number(s.tempReductionC).toFixed(2)}°C reduction</strong></span>}
-                    {s.co2ReductionTons != null && <span>CO₂: <strong>{Number(s.co2ReductionTons).toFixed(1)} t/yr offset</strong></span>}
-                  </div>
                   {s.placementNotes && (
-                    <p style={{ margin: '8px 0 0', fontSize: '9pt', color: '#555', fontStyle: 'italic' }}>
-                      Placement: {cleanText(s.placementNotes)}
-                    </p>
+                    <div className="mt-3 px-3 py-2 bg-[var(--bg-elevated)] rounded-lg text-[11px] text-[var(--text-secondary)]">
+                      <span className="font-medium text-[var(--text-primary)]">Placement note: </span>
+                      {s.placementNotes}
+                    </div>
                   )}
                 </div>
               ))}
             </div>
-          )}
+          </Section>
+        )}
 
-          {/* ── Impact Analysis ── */}
-          {contentData.impactAnalysis && (
-            <div style={{ marginBottom: '32px', pageBreakBefore: 'always' }}>
-              <h2 style={{ fontSize: '13pt', fontWeight: 'bold', color: '#000', margin: '0 0 8px', paddingBottom: '6px', borderBottom: '1pt solid #ccc' }}>
-                Impact Analysis
-              </h2>
-              <p style={{ margin: 0, whiteSpace: 'pre-wrap', color: '#222' }}>{cleanText(contentData.impactAnalysis)}</p>
+        {/* ── SECTION 6: Combined Impact ── */}
+        {impactText && (
+          <Section title="Combined Impact" icon="analytics" className="mb-8">
+            {/* Before/After comparison */}
+            {(c?.currentTemp != null || c?.projectedTemp != null || c?.currentVulnerabilityLevel || c?.projectedVulnerabilityLevel) && (
+              <div className="flex gap-3 mb-4">
+                <div className="flex-1 rounded-xl p-4 border"
+                  style={{ background: vl(c?.currentVulnerabilityLevel ?? vulnLevel).bg, borderColor: vl(c?.currentVulnerabilityLevel ?? vulnLevel).border }}>
+                  <div className="text-[10px] font-bold uppercase tracking-wide text-[var(--text-tertiary)] mb-2">Before</div>
+                  {c?.currentTemp != null && <div className="text-[20px] font-bold" style={{ color: vl(c?.currentVulnerabilityLevel ?? vulnLevel).color }}>{c.currentTemp}°C</div>}
+                  {(c?.currentVulnerabilityLevel ?? vulnLevel) && (
+                    <div className="text-[11px] font-semibold mt-0.5" style={{ color: vl(c?.currentVulnerabilityLevel ?? vulnLevel).color }}>
+                      {c?.currentVulnerabilityLevel ?? vulnLevel}
+                    </div>
+                  )}
+                </div>
+                <div className="flex items-center text-[var(--text-tertiary)]">
+                  <span className="material-symbols-outlined text-[20px]">arrow_forward</span>
+                </div>
+                <div className="flex-1 rounded-xl p-4 border"
+                  style={{ background: 'rgba(34,197,94,0.08)', borderColor: 'rgba(34,197,94,0.25)' }}>
+                  <div className="text-[10px] font-bold uppercase tracking-wide text-[var(--text-tertiary)] mb-2">After</div>
+                  {c?.projectedTemp != null && <div className="text-[20px] font-bold text-[#22c55e]">{c.projectedTemp}°C</div>}
+                  {tempReduction != null && c?.projectedTemp == null && (
+                    <div className="text-[20px] font-bold text-[#22c55e]">−{Number(tempReduction).toFixed(1)}°C</div>
+                  )}
+                  <div className="text-[11px] font-semibold mt-0.5 text-[#22c55e]">
+                    {c?.projectedVulnerabilityLevel ?? 'Reduced Risk'}
+                  </div>
+                </div>
+              </div>
+            )}
+            <div className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-2xl p-6">
+              <p className="text-[14px] text-[var(--text-secondary)] leading-relaxed whitespace-pre-wrap">{impactText}</p>
             </div>
-          )}
+          </Section>
+        )}
 
-          {/* ── Risk Factors ── */}
-          {Array.isArray(contentData.riskFactors) && contentData.riskFactors.length > 0 && (
-            <div style={{ marginBottom: '32px', pageBreakInside: 'avoid' }}>
-              <h2 style={{ fontSize: '13pt', fontWeight: 'bold', color: '#000', margin: '0 0 8px', paddingBottom: '6px', borderBottom: '1pt solid #ccc' }}>
-                Risk Factors
-              </h2>
-              <ul style={{ margin: 0, paddingLeft: '20px', color: '#222' }}>
-                {contentData.riskFactors.map((r: string, i: number) => (
-                  <li key={i} style={{ marginBottom: '6px', fontSize: '10pt' }}>{cleanText(r)}</li>
-                ))}
-              </ul>
+        {/* ── SECTION 7: Implementation Roadmap ── */}
+        {(timeline.length > 0 || implementationText) && (
+          <Section title="Implementation Roadmap" icon="timeline" className="mb-8">
+            {timeline.length > 0 ? (
+              <div className="relative">
+                {/* Vertical connecting line */}
+                <div className="absolute left-[13px] top-7 bottom-7 w-px bg-[var(--border)]" />
+                <div className="flex flex-col gap-0">
+                  {timeline.map((phase: any, i: number) => (
+                    <div key={i} className="report-timeline-item flex gap-4 pb-6 last:pb-0">
+                      {/* Circle */}
+                      <div className="shrink-0 w-7 h-7 rounded-full bg-[var(--bg-elevated)] border border-[var(--border)] flex items-center justify-center text-[11px] font-bold text-[var(--text-primary)] z-10">
+                        {i + 1}
+                      </div>
+                      {/* Content */}
+                      <div className="flex-1 min-w-0 pt-0.5">
+                        <div className="flex items-center gap-2 flex-wrap mb-1">
+                          <span className="text-[13px] font-bold text-[var(--text-primary)]">
+                            {phase.phase ?? phase.name ?? `Phase ${i + 1}`}
+                          </span>
+                          {(phase.duration ?? phase.timeline) && (
+                            <span className="text-[10px] text-[var(--text-tertiary)] bg-[var(--bg-surface)] border border-[var(--border)] rounded px-1.5 py-0.5">
+                              {phase.duration ?? phase.timeline}
+                            </span>
+                          )}
+                        </div>
+                        {Array.isArray(phase.activities) && phase.activities.length > 0 && (
+                          <ul className="mt-1 mb-1.5 flex flex-col gap-0.5">
+                            {phase.activities.map((a: string, j: number) => (
+                              <li key={j} className="text-[12px] text-[var(--text-secondary)] flex gap-1.5">
+                                <span className="text-[var(--text-tertiary)] shrink-0 mt-0.5">•</span>
+                                <span>{a}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                        {phase.activities && !Array.isArray(phase.activities) && (
+                          <p className="text-[12px] text-[var(--text-secondary)] mt-1 mb-1.5">{String(phase.activities)}</p>
+                        )}
+                        {(phase.milestone ?? phase.milestone_target) && (
+                          <p className="text-[11px] italic text-[#22c55e]">
+                            ✓ {phase.milestone ?? phase.milestone_target}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-2xl p-6">
+                <p className="text-[14px] text-[var(--text-secondary)] leading-relaxed whitespace-pre-wrap">{implementationText}</p>
+              </div>
+            )}
+          </Section>
+        )}
+
+        {/* ── SECTION 8: Funding Sources ── */}
+        {financialText && (
+          <Section title="Funding Sources" icon="account_balance" className="mb-8">
+            <div className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-2xl p-6">
+              <p className="text-[14px] text-[var(--text-secondary)] leading-relaxed whitespace-pre-wrap">{financialText}</p>
             </div>
-          )}
+          </Section>
+        )}
 
-          {/* ── Implementation Plan ── */}
-          {contentData.implementationPlan && (
-            <div style={{ marginBottom: '32px', pageBreakBefore: 'always' }}>
-              <h2 style={{ fontSize: '13pt', fontWeight: 'bold', color: '#000', margin: '0 0 8px', paddingBottom: '6px', borderBottom: '1pt solid #ccc' }}>
-                Implementation Plan
-              </h2>
-              <p style={{ margin: 0, whiteSpace: 'pre-wrap', color: '#222' }}>{cleanText(contentData.implementationPlan)}</p>
+        {/* ── SECTION 9: Recommendations / Next Steps ── */}
+        {recommendations && (
+          <Section title="Recommended Next Steps" icon="checklist" className="mb-8">
+            <div className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-2xl p-5">
+              {Array.isArray(recommendations) ? (
+                <ol className="flex flex-col gap-3">
+                  {recommendations.map((r: any, i: number) => {
+                    const action = typeof r === 'string' ? r : (r.action ?? r.recommendation ?? r.step ?? JSON.stringify(r));
+                    const timeline = typeof r === 'object' ? r.timeline : null;
+                    const impact = typeof r === 'object' ? (r.expectedImpact ?? r.impact) : null;
+                    return (
+                      <li key={i} className="flex gap-3">
+                        <span className="shrink-0 w-5 h-5 rounded-full bg-[var(--bg-elevated)] border border-[var(--border)] flex items-center justify-center text-[10px] font-bold text-[var(--text-primary)] mt-0.5">
+                          {i + 1}
+                        </span>
+                        <div className="flex-1">
+                          <p className="text-[13px] text-[var(--text-primary)]">{action}</p>
+                          <div className="flex flex-wrap gap-x-3 mt-0.5">
+                            {timeline && <span className="text-[11px] text-[var(--text-tertiary)]">{timeline}</span>}
+                            {impact && <span className="text-[11px] text-[var(--text-secondary)]">{impact}</span>}
+                          </div>
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ol>
+              ) : (
+                <p className="text-[14px] text-[var(--text-secondary)] leading-relaxed whitespace-pre-wrap">{String(recommendations)}</p>
+              )}
             </div>
-          )}
+          </Section>
+        )}
 
-          {/* ── Recommendations ── */}
-          {contentData.recommendations && (
-            <div style={{ marginBottom: '32px', pageBreakInside: 'avoid' }}>
-              <h2 style={{ fontSize: '13pt', fontWeight: 'bold', color: '#000', margin: '0 0 8px', paddingBottom: '6px', borderBottom: '1pt solid #ccc' }}>
-                Recommendations
-              </h2>
-              <p style={{ margin: 0, whiteSpace: 'pre-wrap', color: '#222' }}>{cleanText(contentData.recommendations)}</p>
+        {/* ── SECTION 10: Monitoring Plan ── */}
+        {monitoringText && (
+          <Section title="Monitoring Plan" icon="monitoring" className="mb-8">
+            <div className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-2xl p-6">
+              <p className="text-[14px] text-[var(--text-secondary)] leading-relaxed whitespace-pre-wrap">{monitoringText}</p>
             </div>
-          )}
+          </Section>
+        )}
 
-          {/* ── Monitoring Plan ── */}
-          {contentData.monitoringPlan && (
-            <div style={{ marginBottom: '40px', pageBreakInside: 'avoid' }}>
-              <h2 style={{ fontSize: '13pt', fontWeight: 'bold', color: '#000', margin: '0 0 8px', paddingBottom: '6px', borderBottom: '1pt solid #ccc' }}>
-                Monitoring Plan
-              </h2>
-              <p style={{ margin: 0, whiteSpace: 'pre-wrap', color: '#222' }}>{cleanText(contentData.monitoringPlan)}</p>
+        {/* ── SECTION 11: References ── */}
+        {references && (Array.isArray(references) ? references.length > 0 : String(references).trim()) && (
+          <Section title="References" icon="library_books" className="mb-8">
+            <div className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-2xl p-5">
+              {Array.isArray(references) ? (
+                <ol className="flex flex-col gap-1.5 pl-4 list-decimal">
+                  {references.map((ref: any, i: number) => (
+                    <li key={i} className="text-[11px] text-[var(--text-tertiary)] pl-1">
+                      {typeof ref === 'string' ? ref : (ref.citation ?? ref.text ?? JSON.stringify(ref))}
+                    </li>
+                  ))}
+                </ol>
+              ) : (
+                <p className="text-[11px] text-[var(--text-tertiary)] whitespace-pre-wrap">{String(references)}</p>
+              )}
             </div>
-          )}
+          </Section>
+        )}
 
-          {/* ── Footer ── */}
-          <div style={{ borderTop: '1pt solid #ccc', paddingTop: '10px', display: 'flex', justifyContent: 'space-between', fontSize: '8pt', color: '#888' }}>
-            <span>HeatPlan · Urban Heat Intelligence Platform</span>
-            <span>{place?.name ? `${place.name} Heat Mitigation Report · ` : ''}{new Date(report.generatedAt).toLocaleDateString()}</span>
-          </div>
-
+        {/* ── Footer ── */}
+        <div className="mt-12 pt-6 border-t border-[var(--border)] flex items-center justify-between text-[11px] text-[var(--text-tertiary)]" data-no-print>
+          <span>HeatPlan · Urban Heat Intelligence Platform</span>
+          <span>{new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(report.generatedAt))}</span>
         </div>
       </div>
     </>
   );
 }
+
