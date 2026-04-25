@@ -13,9 +13,9 @@ const VULN_COLORS: Record<string, { bg: string; text: string }> = {
 export default async function DashboardReportsPage() {
   const session = await auth();
 
-  if (!session?.user?.cityId || !session.user.id) {
-    redirect('/login');
-  }
+  if (!session?.user?.id) redirect('/login');
+  if (session.user.role !== 'CITY_ADMIN') redirect('/dashboard/resident');
+  if (!session.user.cityId) redirect('/dashboard/mydata');
 
   const reports = await prisma.report.findMany({
     where: { cityId: session.user.cityId },

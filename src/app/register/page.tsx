@@ -1,33 +1,28 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { signIn } from 'next-auth/react';
+import { useEffect, useState } from 'react';
+import { signIn, useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
 export default function RegisterPage() {
   const router = useRouter();
-  const [form, setForm] = useState({
-    name: '',
-    email: '',
-    password: '',
-    confirmPassword: '',
-    cityName: '',
-    role: 'CITY_ADMIN',
-  });
+  const { data: session } = useSession();
+
+  useEffect(() => {
+    if (session?.user) {
+      // Already signed in — redirect based on role
+      if (session.user.role === 'CITY_ADMIN') router.replace('/dashboard/mydata');
+      else if (session.user.role === 'RESIDENT') router.replace('/dashboard/resident');
+      else router.replace('/select-role');
+    }
+  }, [session, router]);
+
+  const [form, setForm] = useState({ name: '', email: '', password: '', confirmPassword: '' });
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [signupToast, setSignupToast] = useState<{ role: string; name: string } | null>(null);
-
-  const roleOptions = [
-    { value: 'MUNICIPAL_COMMISSIONER', label: 'Municipal Commissioner' },
-    { value: 'WARD_OFFICER', label: 'Ward Officer' },
-    { value: 'SDMA_OBSERVER', label: 'SDMA Observer' },
-    { value: 'DATA_ANALYST', label: 'Data Analyst' },
-    { value: 'CITIZEN_REPORTER', label: 'Resident / Citizen Reporter' },
-    { value: 'CITY_ADMIN', label: 'Other (City Admin)' },
-  ];
+  const [signupToast, setSignupToast] = useState<{ name: string } | null>(null);
 
   const passwordStrength = (() => {
     const p = form.password;
@@ -63,64 +58,41 @@ export default function RegisterPage() {
       const res = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: form.name,
-          email: form.email,
-          password: form.password,
-          cityName: form.cityName,
-          role: form.role,
-        }),
+        body: JSON.stringify({ name: form.name, email: form.email, password: form.password }),
       });
 
       const data = await res.json();
-
       if (!res.ok) {
         setError(data.error || 'Registration failed');
+        setLoading(false);
         return;
       }
 
-      // Auto sign-in after registration
-      const signInResult = await signIn('credentials', {
-        email: form.email,
-        password: form.password,
-        redirect: false,
-      });
-
-      if (signInResult?.error) {
-        setError(signInResult.error);
-      } else {
-        // Show signup toast
-        setSignupToast({ role: form.role, name: form.name });
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        router.push('/dashboard/map');
-      }
-    } catch {
+      // Sign in and redirect to select-role to complete onboarding
+      await signIn('credentials', { email: form.email, password: form.password, redirect: true, callbackUrl: '/select-role' });
+    } catch (err) {
+      console.error(err);
       setError('An unexpected error occurred');
-    } finally {
       setLoading(false);
     }
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center relative overflow-hidden py-8">
-      {/* Signup Toast */}
       {signupToast && (
         <div className="fixed top-6 right-6 z-[100] animate-reveal-up">
           <div className="glass-card rounded-2xl px-6 py-4 glow-primary flex items-center gap-3">
             <span className="material-symbols-outlined text-[var(--green-400)] text-2xl" style={{ fontVariationSettings: "'FILL' 1" }}>celebration</span>
             <div>
-              <p className="text-white font-bold text-sm">Signed up as {signupToast.role.replace(/_/g, ' ')}</p>
+              <p className="text-white font-bold text-sm">Signed up</p>
               <p className="text-[var(--text-secondary)] text-xs">{signupToast.name}</p>
             </div>
           </div>
         </div>
       )}
-      {/* Animated background */}
-      <div className="fixed inset-0 bg-[var(--bg-base)] grid-pattern" />
-      <div className="orb orb-primary w-[500px] h-[500px] -top-[150px] left-[20%] fixed" />
-      <div className="orb orb-tertiary w-[400px] h-[400px] bottom-0 -right-[100px] fixed" />
 
-      {/* Register Card */}
+      <div className="fixed inset-0 bg-[var(--bg-base)] grid-pattern" />
+
       <div className="relative z-10 w-full max-w-md mx-4 animate-reveal-up">
         <div className="glass-card rounded-3xl p-8 md:p-10 glow-primary relative overflow-hidden">
           <div className="shimmer-bg absolute inset-0 rounded-3xl" />
@@ -134,11 +106,7 @@ export default function RegisterPage() {
               <p className="text-sm text-[var(--text-secondary)] mt-1">Set up your city in under 15 minutes</p>
             </div>
 
-            {/* Google OAuth */}
-            <button
-              onClick={() => signIn('google', { callbackUrl: '/dashboard/map' })}
-              className="w-full flex items-center justify-center gap-3 px-4 py-3.5 glass-card hover:border-white/15 rounded-xl transition-all text-white font-medium group"
-            >
+            <button onClick={() => signIn('google', { callbackUrl: '/select-role' })} className="w-full flex items-center justify-center gap-3 px-4 py-3.5 glass-card hover:border-white/15 rounded-xl transition-all text-white font-medium group">
               <svg width="20" height="20" viewBox="0 0 24 24">
                 <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4" />
                 <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
@@ -154,57 +122,25 @@ export default function RegisterPage() {
               <div className="flex-1 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
             </div>
 
-            {error && (
-              <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-sm flex items-center gap-2 glow-error">
-                <span className="material-symbols-outlined text-lg">error</span>
-                {error}
-              </div>
-            )}
+            {error && <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-sm flex items-center gap-2 glow-error"><span className="material-symbols-outlined text-lg">error</span>{error}</div>}
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="block text-xs font-bold uppercase tracking-widest text-[var(--text-tertiary)] mb-2">Full name</label>
-                <input
-                  type="text"
-                  value={form.name}
-                  onChange={(e) => setForm({ ...form, name: e.target.value })}
-                  className="w-full px-4 py-3.5 bg-[var(--bg-base)]/60 border border-white/8 rounded-xl text-white placeholder:text-[var(--border-strong)] focus:outline-none focus:border-[var(--green-400)]/40 input-glow transition-all"
-                  placeholder="Jane Smith"
-                  required
-                />
+                <input type="text" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="w-full px-4 py-3.5 bg-[var(--bg-base)]/60 border border-white/8 rounded-xl text-white placeholder:text-[var(--border-strong)] focus:outline-none focus:border-[var(--green-400)]/40 input-glow transition-all" placeholder="Jane Smith" required />
               </div>
 
               <div>
                 <label className="block text-xs font-bold uppercase tracking-widest text-[var(--text-tertiary)] mb-2">Work email</label>
-                <input
-                  type="email"
-                  value={form.email}
-                  onChange={(e) => setForm({ ...form, email: e.target.value })}
-                  className="w-full px-4 py-3.5 bg-[var(--bg-base)]/60 border border-white/8 rounded-xl text-white placeholder:text-[var(--border-strong)] focus:outline-none focus:border-[var(--green-400)]/40 input-glow transition-all"
-                  placeholder="you@city.gov"
-                  required
-                />
+                <input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="w-full px-4 py-3.5 bg-[var(--bg-base)]/60 border border-white/8 rounded-xl text-white placeholder:text-[var(--border-strong)] focus:outline-none focus:border-[var(--green-400)]/40 input-glow transition-all" placeholder="you@city.gov" required />
               </div>
 
               <div>
                 <label className="block text-xs font-bold uppercase tracking-widest text-[var(--text-tertiary)] mb-2">Password</label>
                 <div className="relative">
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    value={form.password}
-                    onChange={(e) => setForm({ ...form, password: e.target.value })}
-                    className="w-full px-4 py-3.5 bg-[var(--bg-base)]/60 border border-white/8 rounded-xl text-white placeholder:text-[var(--border-strong)] focus:outline-none focus:border-[var(--green-400)]/40 input-glow transition-all pr-12"
-                    placeholder="••••••••"
-                    required
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)] hover:text-[var(--green-400)] transition-colors p-1"
-                  >
-                    <span className="material-symbols-outlined text-xl">
-                      {showPassword ? 'visibility_off' : 'visibility'}
-                    </span>
+                  <input type={showPassword ? 'text' : 'password'} value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} className="w-full px-4 py-3.5 bg-[var(--bg-base)]/60 border border-white/8 rounded-xl text-white placeholder:text-[var(--border-strong)] focus:outline-none focus:border-[var(--green-400)]/40 input-glow transition-all pr-12" placeholder="••••••••" required />
+                  <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)] hover:text-[var(--green-400)] transition-colors p-1">
+                    <span className="material-symbols-outlined text-xl">{showPassword ? 'visibility_off' : 'visibility'}</span>
                   </button>
                 </div>
                 {form.password && (
@@ -212,87 +148,26 @@ export default function RegisterPage() {
                     <div className="flex-1 flex gap-1">
                       {[1,2,3,4,5].map((i) => (
                         <div key={i} className="flex-1 h-1.5 rounded-full overflow-hidden bg-[var(--bg-elevated)]">
-                          <div
-                            className="h-full rounded-full transition-all duration-300"
-                            style={{
-                              width: passwordStrength.score >= i ? '100%' : '0%',
-                              backgroundColor: passwordStrength.color,
-                            }}
-                          />
+                          <div className="h-full rounded-full transition-all duration-300" style={{ width: passwordStrength.score >= i ? '100%' : '0%', backgroundColor: passwordStrength.color }} />
                         </div>
                       ))}
                     </div>
-                    <span className="text-xs font-bold" style={{ color: passwordStrength.color }}>
-                      {passwordStrength.label}
-                    </span>
+                    <span className="text-xs font-bold" style={{ color: passwordStrength.color }}>{passwordStrength.label}</span>
                   </div>
                 )}
               </div>
 
               <div>
                 <label className="block text-xs font-bold uppercase tracking-widest text-[var(--text-tertiary)] mb-2">Confirm password</label>
-                <input
-                  type="password"
-                  value={form.confirmPassword}
-                  onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })}
-                  onPaste={(e) => e.preventDefault()}
-                  className="w-full px-4 py-3.5 bg-[var(--bg-base)]/60 border border-white/8 rounded-xl text-white placeholder:text-[var(--border-strong)] focus:outline-none focus:border-[var(--green-400)]/40 input-glow transition-all"
-                  placeholder="••••••••"
-                  required
-                />
+                <input type="password" value={form.confirmPassword} onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })} onPaste={(e) => e.preventDefault()} className="w-full px-4 py-3.5 bg-[var(--bg-base)]/60 border border-white/8 rounded-xl text-white placeholder:text-[var(--border-strong)] focus:outline-none focus:border-[var(--green-400)]/40 input-glow transition-all" placeholder="••••••••" required />
               </div>
 
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-widest text-[var(--text-tertiary)] mb-2">Your Role</label>
-                <select
-                  value={form.role}
-                  onChange={(e) => setForm({ ...form, role: e.target.value })}
-                  className="w-full px-4 py-3.5 bg-[var(--bg-base)]/60 border border-white/8 rounded-xl text-white focus:outline-none focus:border-[var(--green-400)]/40 input-glow transition-all appearance-none cursor-pointer"
-                  required
-                >
-                  {roleOptions.map((opt) => (
-                    <option key={opt.value} value={opt.value} className="bg-[#0a1628] text-white">
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-widest text-[var(--text-tertiary)] mb-2">City / Organization name</label>
-                <input
-                  type="text"
-                  value={form.cityName}
-                  onChange={(e) => setForm({ ...form, cityName: e.target.value })}
-                  className="w-full px-4 py-3.5 bg-[var(--bg-base)]/60 border border-white/8 rounded-xl text-white placeholder:text-[var(--border-strong)] focus:outline-none focus:border-[var(--green-400)]/40 input-glow transition-all"
-                  placeholder="Austin, TX"
-                  required
-                />
-                <p className="text-xs text-[var(--border-strong)] mt-1.5">You&apos;ll configure city details in the next step</p>
-              </div>
-
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full py-3.5 bg-gradient-to-r from-[var(--green-400)] to-[var(--green-500)] text-[var(--bg-base)] font-bold rounded-xl hover:shadow-lg hover:shadow-[var(--green-400)]/20 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed "
-              >
-                {loading ? (
-                  <span className="flex items-center justify-center gap-2">
-                    <span className="material-symbols-outlined animate-spin text-lg">progress_activity</span>
-                    Creating account...
-                  </span>
-                ) : (
-                  'Create Account'
-                )}
+              <button type="submit" disabled={loading} className="w-full py-3.5 bg-gradient-to-r from-[var(--green-400)] to-[var(--green-500)] text-[var(--bg-base)] font-bold rounded-xl hover:shadow-lg hover:shadow-[var(--green-400)]/20 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed ">
+                {loading ? <span className="flex items-center justify-center gap-2"><span className="material-symbols-outlined animate-spin text-lg">progress_activity</span>Creating account...</span> : 'Create Account'}
               </button>
             </form>
 
-            <p className="text-center text-sm text-[var(--text-secondary)] mt-6">
-              Already have an account?{' '}
-              <Link href="/login" className="text-[var(--green-400)] hover:underline font-semibold underline-offset-4">
-                Sign in
-              </Link>
-            </p>
+            <p className="text-center text-sm text-[var(--text-secondary)] mt-6">Already have an account? <Link href="/login" className="text-[var(--green-400)] hover:underline font-semibold underline-offset-4">Sign in</Link></p>
           </div>
         </div>
       </div>

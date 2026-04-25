@@ -141,7 +141,7 @@ export default function DashboardMapPage() {
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
 
-  const [mapType, setMapType] = useState<MapType>('roadmap');
+  const [mapType, setMapType] = useState<MapType>('hybrid');
   const [mapActive, setMapActive] = useState(false);
   const [scrollTipSeen, setScrollTipSeen] = useState(false);
   const [showScrollTip, setShowScrollTip] = useState(false);

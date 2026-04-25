@@ -1,76 +1,23 @@
-import { NextResponse } from 'next/server';
-import type { NextRequest } from 'next/server';
 import NextAuth from 'next-auth';
 import { authConfig } from '@/lib/auth.config';
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
 
 const { auth } = NextAuth(authConfig);
-
-const ROLE_ROUTES: Record<string, string[]> = {
-  '/dashboard/admin': ['SUPER_ADMIN'],
-  '/dashboard/data': ['CITY_ADMIN', 'SUPER_ADMIN', 'DATA_ANALYST'],
-  '/dashboard/reports/generate': ['URBAN_PLANNER', 'CITY_ADMIN', 'SUPER_ADMIN'],
-  '/dashboard/scenarios': ['CITY_COUNCIL', 'URBAN_PLANNER', 'CITY_ADMIN', 'SUPER_ADMIN', 'MUNICIPAL_COMMISSIONER'],
-  '/dashboard/reports': ['CITY_COUNCIL', 'URBAN_PLANNER', 'CITY_ADMIN', 'SUPER_ADMIN', 'MUNICIPAL_COMMISSIONER', 'SDMA_OBSERVER'],
-  '/dashboard/commissioner': ['MUNICIPAL_COMMISSIONER', 'SUPER_ADMIN'],
-  '/dashboard/ward': ['WARD_OFFICER', 'MUNICIPAL_COMMISSIONER', 'SUPER_ADMIN'],
-  '/dashboard/state': ['SDMA_OBSERVER', 'SUPER_ADMIN'],
-  '/dashboard/field': ['NGO_FIELD_WORKER', 'SUPER_ADMIN'],
-  '/dashboard/citizen': ['CITIZEN_REPORTER', 'SUPER_ADMIN'],
-  '/dashboard/analyst': ['DATA_ANALYST', 'CITY_ADMIN', 'SUPER_ADMIN'],
-};
-
-const PUBLIC_ROUTES = [
-  '/login',
-  '/register',
-  '/map',
-  '/api/auth',
-  '/api/public',
-  '/',
-];
 
 export default auth((req) => {
   const { pathname } = req.nextUrl;
   const session = req.auth;
 
-  // Redirect authenticated users from landing page to dashboard
-  if (pathname === '/' && session?.user) {
-    const role = session.user.role;
-    const redirectMap: Record<string, string> = {
-      SUPER_ADMIN: '/dashboard/admin',
-      CITY_ADMIN: '/dashboard/map',
-      URBAN_PLANNER: '/dashboard/map',
-      CITY_COUNCIL: '/dashboard/scenarios',
-      MUNICIPAL_COMMISSIONER: '/dashboard/commissioner',
-      WARD_OFFICER: '/dashboard/ward',
-      SDMA_OBSERVER: '/dashboard/state',
-      NGO_FIELD_WORKER: '/dashboard/field',
-      DATA_ANALYST: '/dashboard/analyst',
-      CITIZEN_REPORTER: '/dashboard/citizen',
-    };
-    return NextResponse.redirect(new URL(redirectMap[role] || '/dashboard', req.url));
-  }
-
-  const isPublicRoute =
-    pathname === '/' ||
-    PUBLIC_ROUTES
-      .filter((route) => route !== '/')
-      .some((route) => pathname.startsWith(route));
-
-  // Allow public routes
-  if (isPublicRoute) {
+  // ── /select-role: accessible to any logged-in user ──────────────────────
+  if (pathname === '/select-role') {
+    if (!session?.user) {
+      return NextResponse.redirect(new URL('/login', req.url));
+    }
     return NextResponse.next();
   }
 
-  // Allow static files and API routes for auth
-  if (
-    pathname.startsWith('/_next') ||
-    pathname.startsWith('/favicon') ||
-    pathname.includes('.')
-  ) {
-    return NextResponse.next();
-  }
-
-  // Protect dashboard routes
+  // ── Dashboard routes ─────────────────────────────────────────────────────
   if (pathname.startsWith('/dashboard')) {
     if (!session?.user) {
       const loginUrl = new URL('/login', req.url);
@@ -78,60 +25,49 @@ export default auth((req) => {
       return NextResponse.redirect(loginUrl);
     }
 
-    // Redirect old my-data route to mydata
+    const role = session.user.role as string;
+    const needsRoleSelection = (session.user as { needsRoleSelection?: boolean }).needsRoleSelection;
+
+    // Redirect to role selection if no role assigned yet
+    if (needsRoleSelection) {
+      return NextResponse.redirect(new URL('/select-role', req.url));
+    }
+
+    // Redirect /dashboard to role default
+    if (pathname === '/dashboard') {
+      if (role === 'RESIDENT') {
+        return NextResponse.redirect(new URL('/dashboard/resident', req.url));
+      }
+      return NextResponse.redirect(new URL('/dashboard/mydata', req.url));
+    }
+
+    // Redirect legacy /dashboard/my-data
     if (pathname === '/dashboard/my-data') {
       return NextResponse.redirect(new URL('/dashboard/mydata', req.url));
     }
 
-    const role = session.user.role;
-    const onboardingComplete = session.user.onboardingComplete;
-    const cityId = session.user.cityId;
-
-    // SUPER_ADMIN bypasses all checks
-    if (role === 'SUPER_ADMIN') {
+    // RESIDENT paths — only RESIDENT can access
+    if (pathname.startsWith('/dashboard/resident')) {
+      if (role !== 'RESIDENT') {
+        return NextResponse.redirect(new URL('/dashboard/mydata', req.url));
+      }
       return NextResponse.next();
     }
 
-    // Default dashboard redirect by role
-    if (pathname === '/dashboard') {
-      const roleDefaultRoute: Record<string, string> = {
-        CITY_ADMIN: '/dashboard/map',
-        URBAN_PLANNER: '/dashboard/mydata',
-        CITY_COUNCIL: '/dashboard/scenarios',
-        MUNICIPAL_COMMISSIONER: '/dashboard/commissioner',
-        WARD_OFFICER: '/dashboard/ward',
-        SDMA_OBSERVER: '/dashboard/state',
-        NGO_FIELD_WORKER: '/dashboard/field',
-        DATA_ANALYST: '/dashboard/analyst',
-        CITIZEN_REPORTER: '/dashboard/citizen',
-      };
-      return NextResponse.redirect(new URL(roleDefaultRoute[role] || '/dashboard/mydata', req.url));
-    }
+    // CITY_ADMIN paths — only CITY_ADMIN can access
+    const cityAdminPaths = [
+      '/dashboard/mydata',
+      '/dashboard/map',
+      '/dashboard/scenarios',
+      '/dashboard/reports',
+      '/dashboard/places',
+      '/dashboard/interventions',
+      '/dashboard/settings',
+    ];
 
-    // Check role-based route access
-    for (const [route, allowedRoles] of Object.entries(ROLE_ROUTES)) {
-      if (pathname.startsWith(route) && !allowedRoles.includes(role)) {
-        return NextResponse.redirect(new URL('/unauthorized', req.url));
-      }
-    }
-
-    // Scenario approve requires CITY_ADMIN+
-    if (pathname.match(/\/dashboard\/scenarios\/.*\/approve/)) {
-      if (!['CITY_ADMIN', 'SUPER_ADMIN'].includes(role)) {
-        return NextResponse.redirect(new URL('/unauthorized', req.url));
-      }
-    }
-
-    // CITY_COUNCIL restricted routes
-    if (role === 'CITY_COUNCIL') {
-      const allowedForCouncil = [
-        '/dashboard/scenarios',
-        '/dashboard/reports',
-        '/dashboard/map',
-      ];
-      if (!allowedForCouncil.some((r) => pathname.startsWith(r))) {
-        return NextResponse.redirect(new URL('/unauthorized', req.url));
-      }
+    const isCityAdminPath = cityAdminPaths.some((p) => pathname.startsWith(p));
+    if (isCityAdminPath && role !== 'CITY_ADMIN') {
+      return NextResponse.redirect(new URL('/dashboard/resident', req.url));
     }
   }
 
@@ -139,5 +75,5 @@ export default auth((req) => {
 });
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
+  matcher: ['/dashboard/:path*', '/select-role'],
 };

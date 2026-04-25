@@ -8,11 +8,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const { data: session, status } = useSession();
   const pathname = usePathname();
 
-  const isOnboarding = pathname.startsWith('/dashboard/onboarding');
-  const onboardingComplete = session?.user?.onboardingComplete;
+  const isOnboarding = false; // Onboarding page removed
+  const onboardingComplete = true;
   const isCityAdmin = session?.user?.role === 'CITY_ADMIN';
-  // Only hide when onboarding incomplete and NOT a city admin.
-  const hideNav = isOnboarding || (status === 'authenticated' && !onboardingComplete && !isCityAdmin);
+  const hideNav = isOnboarding;
 
   // Full-screen routes that must not be wrapped in the page container
   const isFullscreen = pathname.startsWith('/dashboard/map');

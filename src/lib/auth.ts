@@ -135,57 +135,31 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         try {
           const email = user.email;
           if (!email) return false;
-          
+
           const existingUser = await prisma.user.findUnique({
             where: { email },
           });
-          
+
           if (existingUser) {
             await prisma.user.update({
               where: { email },
-              data: { lastLoginAt: new Date() }
+              data: { lastLoginAt: new Date() },
             });
             return true;
           }
-          
-          const newUser = await prisma.user.create({
+
+          // New Google user — create WITHOUT role assignment.
+          // Role will be chosen on the /select-role page.
+          await prisma.user.create({
             data: {
               email,
               name: user.name ?? email.split('@')[0],
               passwordHash: null,
               lastLoginAt: new Date(),
-            }
+              role: 'PUBLIC',
+            },
           });
-          
-          const cityName = `${user.name ?? 'My'}'s City`;
-          const city = await prisma.city.create({
-            data: {
-              name: cityName,
-              slug: cityName.toLowerCase()
-                .replace(/[^a-z0-9]/g, '-')
-                .replace(/-+/g, '-')
-                .substring(0, 50) + '-' + Date.now(),
-              country: 'India',
-              currency: 'INR',
-            }
-          });
-          
-          // Update user with role and cityId since UserRole model doesn't exist
-          await prisma.user.update({
-            where: { id: newUser.id },
-            data: {
-              role: 'CITY_ADMIN',
-              cityId: city.id,
-            }
-          });
-          
-          await prisma.onboardingState.create({
-            data: {
-              cityId: city.id,
-              isComplete: true,
-            }
-          });
-          
+
           return true;
         } catch (error) {
           console.error('Google signIn error:', error);
@@ -194,54 +168,83 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       }
       return true;
     },
-    
-    async session({ session, token }) {
-      if (session.user && token) {
-        session.user.id = token.sub as string;
-        
-        // Fetch user role and city from DB on every session check
-        const userFromDb = await prisma.user.findUnique({
+
+    async jwt({ token, user, account, trigger }) {
+      // ── Re-fetch role when session is explicitly updated (e.g. after /select-role) ──
+      if (trigger === 'update' && token.sub) {
+        const dbUser = await prisma.user.findUnique({
           where: { id: token.sub as string },
-          select: {
-            role: true,
-            cityId: true,
-            city: {
-              select: {
-                onboardingState: {
-                  select: { isComplete: true }
-                }
-              }
-            }
-          }
+          select: { role: true, cityId: true },
         });
-        
-        if (userFromDb) {
-          session.user.role = userFromDb.role;
-          session.user.cityId = userFromDb.cityId ?? undefined;
-          session.user.onboardingComplete = userFromDb.city?.onboardingState?.isComplete ?? false;
+        if (dbUser) {
+          const role = dbUser.role;
+          if (role === 'CITY_ADMIN' || role === 'RESIDENT') {
+            token.role = role;
+            token.cityId = dbUser.cityId ?? undefined;
+            token.needsRoleSelection = false;
+          } else {
+            token.needsRoleSelection = true;
+          }
         }
+        return token;
       }
-      return session;
-    },
-    
-    async jwt({ token, user, account }) {
+
       if (user) {
+        // ── First sign-in: resolve DB user and set role in token ──────────
         if (account?.provider === 'google') {
-          // For Google, the 'user.id' is the Google ID. 
-          // We need our database ID for the 'sub'.
           const dbUser = await prisma.user.findUnique({
             where: { email: user.email! },
-            select: { id: true }
+            select: { id: true, role: true, cityId: true },
           });
           if (dbUser) {
             token.sub = dbUser.id;
+            const role = dbUser.role;
+            if (role === 'CITY_ADMIN' || role === 'RESIDENT') {
+              token.role = role;
+              token.cityId = dbUser.cityId ?? undefined;
+              token.needsRoleSelection = false;
+            } else {
+              // New Google user with PUBLIC role — needs role selection
+              token.needsRoleSelection = true;
+            }
           }
         } else {
+          // Credentials login
           token.sub = user.id;
+          const dbUser = await prisma.user.findUnique({
+            where: { id: user.id },
+            select: { role: true, cityId: true },
+          });
+          if (dbUser) {
+            const role = dbUser.role;
+            if (role === 'CITY_ADMIN' || role === 'RESIDENT') {
+              token.role = role;
+              token.cityId = dbUser.cityId ?? undefined;
+              token.needsRoleSelection = false;
+            } else {
+              // Legacy role — default to CITY_ADMIN
+              console.warn('Legacy role detected, defaulting to CITY_ADMIN for user:', user.id);
+              token.role = 'CITY_ADMIN';
+              token.needsRoleSelection = false;
+            }
+          }
         }
       }
       return token;
     },
+
+    async session({ session, token }) {
+      if (session.user && token) {
+        session.user.id = token.sub as string;
+        session.user.role = (token.role as string) ?? 'CITY_ADMIN';
+        session.user.cityId = (token.cityId as string) ?? undefined;
+        session.user.onboardingComplete = false;
+        (session.user as { needsRoleSelection?: boolean }).needsRoleSelection =
+          (token.needsRoleSelection as boolean) ?? false;
+      }
+      return session;
+    },
+
     authorized: authConfig.callbacks?.authorized,
   },
   pages: {

@@ -37,11 +37,13 @@ export const authConfig: NextAuthConfig = {
     },
     async session({ session, token }) {
       if (session.user) {
-        session.user.id = token.userId as string;
-        session.user.role = token.role as string;
-        session.user.cityId = token.cityId as string | null;
+        session.user.id = (token.sub as string) || (token.userId as string);
+        session.user.role = (token.role as string) ?? 'CITY_ADMIN';
+        session.user.cityId = (token.cityId as string) ?? undefined;
         session.user.onboardingComplete =
           (token.onboardingComplete as boolean | undefined) ?? false;
+        (session.user as { needsRoleSelection?: boolean }).needsRoleSelection =
+          (token.needsRoleSelection as boolean) ?? false;
       }
       return session;
     },

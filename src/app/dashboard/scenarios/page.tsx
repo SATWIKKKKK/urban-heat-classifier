@@ -16,9 +16,9 @@ function getScenarioBadgeStyle(status: string) {
 export default async function DashboardScenariosPage() {
   const session = await auth();
 
-  if (!session?.user?.cityId) {
-    redirect('/login');
-  }
+  if (!session?.user?.id) redirect('/login');
+  if (session.user.role !== 'CITY_ADMIN') redirect('/dashboard/resident');
+  if (!session.user.cityId) redirect('/dashboard/mydata');
 
   const [scenarios, places] = await Promise.all([
     getScenarios(session.user.cityId),

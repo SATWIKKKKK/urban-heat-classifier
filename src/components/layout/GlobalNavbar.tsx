@@ -7,11 +7,11 @@ import { useState, useRef, useEffect } from 'react';
 import { Bell, ChevronDown, User, Database, LogOut, PanelRight } from 'lucide-react';
 
 const ALL_NAV_ITEMS = [
-  { label: 'My Data', href: '/dashboard/mydata', icon: 'person', roles: ['CITY_ADMIN', 'URBAN_PLANNER', 'SUPER_ADMIN', 'CITY_COUNCIL', 'MUNICIPAL_COMMISSIONER', 'WARD_OFFICER', 'SDMA_OBSERVER', 'NGO_FIELD_WORKER', 'DATA_ANALYST', 'CITIZEN_REPORTER'] },
-  { label: 'Map', href: '/dashboard/map', icon: 'map', roles: ['CITY_ADMIN', 'URBAN_PLANNER', 'SUPER_ADMIN', 'CITY_COUNCIL', 'SDMA_OBSERVER', 'DATA_ANALYST', 'CITIZEN_REPORTER'] },
-  { label: 'Scenarios', href: '/dashboard/scenarios', icon: 'compare_arrows', roles: ['CITY_ADMIN', 'URBAN_PLANNER', 'SUPER_ADMIN', 'CITY_COUNCIL', 'MUNICIPAL_COMMISSIONER', 'SDMA_OBSERVER', 'DATA_ANALYST', 'CITIZEN_REPORTER'] },
-  { label: 'Reports', href: '/dashboard/reports', icon: 'assessment', roles: ['CITY_ADMIN', 'URBAN_PLANNER', 'SUPER_ADMIN', 'CITY_COUNCIL', 'MUNICIPAL_COMMISSIONER', 'SDMA_OBSERVER', 'DATA_ANALYST'] },
-  { label: 'Settings', href: '/dashboard/settings', icon: 'settings', roles: ['CITY_ADMIN', 'URBAN_PLANNER', 'SUPER_ADMIN', 'CITY_COUNCIL', 'MUNICIPAL_COMMISSIONER', 'WARD_OFFICER', 'SDMA_OBSERVER', 'NGO_FIELD_WORKER', 'DATA_ANALYST', 'CITIZEN_REPORTER'] },
+  { label: 'My Data', href: '/dashboard/mydata', icon: 'person', roles: ['CITY_ADMIN'] },
+  { label: 'Map', href: '/dashboard/map', icon: 'map', roles: ['CITY_ADMIN'] },
+  { label: 'Scenarios', href: '/dashboard/scenarios', icon: 'compare_arrows', roles: ['CITY_ADMIN'] },
+  { label: 'Reports', href: '/dashboard/reports', icon: 'assessment', roles: ['CITY_ADMIN'] },
+  { label: 'My Reports', href: '/dashboard/resident', icon: 'flag', roles: ['RESIDENT'] },
 ];
 
 interface GlobalNavbarProps {
@@ -34,9 +34,7 @@ export default function GlobalNavbar({ accentColor = 'var(--green-400)', activeH
   const role = session?.user?.role;
   const currentHref = activeHref ?? pathname;
 
-  const navItems = role === 'SUPER_ADMIN'
-    ? ALL_NAV_ITEMS
-    : ALL_NAV_ITEMS.filter((item) => role && item.roles.includes(role));
+  const navItems = ALL_NAV_ITEMS.filter((item) => role && item.roles.includes(role));
 
   // Close user dropdown on outside click
   useEffect(() => {

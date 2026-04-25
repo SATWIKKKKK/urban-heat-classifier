@@ -11,9 +11,10 @@ declare module 'next-auth' {
       role: string;
       cityId: string | undefined;
       onboardingComplete: boolean;
+      needsRoleSelection?: boolean;
     };
   }
-  
+
   interface User {
     id: string;
     role?: string;
@@ -26,5 +27,6 @@ declare module 'next-auth/jwt' {
     sub: string;
     role?: string;
     cityId?: string;
+    needsRoleSelection?: boolean;
   }
 }

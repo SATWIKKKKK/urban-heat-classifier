@@ -29,6 +29,12 @@ function SkeletonLine({ w = 'w-24' }: { w?: string }) {
 }
 
 const TILE_LAYERS = {
+  hybrid: {
+    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+    labelsUrl: 'https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png',
+    attribution: '&copy; Esri &copy; USGS &copy; NOAA &copy; OpenStreetMap &copy; CARTO',
+    label: 'Hybrid',
+  },
   dark: {
     url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
     attribution: '&copy; OpenStreetMap &copy; CARTO',
@@ -66,7 +72,7 @@ export default function MapPage() {
   const [inspectorLoading, setInspectorLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showSearch, setShowSearch] = useState(false);
-  const [tileStyle, setTileStyle] = useState<'dark' | 'satellite' | 'street'>('dark');
+  const [tileStyle, setTileStyle] = useState<'hybrid' | 'dark' | 'satellite' | 'street'>('hybrid');
   const tileLayerRef = useRef<L.TileLayer | null>(null);
 
   // Keep ref in sync so Leaflet event handlers always see the current selection
@@ -134,9 +140,16 @@ export default function MapPage() {
       });
 
       leaflet
-        .tileLayer(TILE_LAYERS.dark.url, {
-          attribution: TILE_LAYERS.dark.attribution,
+        .tileLayer(TILE_LAYERS.hybrid.url, {
+          attribution: TILE_LAYERS.hybrid.attribution,
           maxZoom: 19,
+        })
+        .addTo(map);
+      leaflet
+        .tileLayer(TILE_LAYERS.hybrid.labelsUrl!, {
+          attribution: '',
+          maxZoom: 19,
+          pane: 'overlayPane',
         })
         .addTo(map);
 
@@ -165,6 +178,9 @@ export default function MapPage() {
       });
       const cfg = TILE_LAYERS[tileStyle];
       L.tileLayer(cfg.url, { attribution: cfg.attribution, maxZoom: 19 }).addTo(map);
+      if ('labelsUrl' in cfg && cfg.labelsUrl) {
+        L.tileLayer(cfg.labelsUrl, { attribution: '', maxZoom: 19 }).addTo(map);
+      }
     });
   }, [tileStyle, mapReady]);
 
@@ -431,7 +447,7 @@ export default function MapPage() {
 
           {/* Tile layer toggle — bottom-left, above legend */}
           <div className="absolute bottom-16 right-4 z-[400] flex flex-col gap-px bg-[var(--bg-surface)] border border-[var(--border)] rounded-md overflow-hidden shadow-lg">
-            {(['dark', 'satellite', 'street'] as const).map((style) => (
+            {(['hybrid', 'dark', 'satellite', 'street'] as const).map((style) => (
               <button
                 key={style}
                 type="button"
