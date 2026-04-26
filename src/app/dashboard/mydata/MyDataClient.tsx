@@ -279,7 +279,7 @@ export default function MyDataClient(props: Props) {
   }
 
   return (
-    <div className="flex flex-col gap-6 pb-20 relative" style={{
+    <div className="flex flex-col gap-4 sm:gap-6 pb-16 sm:pb-20 relative" style={{
       background: '#000000',
       position: 'relative',
       overflow: 'hidden',
@@ -311,11 +311,11 @@ export default function MyDataClient(props: Props) {
 
       {/* ── Sticky Header ── */}
       <div 
-        className={`fixed top-[60px] left-0 right-0 z-40 h-[40px] bg-[var(--bg-base)]/80 backdrop-blur-sm border-b border-[var(--border)] flex items-center px-6 transition-opacity duration-300 pointer-events-none md:pl-[280px] ${showStickyHeader ? 'opacity-100' : 'opacity-0'}`}
+        className={`fixed top-[60px] left-0 right-0 z-40 h-[40px] bg-[var(--bg-base)]/80 backdrop-blur-sm border-b border-[var(--border)] flex items-center px-2 sm:px-4 md:px-6 transition-opacity duration-300 pointer-events-none md:pl-[280px] ${showStickyHeader ? 'opacity-100' : 'opacity-0'}`}
       >
-        <span className="text-xs font-semibold text-[var(--text-primary)]">Heat Intelligence Center</span>
+        <span className="text-[11px] sm:text-xs font-semibold text-[var(--text-primary)] truncate">Heat Intelligence Center</span>
         <span className="text-xs text-[var(--text-tertiary)] mx-2">·</span>
-        <span className="text-xs text-[var(--text-secondary)]">{city.name}</span>
+        <span className="text-[11px] sm:text-xs text-[var(--text-secondary)] truncate">{city.name}</span>
       </div>
 
       {/* ── Error banner ── */}
@@ -328,16 +328,16 @@ export default function MyDataClient(props: Props) {
       {/* ── PAGE HEADER ─────────────────────────────────────────────────── */}
       <div 
         ref={headerRef}
-        className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 w-full pb-[24px] border-b border-[var(--border)] mb-[24px]"
+        className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 sm:gap-4 w-full pb-4 sm:pb-[24px] border-b border-[var(--border)] mb-4 sm:mb-[24px]"
         style={{ background: 'linear-gradient(to bottom, var(--bg-surface) 0%, transparent 100%)' }}
       >
         <div className="flex flex-col">
-          <h1 className="text-[32px] font-bold tracking-[-0.03em] text-[var(--text-primary)] leading-tight">Heat Intelligence Center</h1>
+          <h1 className="text-2xl sm:text-[32px] font-bold tracking-[-0.03em] text-[var(--text-primary)] leading-tight">Heat Intelligence Center</h1>
         </div>
         <div className="flex items-center gap-3 shrink-0">
           <button
             onClick={() => setShowAddPlace(true)}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[var(--green-500)] text-white text-xs font-semibold transition-all hover:bg-[var(--green-400)] shadow-[0_0_20px_rgba(34,197,94,0.25)] hover:shadow-[0_0_28px_rgba(34,197,94,0.40)]"
+            className="w-full sm:w-auto flex items-center justify-center gap-1.5 px-3 sm:px-4 py-2 rounded-lg bg-[var(--green-500)] text-white text-xs font-semibold transition-all hover:bg-[var(--green-400)] shadow-[0_0_20px_rgba(34,197,94,0.25)] hover:shadow-[0_0_28px_rgba(34,197,94,0.40)]"
           >
             <span className="material-symbols-outlined text-sm">add</span>
             Add Place
@@ -347,9 +347,9 @@ export default function MyDataClient(props: Props) {
 
       {/* ── SCENARIO QUICK START BANNER ─────────────────────────────────── */}
       {places.length > 0 && scenarios.length === 0 && (
-        <div className="flex items-center justify-between p-5 rounded-[16px] border border-[rgba(34,197,94,0.25)] mb-4"
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3 sm:p-5 rounded-[16px] border border-[rgba(34,197,94,0.25)] mb-4"
              style={{ background: 'linear-gradient(135deg, rgba(34,197,94,0.15) 0%, rgba(34,197,94,0.05) 50%, rgba(59,130,246,0.08) 100%)' }}>
-          <div className="flex items-center gap-4">
+          <div className="flex items-start sm:items-center gap-3 sm:gap-4">
             <div className="w-12 h-12 rounded-full bg-[#22c55e]/20 flex items-center justify-center border border-[#22c55e]/30">
               <span className="material-symbols-outlined text-[24px] text-[#22c55e]">science</span>
             </div>
@@ -358,26 +358,26 @@ export default function MyDataClient(props: Props) {
               <p className="text-[12px] text-[var(--text-secondary)]">Select a place and let Gemini generate a complete heat mitigation plan with PDF report.</p>
             </div>
           </div>
-          <Link href="/dashboard/scenarios" className="shrink-0 px-5 py-2.5 bg-[#22c55e] text-white text-[13px] font-bold rounded-[8px] hover:bg-[#16a34a] shadow-[0_0_15px_rgba(34,197,94,0.3)] transition-all">
+          <Link href="/dashboard/scenarios" className="w-full sm:w-auto text-center shrink-0 px-4 sm:px-5 py-2.5 bg-[#22c55e] text-white text-[13px] font-bold rounded-[8px] hover:bg-[#16a34a] shadow-[0_0_15px_rgba(34,197,94,0.3)] transition-all">
             Build Scenario →
           </Link>
         </div>
       )}
 
       {/* ── KPI ROW ─────────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
         {([
           { label: 'Total Places',    val: String(stats.totalPlaces),                                                     accent: '#3b82f6', valColor: '#60a5fa', context: 'monitored locations', bgGlow: 'rgba(59,130,246,0.06)' },
           { label: 'Avg Temperature', val: avgTemp != null ? `${avgTemp.toFixed(1)}°C` : '—',                  accent: '#f97316', valColor: '#fb923c', context: 'latest readings average', bgGlow: 'rgba(249,115,22,0.06)' },
           { label: 'Vulnerable Pop',  val: vulnerablePop > 0 ? `${(vulnerablePop / 1000).toFixed(0)}k` : '—',      accent: '#ef4444', valColor: '#f87171', context: 'in HIGH/CRITICAL zones', bgGlow: 'rgba(239,68,68,0.06)' },
           { label: 'Monitored Zones', val: `${activePlaces} / ${stats.totalPlaces}`,                                   accent: '#22c55e', valColor: '#4ade80', context: 'zones with active data', bgGlow: 'rgba(34,197,94,0.06)' },
         ] as const).map(({ label, val, accent, valColor, context, bgGlow }) => (
-          <div key={label} className="bg-[var(--bg-surface)] border-r border-b border-l border-[var(--border)] rounded-[16px] p-[20px] flex flex-col relative overflow-hidden group" style={{ borderTop: `2px solid ${accent}`, background: `linear-gradient(180deg, ${bgGlow} 0%, transparent 40%), var(--bg-surface)` }}>
+          <div key={label} className="bg-[var(--bg-surface)] border-r border-b border-l border-[var(--border)] rounded-[16px] p-3 sm:p-[20px] flex flex-col relative overflow-hidden group" style={{ borderTop: `2px solid ${accent}`, background: `linear-gradient(180deg, ${bgGlow} 0%, transparent 40%), var(--bg-surface)` }}>
             <div className="flex items-center gap-[6px] relative z-10">
               <span className="text-[9px] text-[var(--text-tertiary)] uppercase tracking-[0.12em] font-semibold">{label}</span>
             </div>
             
-            <span className="text-[36px] font-extrabold tracking-[-0.04em] leading-none mt-[12px] tabular-nums relative z-10" style={{ color: valColor }}>
+            <span className="text-2xl sm:text-[36px] font-extrabold tracking-[-0.04em] leading-none mt-2 sm:mt-[12px] tabular-nums relative z-10" style={{ color: valColor }}>
               {val}
             </span>
             
@@ -389,7 +389,7 @@ export default function MyDataClient(props: Props) {
       </div>
 
       {/* ── SEARCH + FILTER ─────────────────────────────────────────────── */}
-      <div className="flex flex-col sm:flex-row gap-4 mt-2">
+      <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mt-2">
         {/* Search input */}
         <div className="relative flex-1 group">
           <span className="absolute left-[12px] top-1/2 -translate-y-1/2 material-symbols-outlined text-[var(--text-tertiary)] text-[16px] leading-none pointer-events-none transition-colors group-focus-within:text-[var(--green-400)]">
@@ -400,7 +400,7 @@ export default function MyDataClient(props: Props) {
             value={query}
             onChange={e => setQuery(e.target.value)}
             placeholder="Search places..."
-            className="w-full h-[44px] pl-[36px] pr-[100px] bg-[var(--bg-surface)] border border-[var(--border)] rounded-[12px] text-[13px] text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] placeholder:text-[13px] focus:outline-none focus:border-[var(--border-strong)] focus:shadow-[0_0_0_3px_rgba(34,197,94,0.08)] transition-all duration-200"
+            className="w-full h-[44px] pl-[36px] pr-[76px] sm:pr-[100px] bg-[var(--bg-surface)] border border-[var(--border)] rounded-[12px] text-[13px] text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] placeholder:text-[13px] focus:outline-none focus:border-[var(--border-strong)] focus:shadow-[0_0_0_3px_rgba(34,197,94,0.08)] transition-all duration-200"
           />
           
           <div className="absolute right-[12px] top-1/2 -translate-y-1/2 flex items-center gap-2">
@@ -463,13 +463,13 @@ export default function MyDataClient(props: Props) {
       </div>
 
       {/* ── MAIN CONTENT ────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mt-2">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6 mt-2">
 
         {/* ── Places table (left 8) ── */}
         <div className="lg:col-span-8 flex flex-col gap-4">
 
           {/* Result count line */}
-          <div className="flex items-center justify-between border-b border-[var(--border)] pb-[12px] mb-[4px]">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-[var(--border)] pb-[12px] mb-[4px]">
             <span className="text-xs text-[var(--text-tertiary)]">
               Showing <span className="text-[var(--text-primary)] font-semibold">{filtered.length}</span> of {places.length} places
               {query && <span className="ml-1">matching &ldquo;<span className="text-[var(--text-primary)]">{query}</span>&rdquo;</span>}
@@ -512,7 +512,8 @@ export default function MyDataClient(props: Props) {
           {/* Places table */}
           {filtered.length > 0 && (
             <div className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-[16px] overflow-hidden">
-              <table className="w-full">
+              <div className="overflow-x-auto">
+              <table className="w-full min-w-[720px]">
                 <thead>
                   <tr className="border-b border-[var(--border)] bg-[var(--bg-elevated)]">
                     {['Name', 'Vulnerability', 'Avg Temp', 'Canopy', 'Population', 'Actions'].map((h, i) => (
@@ -587,7 +588,7 @@ export default function MyDataClient(props: Props) {
                         {isDeleteRow && (
                           <tr key={`${p.id}-del`} className="bg-[rgba(239,68,68,0.06)] border-b border-[var(--border)]/50">
                             <td colSpan={6} className="px-4 py-3">
-                              <div className="flex items-center justify-between gap-4">
+                              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
                                 <span className="text-[12px] text-[#f87171]">
                                   Delete <strong>{p.name}</strong>? All heat measurements and interventions will be permanently removed.
                                 </span>
@@ -609,6 +610,7 @@ export default function MyDataClient(props: Props) {
                   })}
                 </tbody>
               </table>
+              </div>
             </div>
           )}
         </div>
@@ -622,7 +624,7 @@ export default function MyDataClient(props: Props) {
               <span className="material-symbols-outlined text-[14px]">science</span>
               Scenario Overview
             </h2>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="bg-[var(--bg-elevated)] rounded-xl p-4 flex flex-col gap-1 border border-[rgba(34,197,94,0.15)] shadow-[0_0_16px_rgba(34,197,94,0.08)]">
                 <span className="text-[10px] uppercase tracking-wider text-[var(--text-tertiary)] font-medium">Active</span>
                 <span className="text-[24px] font-extrabold text-[#22c55e]">{stats.activeInterventions}</span>
@@ -635,7 +637,7 @@ export default function MyDataClient(props: Props) {
                 <div className="col-span-2 bg-[var(--bg-elevated)] rounded-xl p-5 flex flex-col gap-1 border border-[rgba(34,197,94,0.15)] shadow-[0_0_16px_rgba(34,197,94,0.08)] relative overflow-hidden">
                   <div className="absolute top-0 right-0 w-[100px] h-[100px] bg-[radial-gradient(circle_at_top_right,rgba(34,197,94,0.15),transparent)] pointer-events-none" />
                   <span className="text-[10px] uppercase tracking-wider text-[var(--text-tertiary)] font-medium relative z-10">Projected cooling</span>
-                  <span className="text-[36px] font-extrabold tracking-[-0.04em] leading-none my-1 relative z-10 text-[#22c55e]">
+                  <span className="text-3xl sm:text-[36px] font-extrabold tracking-[-0.04em] leading-none my-1 relative z-10 text-[#22c55e]">
                     -{stats.totalProjectedReduction.toFixed(1)}°C
                   </span>
                   <span className="text-[10px] text-[var(--text-tertiary)] relative z-10">avg. across active scenarios</span>
@@ -728,7 +730,7 @@ export default function MyDataClient(props: Props) {
 
       {/* ── TOAST ── */}
       {toast && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] px-5 py-3 bg-[var(--bg-elevated)] border border-[rgba(34,197,94,0.30)] rounded-[12px] text-[13px] text-[#22c55e] font-medium shadow-2xl animate-fade-in flex items-center gap-2">
+        <div className="fixed bottom-4 sm:bottom-6 left-1/2 -translate-x-1/2 z-[100] px-3 sm:px-5 py-2.5 sm:py-3 bg-[var(--bg-elevated)] border border-[rgba(34,197,94,0.30)] rounded-[12px] text-[12px] sm:text-[13px] text-[#22c55e] font-medium shadow-2xl animate-fade-in flex items-center gap-2 max-w-[92vw]">
           <span className="material-symbols-outlined text-[16px]">check_circle</span>
           {toast}
         </div>
@@ -748,10 +750,10 @@ export default function MyDataClient(props: Props) {
               onClick={e => e.stopPropagation()}
             >
               {/* Sticky header */}
-              <div className="flex items-start justify-between p-5 border-b border-[var(--border)] sticky top-0 bg-[var(--bg-elevated)] z-10">
+              <div className="flex items-start justify-between p-3 sm:p-5 border-b border-[var(--border)] sticky top-0 bg-[var(--bg-elevated)] z-10">
                 <div className="flex flex-col gap-1">
                   <div className="flex items-center gap-2">
-                    <h2 className="text-[18px] font-bold text-[var(--text-primary)]">{p.name}</h2>
+                    <h2 className="text-base sm:text-[18px] font-bold text-[var(--text-primary)]">{p.name}</h2>
                     {p.vulnerabilityLevel && (
                       <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full" style={{ color: v.color, backgroundColor: v.bg }}>
                         {p.vulnerabilityLevel}
@@ -766,18 +768,18 @@ export default function MyDataClient(props: Props) {
               </div>
 
               {/* Body */}
-              <div className="overflow-y-auto flex-1 p-5 flex flex-col gap-5">
+              <div className="overflow-y-auto flex-1 p-3 sm:p-5 flex flex-col gap-4 sm:gap-5">
                 {/* Temperature + sparkline */}
-                <div className="flex items-start justify-between gap-4">
+                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4">
                   <div className="flex flex-col">
                     {latest ? (
                       <>
-                        <span className="text-[48px] font-extrabold leading-none tracking-[-0.04em]" style={{ color: v.color }}>{latest.avgTemp.toFixed(1)}<span className="text-[24px] align-super opacity-60">°C</span></span>
+                        <span className="text-[34px] sm:text-[48px] font-extrabold leading-none tracking-[-0.04em]" style={{ color: v.color }}>{latest.avgTemp.toFixed(1)}<span className="text-[18px] sm:text-[24px] align-super opacity-60">°C</span></span>
                         <span className="text-[11px] text-[var(--text-tertiary)] mt-1">Max: {latest.maxTemp?.toFixed(1) ?? '—'}°C &middot; {new Date(latest.date).toLocaleDateString()}</span>
                       </>
                     ) : p.vulnerabilityScore != null ? (
                       <>
-                        <span className="text-[48px] font-extrabold leading-none tracking-[-0.04em]" style={{ color: v.color }}>{Math.round(p.vulnerabilityScore)}</span>
+                        <span className="text-[34px] sm:text-[48px] font-extrabold leading-none tracking-[-0.04em]" style={{ color: v.color }}>{Math.round(p.vulnerabilityScore)}</span>
                         <span className="text-[11px] text-[var(--text-tertiary)] mt-1 uppercase tracking-wide font-semibold">Vulnerability Score</span>
                       </>
                     ) : (
@@ -788,7 +790,7 @@ export default function MyDataClient(props: Props) {
                 </div>
 
                 {/* Stats strip */}
-                <div className="grid grid-cols-4 rounded-[10px] bg-[var(--bg-surface)] border border-[var(--border)] divide-x divide-[var(--border)] overflow-hidden">
+                <div className="grid grid-cols-2 sm:grid-cols-4 rounded-[10px] bg-[var(--bg-surface)] border border-[var(--border)] divide-x divide-[var(--border)] overflow-hidden">
                   {[
                     { val: p.population != null ? `${(p.population / 1000).toFixed(0)}k` : '—', lbl: 'pop' },
                     { val: p.areaSqkm != null ? `${p.areaSqkm.toFixed(1)}` : '—', lbl: 'km²' },
@@ -853,7 +855,7 @@ export default function MyDataClient(props: Props) {
               </div>
 
               {/* Footer */}
-              <div className="flex items-center gap-2 p-4 border-t border-[var(--border)] bg-[var(--bg-surface)]">
+              <div className="flex flex-wrap items-center gap-2 p-3 sm:p-4 border-t border-[var(--border)] bg-[var(--bg-surface)]">
                 {deleteConfirmId === `popup-${p.id}` ? (
                   <div className="flex items-center justify-between w-full gap-4">
                     <span className="text-[12px] text-[#f87171]">Permanently delete <strong>{p.name}</strong>?</span>
@@ -895,8 +897,8 @@ export default function MyDataClient(props: Props) {
 
       {/* ── ADD PLACE MODAL ──────────────────────────────────────────────── */}
       {showAddPlace && (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in" onClick={() => setShowAddPlace(false)}>
-          <div className="bg-[var(--bg-elevated)] border border-[var(--border-strong)] border-t-2 border-t-[rgba(34,197,94,0.40)] rounded-[20px] p-[24px] max-w-[480px] w-full shadow-2xl animate-scale-in" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 backdrop-blur-sm p-2 sm:p-4 animate-fade-in" onClick={() => setShowAddPlace(false)}>
+          <div className="bg-[var(--bg-elevated)] border border-[var(--border-strong)] border-t-2 border-t-[rgba(34,197,94,0.40)] rounded-[16px] sm:rounded-[20px] p-4 sm:p-[24px] max-w-[480px] w-full shadow-2xl animate-scale-in" onClick={e => e.stopPropagation()}>
             <div className="flex items-start justify-between mb-5">
               <div>
                 <h2 className="text-[17px] font-bold text-[var(--text-primary)] flex items-center gap-2">
@@ -970,7 +972,7 @@ export default function MyDataClient(props: Props) {
                         <label className="text-[10px] uppercase tracking-wide text-[var(--text-tertiary)] font-semibold ml-1">Place Name (auto-filled)</label>
                         <input name="name" required placeholder="Name" defaultValue={searchQuery.split(',')[0]} className={IC} />
                       </div>
-                      <div className="grid grid-cols-2 gap-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div className="flex flex-col gap-1">
                           <label className="text-[10px] uppercase tracking-wide text-[var(--text-tertiary)] font-semibold ml-1">Population</label>
                           <input name="population" type="number" placeholder="Total people" className={IC} />
@@ -989,7 +991,7 @@ export default function MyDataClient(props: Props) {
                     <label className="text-[10px] uppercase tracking-wide text-[var(--text-tertiary)] font-semibold ml-1">Place Name</label>
                     <input name="name" required placeholder="e.g. Downtown Core" className={IC} />
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="flex flex-col gap-1">
                       <label className="text-[10px] uppercase tracking-wide text-[var(--text-tertiary)] font-semibold ml-1">Population</label>
                       <input name="population" type="number" placeholder="Total people" className={IC} />
@@ -1015,7 +1017,7 @@ export default function MyDataClient(props: Props) {
               )}
 
               {error && <p className="text-[12px] text-[var(--critical)]">{error}</p>}
-              <div className="flex gap-3 pt-4 mt-1 border-t border-[var(--border)]">
+              <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 pt-4 mt-1 border-t border-[var(--border)]">
                 <button type="button" onClick={() => setShowAddPlace(false)} className="flex-1 h-[40px] text-[13px] font-medium text-[var(--text-secondary)] border border-[var(--border)] rounded-[10px] hover:border-[var(--border-strong)] hover:bg-[var(--bg-surface)] transition-colors">
                   Cancel
                 </button>

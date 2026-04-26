@@ -374,7 +374,8 @@ export class PdfBuilder {
       if (!item?.trim()) continue;
       const lines = wrapText(item.trim(), sz, CW - indent - 2);
       this._need(lines.length * lh + 6);
-      this._text(ML + 2, this.pg.y, '\u2022', sz, true, 0.09, 0.56, 0.40);
+      // Draw a tiny square dot instead of a Unicode bullet to avoid encoding artifacts.
+      this._fillRect(ML + 3, this.pg.y - 4.8, 3, 3, 0.09, 0.56, 0.40);
       for (let i = 0; i < lines.length; i++) {
         if (this.pg.y - lh < MB) this._newPage();
         this._text(ML + indent, this.pg.y, lines[i], sz, false, 0, 0, 0);

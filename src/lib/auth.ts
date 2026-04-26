@@ -27,6 +27,42 @@ async function createUniqueCitySlug(baseName: string) {
   return slug;
 }
 
+async function ensureCityAdminForUser(userId: string, preferredCityName?: string) {
+  const existing = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { cityId: true },
+  });
+
+  let cityId = existing?.cityId ?? null;
+
+  if (!cityId) {
+    const cityName = preferredCityName?.trim() || 'My City';
+    const citySlug = await createUniqueCitySlug(cityName);
+    const city = await prisma.city.create({
+      data: {
+        name: cityName,
+        slug: citySlug,
+        country: 'India',
+        currency: 'INR',
+      },
+    });
+    cityId = city.id;
+
+    await prisma.onboardingState.upsert({
+      where: { cityId },
+      create: { cityId, isComplete: true },
+      update: { isComplete: true },
+    });
+  }
+
+  await prisma.user.update({
+    where: { id: userId },
+    data: { role: 'CITY_ADMIN', cityId },
+  });
+
+  return cityId;
+}
+
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
   providers: [
@@ -122,7 +158,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           email: user.email,
           name: user.name,
           role: user.role,
-          cityId: user.cityId,
+          cityId: user.cityId ?? undefined,
           onboardingComplete: user.city?.onboardingState?.isComplete ?? false,
           image: user.image,
         };
@@ -141,6 +177,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           });
 
           if (existingUser) {
+            await ensureCityAdminForUser(
+              existingUser.id,
+              existingUser.name ? `${existingUser.name.split(' ')[0]}'s City` : undefined
+            );
             await prisma.user.update({
               where: { email },
               data: { lastLoginAt: new Date() },
@@ -148,15 +188,32 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             return true;
           }
 
-          // New Google user — create WITHOUT role assignment.
-          // Role will be chosen on the /select-role page.
+          const cityName = user.name ? `${user.name.split(' ')[0]}'s City` : 'My City';
+          const citySlug = await createUniqueCitySlug(cityName);
+          const city = await prisma.city.create({
+            data: {
+              name: cityName,
+              slug: citySlug,
+              country: 'India',
+              currency: 'INR',
+            },
+          });
+
+          await prisma.onboardingState.create({
+            data: {
+              cityId: city.id,
+              isComplete: true,
+            },
+          });
+
           await prisma.user.create({
             data: {
               email,
               name: user.name ?? email.split('@')[0],
               passwordHash: null,
               lastLoginAt: new Date(),
-              role: 'PUBLIC',
+              role: 'CITY_ADMIN',
+              cityId: city.id,
             },
           });
 
@@ -170,27 +227,19 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     },
 
     async jwt({ token, user, account, trigger }) {
-      // ── Re-fetch role when session is explicitly updated (e.g. after /select-role) ──
       if (trigger === 'update' && token.sub) {
         const dbUser = await prisma.user.findUnique({
           where: { id: token.sub as string },
           select: { role: true, cityId: true },
         });
         if (dbUser) {
-          const role = dbUser.role;
-          if (role === 'CITY_ADMIN' || role === 'RESIDENT') {
-            token.role = role;
-            token.cityId = dbUser.cityId ?? undefined;
-            token.needsRoleSelection = false;
-          } else {
-            token.needsRoleSelection = true;
-          }
+          token.role = dbUser.role || 'CITY_ADMIN';
+          token.cityId = dbUser.cityId ?? undefined;
         }
         return token;
       }
 
       if (user) {
-        // ── First sign-in: resolve DB user and set role in token ──────────
         if (account?.provider === 'google') {
           const dbUser = await prisma.user.findUnique({
             where: { email: user.email! },
@@ -198,35 +247,23 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           });
           if (dbUser) {
             token.sub = dbUser.id;
-            const role = dbUser.role;
-            if (role === 'CITY_ADMIN' || role === 'RESIDENT') {
-              token.role = role;
-              token.cityId = dbUser.cityId ?? undefined;
-              token.needsRoleSelection = false;
-            } else {
-              // New Google user with PUBLIC role — needs role selection
-              token.needsRoleSelection = true;
-            }
+            token.role = dbUser.role || 'CITY_ADMIN';
+            token.cityId = dbUser.cityId ?? undefined;
           }
         } else {
-          // Credentials login
-          token.sub = user.id;
+          const userId = user.id;
+          if (!userId) {
+            return token;
+          }
+
+          token.sub = userId;
           const dbUser = await prisma.user.findUnique({
-            where: { id: user.id },
+            where: { id: userId },
             select: { role: true, cityId: true },
           });
           if (dbUser) {
-            const role = dbUser.role;
-            if (role === 'CITY_ADMIN' || role === 'RESIDENT') {
-              token.role = role;
-              token.cityId = dbUser.cityId ?? undefined;
-              token.needsRoleSelection = false;
-            } else {
-              // Legacy role — default to CITY_ADMIN
-              console.warn('Legacy role detected, defaulting to CITY_ADMIN for user:', user.id);
-              token.role = 'CITY_ADMIN';
-              token.needsRoleSelection = false;
-            }
+            token.role = dbUser.role || 'CITY_ADMIN';
+            token.cityId = dbUser.cityId ?? undefined;
           }
         }
       }
@@ -239,8 +276,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         session.user.role = (token.role as string) ?? 'CITY_ADMIN';
         session.user.cityId = (token.cityId as string) ?? undefined;
         session.user.onboardingComplete = false;
-        (session.user as { needsRoleSelection?: boolean }).needsRoleSelection =
-          (token.needsRoleSelection as boolean) ?? false;
       }
       return session;
     },

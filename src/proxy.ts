@@ -9,12 +9,19 @@ export default auth((req) => {
   const { pathname } = req.nextUrl;
   const session = req.auth;
 
-  // ── /select-role: accessible to any logged-in user ──────────────────────
-  if (pathname === '/select-role') {
+  if (pathname.startsWith('/resident')) {
+    if (!session?.user) {
+      return NextResponse.redirect(new URL('/', req.url));
+    }
+    return NextResponse.redirect(new URL('/dashboard/map', req.url));
+  }
+
+  // Legacy routes removed from the product flow.
+  if (pathname === '/select-role' || pathname.startsWith('/dashboard/resident')) {
     if (!session?.user) {
       return NextResponse.redirect(new URL('/login', req.url));
     }
-    return NextResponse.next();
+    return NextResponse.redirect(new URL('/dashboard/map', req.url));
   }
 
   // ── Dashboard routes ─────────────────────────────────────────────────────
@@ -25,20 +32,9 @@ export default auth((req) => {
       return NextResponse.redirect(loginUrl);
     }
 
-    const role = session.user.role as string;
-    const needsRoleSelection = (session.user as { needsRoleSelection?: boolean }).needsRoleSelection;
-
-    // Redirect to role selection if no role assigned yet
-    if (needsRoleSelection) {
-      return NextResponse.redirect(new URL('/select-role', req.url));
-    }
-
-    // Redirect /dashboard to role default
+    // Redirect /dashboard to default landing page
     if (pathname === '/dashboard') {
-      if (role === 'RESIDENT') {
-        return NextResponse.redirect(new URL('/dashboard/resident', req.url));
-      }
-      return NextResponse.redirect(new URL('/dashboard/mydata', req.url));
+      return NextResponse.redirect(new URL('/dashboard/map', req.url));
     }
 
     // Redirect legacy /dashboard/my-data
@@ -46,34 +42,12 @@ export default auth((req) => {
       return NextResponse.redirect(new URL('/dashboard/mydata', req.url));
     }
 
-    // RESIDENT paths — only RESIDENT can access
-    if (pathname.startsWith('/dashboard/resident')) {
-      if (role !== 'RESIDENT') {
-        return NextResponse.redirect(new URL('/dashboard/mydata', req.url));
-      }
-      return NextResponse.next();
-    }
-
-    // CITY_ADMIN paths — only CITY_ADMIN can access
-    const cityAdminPaths = [
-      '/dashboard/mydata',
-      '/dashboard/map',
-      '/dashboard/scenarios',
-      '/dashboard/reports',
-      '/dashboard/places',
-      '/dashboard/interventions',
-      '/dashboard/settings',
-    ];
-
-    const isCityAdminPath = cityAdminPaths.some((p) => pathname.startsWith(p));
-    if (isCityAdminPath && role !== 'CITY_ADMIN') {
-      return NextResponse.redirect(new URL('/dashboard/resident', req.url));
-    }
+    // Page-level role checks remain responsible for authorization.
   }
 
   return NextResponse.next();
 });
 
 export const config = {
-  matcher: ['/dashboard/:path*', '/select-role'],
+  matcher: ['/dashboard/:path*', '/select-role', '/resident/:path*'],
 };

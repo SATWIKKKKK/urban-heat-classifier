@@ -523,7 +523,7 @@ export default function DashboardMapPage() {
   /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 
   return (
-    <div className="relative w-full" style={{ height: 'calc(100vh - 60px)' }}>
+    <div className="relative w-full" style={{ height: 'calc(100dvh - 60px)' }}>
 
       {/* â”€â”€â”€ FULL BLEED MAP â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <div
@@ -534,12 +534,12 @@ export default function DashboardMapPage() {
       >
         {mapActive && <div className="absolute inset-0 z-10 pointer-events-none border-2 border-[#22c55e]/40" />}
         {showScrollTip && !scrollTipSeen && (
-          <div className="absolute bottom-20 left-1/2 -translate-x-1/2 z-20 pointer-events-none">
+          <div className="absolute bottom-24 sm:bottom-20 left-1/2 -translate-x-1/2 z-20 pointer-events-none px-2">
             <div className="bg-[#111]/90 border border-white/10 rounded-full px-3 py-1.5 text-[10px] text-neutral-300 whitespace-nowrap">Click map to enable scroll zoom</div>
           </div>
         )}
         {mapActive && (
-          <div className="absolute bottom-20 right-20 z-20 pointer-events-none">
+          <div className="absolute bottom-24 sm:bottom-20 right-2 sm:right-20 z-20 pointer-events-none">
             <div className="bg-[#22c55e]/15 border border-[#22c55e]/30 rounded-full px-2 py-1 text-[9px] text-[#22c55e] font-medium">Scroll to zoom · Esc to exit</div>
           </div>
         )}
@@ -613,7 +613,7 @@ export default function DashboardMapPage() {
 
       {/* â”€â”€â”€ SEARCH BAR (centered, floating) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       {/* Search bar + world/city toggle (floating, centered top) */}
-      <div className="absolute top-4 left-1/2 -translate-x-1/2 z-30 flex flex-col items-center gap-2 w-[90%] max-w-xl">
+      <div className="absolute top-2 sm:top-4 left-1/2 -translate-x-1/2 z-30 flex flex-col items-center gap-2 w-[96%] sm:w-[90%] max-w-xl px-1">
         {/* View toggle */}
         <div className="flex items-center gap-1 bg-[#111113]/80 backdrop-blur-xl border border-white/[0.06] rounded-full p-1 self-center">
           <button type="button" onClick={() => setWorldView(false)}
@@ -627,7 +627,7 @@ export default function DashboardMapPage() {
         </div>
 
         <div className="w-full flex flex-col gap-1">
-        <GlassCard className={`w-full flex items-center px-4 py-2.5 gap-3 transition-all duration-200${navPlaceName && !searchedPlace ? ' shadow-[0_0_0_2px_rgba(34,197,94,0.35),0_8px_32px_rgba(0,0,0,0.4)]' : ''}`}>
+        <GlassCard className={`w-full flex items-center px-2.5 sm:px-4 py-2.5 gap-2 sm:gap-3 transition-all duration-200${navPlaceName && !searchedPlace ? ' shadow-[0_0_0_2px_rgba(34,197,94,0.35),0_8px_32px_rgba(0,0,0,0.4)]' : ''}`}>
           <span className="material-symbols-outlined text-lg text-neutral-400 shrink-0">search</span>
           {isLoaded ? (
             <Autocomplete onLoad={a => { autocompleteRef.current = a; }} onPlaceChanged={onPlaceChanged} className="flex-1">
@@ -989,7 +989,7 @@ export default function DashboardMapPage() {
       </div>
 
       {/* â”€â”€â”€ MAP CONTROLS (bottom-right) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
-      <div className="absolute bottom-6 right-6 z-20 flex flex-col gap-2 items-end">
+      <div className="absolute bottom-24 sm:bottom-6 right-2 sm:right-6 z-20 flex flex-col gap-2 items-end">
         <GlassCard className="flex flex-col overflow-hidden">
 
           <button type="button" onClick={zoomIn} className="w-9 h-9 flex items-center justify-center text-neutral-400 hover:text-white hover:bg-white/[0.04] transition-colors">
@@ -1004,20 +1004,20 @@ export default function DashboardMapPage() {
 
       {/* â”€â”€â”€ MOBILE BOTTOM BAR â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <div className="absolute bottom-0 left-0 right-0 z-30 lg:hidden">
-        <div className="flex gap-2 p-2 justify-center">
+        <div className="flex gap-1.5 sm:gap-2 p-1.5 sm:p-2 justify-center">
           <button onClick={() => setMobilePanel(mobilePanel === 'stats' ? 'none' : 'stats')}
-            className={`px-4 py-2 text-xs font-medium rounded-full transition-colors ${mobilePanel === 'stats' ? 'bg-[#22c55e] text-white' : 'bg-[#111113]/80 backdrop-blur-xl border border-white/[0.06] text-neutral-300'}`}>
+            className={`px-3 sm:px-4 py-1.5 sm:py-2 text-[11px] sm:text-xs font-medium rounded-full transition-colors ${mobilePanel === 'stats' ? 'bg-[#22c55e] text-white' : 'bg-[#111113]/80 backdrop-blur-xl border border-white/[0.06] text-neutral-300'}`}>
             Stats
           </button>
           <button onClick={() => setMobilePanel(mobilePanel === 'inspector' ? 'none' : 'inspector')}
-            className={`px-4 py-2 text-xs font-medium rounded-full transition-colors ${mobilePanel === 'inspector' ? 'bg-[#22c55e] text-white' : 'bg-[#111113]/80 backdrop-blur-xl border border-white/[0.06] text-neutral-300'}`}>
+            className={`px-3 sm:px-4 py-1.5 sm:py-2 text-[11px] sm:text-xs font-medium rounded-full transition-colors ${mobilePanel === 'inspector' ? 'bg-[#22c55e] text-white' : 'bg-[#111113]/80 backdrop-blur-xl border border-white/[0.06] text-neutral-300'}`}>
             Inspector
           </button>
         </div>
 
         {mobilePanel === 'stats' && (
-          <GlassCard className="mx-2 mb-2 p-4 max-h-[50vh] overflow-y-auto">
-            <div className="grid grid-cols-3 gap-3 text-center">
+          <GlassCard className="mx-1.5 sm:mx-2 mb-2 p-3 sm:p-4 max-h-[55vh] overflow-y-auto">
+            <div className="grid grid-cols-2 gap-3 text-center">
               <div>{statsLoading ? <div className="h-6 w-8 mx-auto bg-white/[0.06] rounded animate-pulse" /> : <div className="text-xl font-bold text-white">{displayStats.extremeHeatZones ?? '—'}</div>}<div className="text-[10px] text-neutral-500">Heat Zones</div></div>
               <div>{statsLoading ? <div className="h-6 w-8 mx-auto bg-white/[0.06] rounded animate-pulse" /> : <div className="text-xl font-bold text-white">{displayStats.highRisk ?? '—'}</div>}<div className="text-[10px] text-neutral-500">High Risk</div></div>
             </div>
@@ -1037,7 +1037,7 @@ export default function DashboardMapPage() {
         )}
 
         {mobilePanel === 'inspector' && (
-          <GlassCard className="mx-2 mb-2 p-4 max-h-[50vh] overflow-y-auto">
+          <GlassCard className="mx-1.5 sm:mx-2 mb-2 p-3 sm:p-4 max-h-[55vh] overflow-y-auto">
             {searchedPlace ? (
               <div className="space-y-2">
                 <div className="flex justify-between"><h2 className="text-sm font-semibold text-white">{searchedPlace.name}</h2><button onClick={() => { setSearchedPlace(null); setSearchedMarkerPos(null); setCountryCode(null); if (searchInputRef.current) searchInputRef.current.value = ''; }} className="text-neutral-500"><span className="material-symbols-outlined text-base">close</span></button></div>

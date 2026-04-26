@@ -17,7 +17,7 @@ export default async function DashboardScenariosPage() {
   const session = await auth();
 
   if (!session?.user?.id) redirect('/login');
-  if (session.user.role !== 'CITY_ADMIN') redirect('/dashboard/resident');
+  if (session.user.role !== 'CITY_ADMIN') redirect('/dashboard/map');
   if (!session.user.cityId) redirect('/dashboard/mydata');
 
   const [scenarios, places] = await Promise.all([
@@ -34,14 +34,11 @@ export default async function DashboardScenariosPage() {
       orderBy: { name: 'asc' },
     }),
   ]);
-  const visibleScenarios =
-    session.user.role === 'CITY_COUNCIL'
-      ? scenarios.filter((scenario) => scenario.status === 'APPROVED')
-      : scenarios;
+  const visibleScenarios = scenarios;
 
   return (
-    <div className="flex flex-col gap-8">
-      <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+    <div className="flex flex-col gap-5 sm:gap-8">
+      <div className="flex flex-col gap-3 sm:gap-4 md:flex-row md:items-end md:justify-between">
         <div>
           <div className="flex items-center gap-1.5 mb-2">
             <span className="material-symbols-outlined text-[var(--text-tertiary)] text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>compare_arrows</span>
@@ -52,15 +49,13 @@ export default async function DashboardScenariosPage() {
             Review your heat mitigation plans, simulation results, and scenario reports.
           </p>
         </div>
-        {session.user.role !== 'CITY_COUNCIL' && (
-          <Link
-            href="/dashboard/scenarios/new"
-            className="inline-flex items-center justify-center gap-2 rounded-md bg-[var(--green-500)] px-4 py-2 text-sm font-medium text-white hover:bg-[var(--green-400)] transition-colors"
-          >
-            <span className="material-symbols-outlined text-base">add</span>
-            New Scenario
-          </Link>
-        )}
+        <Link
+          href="/dashboard/scenarios/new"
+          className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-md bg-[var(--green-500)] px-4 py-2 text-sm font-medium text-white hover:bg-[var(--green-400)] transition-colors"
+        >
+          <span className="material-symbols-outlined text-base">add</span>
+          New Scenario
+        </Link>
       </div>
 
       {/* ── Place Selector ─────────────────────────────────────────────────── */}
@@ -84,7 +79,7 @@ export default async function DashboardScenariosPage() {
                 <Link
                   key={place.id}
                   href={`/dashboard/scenarios/new?placeId=${place.id}`}
-                  className="group flex flex-col gap-1.5 min-w-[140px] bg-[var(--bg-surface)] border border-[var(--border)] rounded-lg p-3 hover:border-[var(--border-strong)] hover:bg-[var(--bg-elevated)] transition-colors"
+                  className="group flex flex-col gap-1.5 w-full sm:w-auto sm:min-w-[140px] bg-[var(--bg-surface)] border border-[var(--border)] rounded-lg p-3 hover:border-[var(--border-strong)] hover:bg-[var(--bg-elevated)] transition-colors"
                 >
                   <div className="flex items-start justify-between gap-2">
                     <span className="text-xs font-semibold text-[var(--text-primary)] leading-tight">{place.name}</span>
@@ -113,7 +108,7 @@ export default async function DashboardScenariosPage() {
       )}
 
       {visibleScenarios.length === 0 ? (
-        <div className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-lg p-12 text-center">
+        <div className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-lg p-6 sm:p-12 text-center">
           <span className="material-symbols-outlined text-4xl text-[var(--text-tertiary)] mb-3" style={{ fontVariationSettings: "'FILL' 1" }}>compare_arrows</span>
           <h3 className="text-base font-semibold text-[var(--text-primary)] mb-1">No scenarios yet</h3>
           <p className="text-sm text-[var(--text-secondary)]">Create your first scenario to start planning.</p>
@@ -128,7 +123,7 @@ export default async function DashboardScenariosPage() {
               <Link
                 key={scenario.id}
                 href={`/dashboard/scenarios/${scenario.id}/report`}
-                className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-lg p-5 hover:border-[var(--border-strong)] hover:bg-[var(--bg-elevated)] transition-colors group"
+                className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-lg p-3 sm:p-5 hover:border-[var(--border-strong)] hover:bg-[var(--bg-elevated)] transition-colors group"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">

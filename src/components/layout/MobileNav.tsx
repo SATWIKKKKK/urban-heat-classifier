@@ -7,7 +7,7 @@ const navItems = [
   { label: 'Dash', href: '/', icon: 'dashboard' },
   { label: 'Map', href: '/map', icon: 'map' },
   { label: 'Data', href: '/vulnerability', icon: 'analytics' },
-  { label: 'User', href: '/resident', icon: 'person' },
+  { label: 'Reports', href: '/reports', icon: 'assessment' },
 ];
 
 export default function MobileNav() {

@@ -11,16 +11,9 @@ const plannerNavItems = [
   { label: 'Reports', href: '/reports' },
 ];
 
-const residentNavItems = [
-  { label: 'Home', href: '/resident' },
-  { label: 'Request Tree', href: '/resident/request-tree' },
-  { label: 'My Requests', href: '/resident/my-requests' },
-  { label: 'City Map', href: '/map' },
-];
-
-export default function TopNav({ variant = 'planner' }: { variant?: 'planner' | 'resident' }) {
+export default function TopNav() {
   const pathname = usePathname();
-  const navItems = variant === 'resident' ? residentNavItems : plannerNavItems;
+  const navItems = plannerNavItems;
 
   return (
     <header className="fixed top-0 w-full z-50 glass-overlay border-b border-white/5">

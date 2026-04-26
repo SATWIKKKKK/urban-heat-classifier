@@ -86,9 +86,9 @@ export async function aiChat(opts: AiChatOptions): Promise<string> {
         const txt = await res.text().catch(() => '');
         console.error('[aiChat] OpenAI error', res.status, txt.slice(0, 400));
 
-        const shouldTryOpenRouter = Boolean(
-          openrouterKey && usingAicredits && /no endpoints found/i.test(txt),
-        );
+        // If the primary OpenAI-compatible provider rejects the model/request,
+        // attempt OpenRouter fallback when configured.
+        const shouldTryOpenRouter = Boolean(openrouterKey);
         if (!shouldTryOpenRouter) return '';
       } else {
         const data = await res.json().catch(() => ({} as any));

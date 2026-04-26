@@ -31,7 +31,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </main>
       ) : (
         <main className={`${hideNav ? '' : 'pt-[60px]'} relative z-10 min-h-screen`}>
-          <div className="max-w-[1200px] mx-auto px-4 md:px-8 py-6 pb-20">
+          <div className="max-w-[1200px] mx-auto px-2 sm:px-4 md:px-8 py-4 sm:py-6 pb-16 sm:pb-20">
             {children}
           </div>
         </main>

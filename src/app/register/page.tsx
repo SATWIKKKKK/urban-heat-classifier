@@ -11,10 +11,7 @@ export default function RegisterPage() {
 
   useEffect(() => {
     if (session?.user) {
-      // Already signed in — redirect based on role
-      if (session.user.role === 'CITY_ADMIN') router.replace('/dashboard/mydata');
-      else if (session.user.role === 'RESIDENT') router.replace('/dashboard/resident');
-      else router.replace('/select-role');
+      router.replace('/dashboard/map');
     }
   }, [session, router]);
 
@@ -68,8 +65,7 @@ export default function RegisterPage() {
         return;
       }
 
-      // Sign in and redirect to select-role to complete onboarding
-      await signIn('credentials', { email: form.email, password: form.password, redirect: true, callbackUrl: '/select-role' });
+      await signIn('credentials', { email: form.email, password: form.password, redirect: true, callbackUrl: '/dashboard/map' });
     } catch (err) {
       console.error(err);
       setError('An unexpected error occurred');
@@ -106,7 +102,7 @@ export default function RegisterPage() {
               <p className="text-sm text-[var(--text-secondary)] mt-1">Set up your city in under 15 minutes</p>
             </div>
 
-            <button onClick={() => signIn('google', { callbackUrl: '/select-role' })} className="w-full flex items-center justify-center gap-3 px-4 py-3.5 glass-card hover:border-white/15 rounded-xl transition-all text-white font-medium group">
+            <button onClick={() => signIn('google', { callbackUrl: '/dashboard/map' })} className="w-full flex items-center justify-center gap-3 px-4 py-3.5 glass-card hover:border-white/15 rounded-xl transition-all text-white font-medium group">
               <svg width="20" height="20" viewBox="0 0 24 24">
                 <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4" />
                 <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />

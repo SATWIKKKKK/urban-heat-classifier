@@ -42,8 +42,6 @@ export const authConfig: NextAuthConfig = {
         session.user.cityId = (token.cityId as string) ?? undefined;
         session.user.onboardingComplete =
           (token.onboardingComplete as boolean | undefined) ?? false;
-        (session.user as { needsRoleSelection?: boolean }).needsRoleSelection =
-          (token.needsRoleSelection as boolean) ?? false;
       }
       return session;
     },

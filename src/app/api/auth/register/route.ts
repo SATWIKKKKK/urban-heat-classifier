@@ -44,13 +44,33 @@ export async function POST(request: Request) {
 
     const passwordHash = await hash(password, 12);
 
-    // Create the user with PUBLIC role — they'll pick CITY_ADMIN or RESIDENT on /select-role
+    const cityName = `${String(name).trim().split(' ')[0] || 'My'}'s City`;
+    const citySlug = await createUniqueCitySlug(cityName);
+
+    const city = await prisma.city.create({
+      data: {
+        name: cityName,
+        slug: citySlug,
+        country: 'India',
+        currency: 'INR',
+      },
+    });
+
+    await prisma.onboardingState.create({
+      data: {
+        cityId: city.id,
+        isComplete: true,
+      },
+    });
+
+    // Create user directly as CITY_ADMIN and attach city.
     const user = await prisma.user.create({
       data: {
         name,
         email: normalizedEmail,
         passwordHash,
-        role: 'PUBLIC',
+        role: 'CITY_ADMIN',
+        cityId: city.id,
       },
     });
 
@@ -61,7 +81,7 @@ export async function POST(request: Request) {
           action: 'USER_REGISTERED',
           resourceType: 'User',
           resourceId: user.id,
-          afterValue: JSON.stringify({ email: normalizedEmail, role: 'PUBLIC' }),
+          afterValue: JSON.stringify({ email: normalizedEmail, role: 'CITY_ADMIN', cityId: city.id }),
         },
       });
     } catch {

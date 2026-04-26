@@ -7,8 +7,9 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
   workers: 1,
   reporter: 'html',
+  timeout: 30_000,
   use: {
-    baseURL: 'http://localhost:3000',
+    baseURL: process.env.E2E_BASE_URL ?? 'http://localhost:3001',
     trace: 'on-first-retry',
   },
   projects: [
@@ -18,8 +19,8 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: 'npm run dev',
-    url: 'http://localhost:3000',
+    command: 'set PORT=3001&&npm run dev',
+    url: process.env.E2E_BASE_URL ?? 'http://localhost:3001',
     reuseExistingServer: !process.env.CI,
   },
 });

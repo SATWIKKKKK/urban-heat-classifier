@@ -7,12 +7,12 @@ import MyDataClient from './MyDataClient';
 export default async function MyDataPage() {
   const session = await auth();
   if (!session?.user?.id) redirect('/login');
-  if (session.user.role !== 'CITY_ADMIN') redirect('/dashboard/resident');
+  if (session.user.role !== 'CITY_ADMIN') redirect('/dashboard/map');
 
   const userId = session.user.id;
   const cityId = session.user.cityId;
 
-  if (!cityId) redirect('/select-role');
+  if (!cityId) redirect('/dashboard/map');
   
   const city = await prisma.city.findUnique({
     where: { id: cityId },

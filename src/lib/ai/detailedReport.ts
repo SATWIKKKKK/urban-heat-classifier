@@ -277,6 +277,7 @@ export async function generateDetailedReportSections(
 
   try {
     const reportModel = process.env.AI_REPORT_MODEL ?? 'anthropic/claude-sonnet-4-20250514';
+    console.info('[detailedReport] using model:', reportModel);
     const text = await aiChat({
       messages: [
         {

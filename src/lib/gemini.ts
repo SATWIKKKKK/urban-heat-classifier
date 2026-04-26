@@ -89,7 +89,8 @@ function buildFallback(ctx: ScenarioReportContext): ReportNarrative {
 
 async function callGemini(prompt: string): Promise<string> {
   // Use the aiChat wrapper which prefers AICREDITS/OPENAI then falls back to OpenRouter.
-  const text = await aiChat({ messages: [{ role: 'user', content: prompt }], model: process.env.AI_PREFERRED_MODEL, temperature: 0.7, maxTokens: 2000, timeoutMs: 25_000 });
+  const reportModel = process.env.AI_REPORT_MODEL ?? process.env.AI_PREFERRED_MODEL;
+  const text = await aiChat({ messages: [{ role: 'user', content: prompt }], model: reportModel, temperature: 0.7, maxTokens: 2000, timeoutMs: 25_000 });
   return text ?? '';
 }
 

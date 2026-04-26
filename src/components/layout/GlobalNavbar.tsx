@@ -11,7 +11,6 @@ const ALL_NAV_ITEMS = [
   { label: 'Map', href: '/dashboard/map', icon: 'map', roles: ['CITY_ADMIN'] },
   { label: 'Scenarios', href: '/dashboard/scenarios', icon: 'compare_arrows', roles: ['CITY_ADMIN'] },
   { label: 'Reports', href: '/dashboard/reports', icon: 'assessment', roles: ['CITY_ADMIN'] },
-  { label: 'My Reports', href: '/dashboard/resident', icon: 'flag', roles: ['RESIDENT'] },
 ];
 
 interface GlobalNavbarProps {

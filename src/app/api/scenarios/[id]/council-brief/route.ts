@@ -43,6 +43,32 @@ export async function GET(
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
+  // Resolve a robust user context from DB in case JWT/session fields are stale.
+  let effectiveUserId = session.user.id;
+  let effectiveRole = session.user.role ?? '';
+  let effectiveCityId = session.user.cityId;
+
+  const userById = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { id: true, role: true, cityId: true },
+  });
+
+  if (userById) {
+    effectiveUserId = userById.id;
+    effectiveRole = userById.role ?? effectiveRole;
+    effectiveCityId = userById.cityId ?? effectiveCityId;
+  } else if (session.user.email) {
+    const userByEmail = await prisma.user.findUnique({
+      where: { email: session.user.email.toLowerCase().trim() },
+      select: { id: true, role: true, cityId: true },
+    });
+    if (userByEmail) {
+      effectiveUserId = userByEmail.id;
+      effectiveRole = userByEmail.role ?? effectiveRole;
+      effectiveCityId = userByEmail.cityId ?? effectiveCityId;
+    }
+  }
+
   const { id } = await params;
 
   const scenario = await prisma.scenario.findUnique({
@@ -79,12 +105,18 @@ export async function GET(
   ];
   // State-level roles that are not scoped to a single city
   const STATE_LEVEL_ROLES = ['SUPER_ADMIN', 'SDMA_OBSERVER'];
-  const role = session.user.role ?? '';
+  const role = effectiveRole;
 
   if (!VIEW_REPORT_ROLES.includes(role)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
-  if (!STATE_LEVEL_ROLES.includes(role) && session.user.cityId !== scenario.cityId) {
+
+  const canAccessByCity = effectiveCityId === scenario.cityId;
+  const canAccessByOwnership =
+    effectiveUserId === scenario.createdById ||
+    (scenario.approvedById != null && effectiveUserId === scenario.approvedById);
+
+  if (!STATE_LEVEL_ROLES.includes(role) && !canAccessByCity && !canAccessByOwnership) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
