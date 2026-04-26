@@ -5,6 +5,26 @@ import { compare } from 'bcryptjs';
 import prisma from '@/lib/db';
 import { authConfig } from '@/lib/auth.config';
 
+function getCanonicalAuthUrl() {
+  const vercelHost =
+    process.env.VERCEL_ENV === 'production'
+      ? process.env.VERCEL_PROJECT_PRODUCTION_URL
+      : process.env.VERCEL_URL;
+
+  if (!vercelHost) {
+    return process.env.AUTH_URL ?? process.env.NEXTAUTH_URL;
+  }
+
+  return `https://${vercelHost}`;
+}
+
+const canonicalAuthUrl = getCanonicalAuthUrl();
+
+if (canonicalAuthUrl) {
+  process.env.AUTH_URL = canonicalAuthUrl;
+  process.env.NEXTAUTH_URL = canonicalAuthUrl;
+}
+
 function slugifyCityName(value: string) {
   return value
     .toLowerCase()
@@ -288,6 +308,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   },
 });
 
-if (process.env.NODE_ENV === 'production' && !process.env.NEXTAUTH_URL) {
-  console.warn('NEXTAUTH_URL is not set in production. OAuth callbacks may fail.');
+if (process.env.NODE_ENV === 'production' && !canonicalAuthUrl) {
+  console.warn('Auth base URL could not be resolved in production. OAuth callbacks may fail.');
 }

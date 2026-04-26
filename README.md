@@ -115,6 +115,14 @@ If you want to enable Google Maps Places Autocomplete:
 11. Add your email as a test user
 12. Set publishing status to **"Testing"** (not Production) until you are ready to go live
 
+### Vercel OAuth Deployment Notes
+
+- Do not pin `NEXTAUTH_URL` or `AUTH_URL` in Vercel to a preview deployment URL.
+- Prefer leaving both unset on Vercel and let Auth.js use the incoming host with `trustHost: true`.
+- If you do set a production auth URL, it must be your stable production domain, for example `https://urban-heat-mitigator.vercel.app`.
+- In Google Cloud Console, add the production callback URI exactly as deployed, for example `https://urban-heat-mitigator.vercel.app/api/auth/callback/google`.
+- A Vercel page showing `404: DEPLOYMENT_NOT_FOUND` during Google sign-in usually means the OAuth flow was sent to a deleted preview deployment or stale alias.
+
 ### Common OAuth Errors
 
 **OAuthCallback error:**
